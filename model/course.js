@@ -66,6 +66,11 @@ const Course = sequelize.define(
       type: DataTypes.UUID,
       allowNull: true,
     },
+    status: {
+      type: DataTypes.ENUM("active", "inactive", "draft", "deleted"),
+      defaultValue: "draft",
+      allowNull: false,
+    },
     ...commonFields, // includes createdAt, updatedAt, deletedAt
   },
   {

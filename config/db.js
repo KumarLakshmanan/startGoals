@@ -3,18 +3,18 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const sequelize = new Sequelize(
-  process.env.DATABASE,
+  process.env.DB_NAME,
   process.env.DB_USER,
   process.env.DB_PASSWORD,
   {
     host: process.env.DB_HOST,
     dialect: process.env.DB_DIALECT,
-
     dialectOptions: {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
+      ssl: false, // <-- Disable SSL
+      // ssl: {
+      //   require: true,
+      //   rejectUnauthorized: false,
+      // },
     },
   }
 );
@@ -29,25 +29,3 @@ const sequelize = new Sequelize(
 })();
 
 export default sequelize;
-
-// import { Sequelize } from "sequelize";
-
-// // Replace env usage with actual values
-// const sequelize = new Sequelize(
-//   "StartGoals",               // DATABASE
-//   "StartGoals",             // DB_USER
-//   "Startgoals12345",          // DB_PASSWORD
-//   {
-//     host: "mydatabase.clwec8g8o0f2.eu-north-1.rds.amazonaws.com",    // DB_HOST
-//     dialect: "postgres",  // DB_DIALECT
-//   }
-// );
-
-// (async () => {
-//   try {
-//     await sequelize.authenticate();
-//     console.log("✅ Database connection successful");
-//   } catch (error) {
-//     console.error("❌ Database connection failed:", error);
-//   }
-// })();

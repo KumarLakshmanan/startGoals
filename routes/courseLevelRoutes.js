@@ -8,12 +8,12 @@ import {
 const router = express.Router();
 
 // Bulk upload course levels
-router.post("/course-levels/bulk-upload", bulkUploadCourseLevels);
+router.post("/bulk-upload", bulkUploadCourseLevels);
 
 // Get all course levels
-router.get("/course-levels", getAllCourseLevels);
+router.get("/", getAllCourseLevels);
 
 // Get course level by ID
-router.get("/course-levels/:levelId", getCourseLevelById);
+router.get("/:levelId", getCourseLevelById);
 
 export default router;

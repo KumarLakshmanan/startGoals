@@ -7,7 +7,6 @@ import sequelize from "../config/db.js";
 import {
   validateEmail,
   validateMobile,
-  generateOtp,
 } from "../utils/commonUtils.js";
 import bcrypt from "bcrypt";
 

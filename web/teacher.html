@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard - StartGoals Live Session</title>    <link rel="stylesheet" href="/api/web/live-session/assets/css/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="teacher-dashboard">
+        <header class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-chalkboard-teacher"></i> Teacher Dashboard</h1>
+                <span id="sessionInfo" class="session-info">Session: Loading...</span>
+            </div>
+            <div class="header-right">
+                <span id="userName" class="user-name">Loading...</span>
+                <button id="endSessionBtn" class="btn btn-danger" onclick="endSession()">
+                    <i class="fas fa-stop"></i> End Session
+                </button>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <!-- Video Container -->
+            <div class="video-container">
+                <div class="main-video-area">
+                    <div id="localVideo" class="local-video">
+                        <div class="video-placeholder">
+                            <i class="fas fa-video"></i>
+                            <p>Your Video</p>
+                        </div>
+                    </div>
+                    <div class="video-controls">
+                        <button id="toggleAudio" class="control-btn" onclick="toggleAudio()">
+                            <i class="fas fa-microphone"></i>
+                        </button>
+                        <button id="toggleVideo" class="control-btn" onclick="toggleVideo()">
+                            <i class="fas fa-video"></i>
+                        </button>
+                        <button id="shareScreen" class="control-btn" onclick="shareScreen()">
+                            <i class="fas fa-desktop"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="participants-grid" id="participantsGrid">
+                    <!-- Participant videos will be added here -->
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Participants Panel -->
+                <div class="panel participants-panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-users"></i> Participants</h3>
+                        <span id="participantCount" class="count">0</span>
+                    </div>
+                    <div class="panel-content">
+                        <div id="participantsList" class="participants-list">
+                            <!-- Participants will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raised Hands Panel -->
+                <div class="panel raised-hands-panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-hand-paper"></i> Raised Hands</h3>
+                        <span id="raisedHandsCount" class="count">0</span>
+                    </div>
+                    <div class="panel-content">
+                        <div id="raisedHandsList" class="raised-hands-list">
+                            <!-- Raised hands will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Panel -->
+                <div class="panel chat-panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-comments"></i> Chat</h3>
+                    </div>
+                    <div class="panel-content">
+                        <div id="chatMessages" class="chat-messages">
+                            <!-- Chat messages will be loaded here -->
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" id="chatInput" placeholder="Type a message...">
+                            <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Creation Modal -->
+        <div id="createSessionModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Create New Live Session</h3>
+                    <span class="close" onclick="closeCreateModal()">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="createSessionForm">
+                        <div class="form-group">
+                            <label for="sessionTitle">Session Title</label>
+                            <input type="text" id="sessionTitle" name="title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="courseId">Course ID</label>
+                            <input type="text" id="courseId" name="courseId" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="batchId">Batch ID</label>
+                            <input type="text" id="batchId" name="batchId" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="sessionDate">Date</label>
+                            <input type="date" id="sessionDate" name="sessionDate" required>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="startTime">Start Time</label>
+                                <input type="time" id="startTime" name="startTime" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="endTime">End Time</label>
+                                <input type="time" id="endTime" name="endTime" required>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="platform">Platform</label>
+                            <select id="platform" name="platform" required>
+                                <option value="agora">Agora</option>
+                                <option value="zoom">Zoom</option>
+                            </select>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeCreateModal()">Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="createSession()">Create Session</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Agora SDK -->
+    <script src="https://cdn.agora.io/sdk/release/AgoraRTC_N-4.20.0.js"></script>
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>    <!-- Common utilities -->
+    <script src="/api/web/live-session/assets/js/common.js"></script>
+    <!-- Teacher-specific scripts -->
+    <script src="/api/web/live-session/assets/js/teacher.js"></script>
+</body>
+</html>

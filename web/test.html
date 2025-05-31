@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Session Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-radius: 5px; white-space: pre-wrap; font-family: monospace; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; }
+        #video-container { display: flex; gap: 20px; }
+        .video-box { width: 300px; height: 200px; background: #000; border-radius: 5px; position: relative; }
+        .video-label { position: absolute; top: 5px; left: 5px; color: white; background: rgba(0,0,0,0.7); padding: 5px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Live Session Debug Test</h1>
+        
+        <div class="section">
+            <h3>1. API Connection Test</h3>
+            <button onclick="testAPI()">Test API Connection</button>
+            <div id="api-log" class="log"></div>
+        </div>
+
+        <div class="section">
+            <h3>2. Session Configuration Test</h3>
+            <input type="text" id="testSessionId" placeholder="Session ID" value="test-session-123">
+            <button onclick="testSessionConfig()">Get Session Config</button>
+            <div id="config-log" class="log"></div>
+        </div>
+
+        <div class="section">
+            <h3>3. Agora Token Test</h3>
+            <input type="text" id="testChannelName" placeholder="Channel Name" value="test-channel">
+            <input type="text" id="testUserId" placeholder="User ID" value="12345">
+            <select id="testRole">
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+            </select>
+            <button onclick="testAgoraToken()">Get Agora Token</button>
+            <div id="token-log" class="log"></div>
+        </div>
+
+        <div class="section">
+            <h3>4. Video Test</h3>
+            <button onclick="testVideo()">Initialize Video</button>
+            <button onclick="stopVideo()">Stop Video</button>
+            <div id="video-container">
+                <div class="video-box">
+                    <div class="video-label">Local Video</div>
+                    <div id="local-video"></div>
+                </div>
+                <div class="video-box">
+                    <div class="video-label">Remote Video</div>
+                    <div id="remote-video"></div>
+                </div>
+            </div>
+            <div id="video-log" class="log"></div>
+        </div>
+    </div>
+
+    <!-- Agora SDK -->
+    <script src="https://cdn.agora.io/sdk/release/AgoraRTC_N-4.20.0.js"></script>
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+
+    <script>
+        let agoraClient;
+        let localAudioTrack;
+        let localVideoTrack;
+
+        function log(elementId, message) {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.textContent += `[${timestamp}] ${message}\n`;
+            console.log(message);
+        }
+
+        async function testAPI() {
+            log('api-log', 'Testing API connection...');
+            try {
+                const response = await fetch('/api/web/live-session/api/session-config/test-session');
+                const data = await response.json();
+                log('api-log', `Success: ${JSON.stringify(data, null, 2)}`);
+            } catch (error) {
+                log('api-log', `Error: ${error.message}`);
+            }
+        }
+
+        async function testSessionConfig() {
+            const sessionId = document.getElementById('testSessionId').value;
+            log('config-log', `Getting config for session: ${sessionId}`);
+            try {
+                const response = await fetch(`/api/web/live-session/api/session-config/${sessionId}`);
+                const data = await response.json();
+                log('config-log', `Success: ${JSON.stringify(data, null, 2)}`);
+            } catch (error) {
+                log('config-log', `Error: ${error.message}`);
+            }
+        }
+
+        async function testAgoraToken() {
+            const channelName = document.getElementById('testChannelName').value;
+            const userId = document.getElementById('testUserId').value;
+            const role = document.getElementById('testRole').value;
+            
+            log('token-log', `Getting token for: channel=${channelName}, user=${userId}, role=${role}`);
+            try {
+                const response = await fetch('/api/web/live-session/api/agora-token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ channelName, userId, role })
+                });
+                const data = await response.json();
+                log('token-log', `Success: ${JSON.stringify(data, null, 2)}`);
+            } catch (error) {
+                log('token-log', `Error: ${error.message}`);
+            }
+        }
+
+        async function testVideo() {
+            log('video-log', 'Initializing video...');
+            try {
+                // Create Agora client
+                agoraClient = AgoraRTC.createClient({ mode: "rtc", codec: "vp8" });
+                log('video-log', 'Agora client created');
+
+                // Get session config and token first
+                const sessionResponse = await fetch('/api/web/live-session/api/session-config/test-session');
+                const sessionConfig = await sessionResponse.json();
+                log('video-log', `Session config: ${JSON.stringify(sessionConfig)}`);
+
+                const tokenResponse = await fetch('/api/web/live-session/api/agora-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        channelName: sessionConfig.channelName, 
+                        userId: '12345', 
+                        role: 'student' 
+                    })
+                });
+                const tokenData = await tokenResponse.json();
+                log('video-log', `Token received: ${tokenData.token ? 'SUCCESS' : 'FAILED'}`);
+
+                // Join channel
+                await agoraClient.join(
+                    sessionConfig.agoraAppId,
+                    sessionConfig.channelName,
+                    tokenData.token,
+                    12345
+                );
+                log('video-log', 'Joined Agora channel');
+
+                // Create local tracks
+                [localAudioTrack, localVideoTrack] = await AgoraRTC.createMicrophoneAndCameraTracks();
+                log('video-log', 'Local tracks created');
+
+                // Play local video
+                localVideoTrack.play('local-video');
+                log('video-log', 'Local video playing');
+
+                // Publish tracks
+                await agoraClient.publish([localAudioTrack, localVideoTrack]);
+                log('video-log', 'Tracks published');
+
+                log('video-log', 'Video test completed successfully!');
+                
+            } catch (error) {
+                log('video-log', `Error: ${error.message}`);
+                console.error('Video test error:', error);
+            }
+        }
+
+        async function stopVideo() {
+            log('video-log', 'Stopping video...');
+            try {
+                if (localAudioTrack) {
+                    localAudioTrack.close();
+                    localAudioTrack = null;
+                }
+                if (localVideoTrack) {
+                    localVideoTrack.close();
+                    localVideoTrack = null;
+                }
+                if (agoraClient) {
+                    await agoraClient.leave();
+                    agoraClient = null;
+                }
+                log('video-log', 'Video stopped successfully');
+            } catch (error) {
+                log('video-log', `Error stopping video: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>

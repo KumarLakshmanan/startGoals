@@ -42,6 +42,19 @@ const LiveSession = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
+    status: {
+      type: DataTypes.ENUM('scheduled', 'active', 'ended'),
+      defaultValue: 'scheduled',
+      allowNull: false,
+    },
+    platform: {
+      type: DataTypes.ENUM('agora', 'zoom'),
+      allowNull: false,
+    },
+    platformSessionId: { // Stores Agora channel name or Zoom meeting ID
+      type: DataTypes.STRING,
+      allowNull: true, // May not be available immediately upon creation for Zoom if using API to create then start
+    },
     ...commonFields,
   },
   {

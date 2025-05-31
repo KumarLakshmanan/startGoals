@@ -11,12 +11,10 @@ const userRoutes = express.Router();
 
 userRoutes.post("/userRegistration", userRegistration);
 userRoutes.post("/userLogin", userLogin);
-
 userRoutes.get(
   "/googleLogin",
   passport.authenticate("google", { scope: ["profile", "email"] })
 );
-
 userRoutes.get(
   "/auth/google/callback",
   passport.authenticate("google", {
@@ -24,9 +22,7 @@ userRoutes.get(
     failureRedirect: "/login",
   })
 );
-// Success
 userRoutes.get("/auth/callback/success", googleCallback);
-
 userRoutes.get("/usersDetailsById/:userId", getUserDetails);
 
 export default userRoutes;

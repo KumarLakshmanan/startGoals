@@ -15,6 +15,7 @@ import Section from "./section.js";
 import Lesson from "./lesson.js";
 import Resource from "./resource.js";
 import Batch from "./batch.js";
+import BatchStudents from "./batchStudents.js";
 import Enrollment from "./enrollment.js";
 import LiveSession from "./liveSession.js";
 import RecordedSession from "./recordedSession.js";
@@ -38,6 +39,7 @@ const models = {
   Lesson,
   Resource,
   Batch,
+  BatchStudents,
   Enrollment,
   LiveSession,
   RecordedSessionResource,
@@ -240,17 +242,46 @@ Batch.belongsTo(Course, {
   targetKey: "courseId", // primaryKey in the Course model
 });
 
-// A Batch can have many Students (many-to-many relationship)
+// A Batch can have many Students (many-to-many relationship through BatchStudents)
 Batch.belongsToMany(User, {
-  through: "batch_students", // Join table
-  foreignKey: "batchId", // Foreign key in batch_students table
-  otherKey: "userId", // Foreign key in batch_students table
+  through: BatchStudents,
+  foreignKey: "batchId",
+  otherKey: "userId",
+  as: "students",
 });
 
 User.belongsToMany(Batch, {
-  through: "batch_students", // Join table
-  foreignKey: "userId", // Foreign key in batch_students table
-  otherKey: "batchId", // Foreign key in batch_students table
+  through: BatchStudents,
+  foreignKey: "userId",
+  otherKey: "batchId",
+  as: "batches",
+});
+
+// BatchStudents direct associations
+BatchStudents.belongsTo(Batch, {
+  foreignKey: "batchId",
+  as: "batch",
+});
+
+BatchStudents.belongsTo(User, {
+  foreignKey: "userId",
+  as: "student",
+});
+
+Batch.hasMany(BatchStudents, {
+  foreignKey: "batchId",
+  as: "batchStudents",
+});
+
+User.hasMany(BatchStudents, {
+  foreignKey: "userId",
+  as: "studentBatches",
+});
+
+// Batch creator association
+Batch.belongsTo(User, {
+  foreignKey: "createdBy",
+  as: "creator",
 });
 
 // enrollement Associations with User and Course models

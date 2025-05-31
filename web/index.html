@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StartGoals Live Sessions</title>    <link rel="stylesheet" href="/api/web/live-session/assets/css/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <i class="fas fa-video"></i>
+                <h1>StartGoals Live Sessions</h1>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="role-selection">
+                <h2>Join Live Session</h2>
+                <p>Enter your session details to join as a teacher or student</p>
+
+                <form id="joinForm" class="join-form">
+                    <div class="form-group">
+                        <label for="sessionId">Session ID</label>
+                        <input 
+                            type="text" 
+                            id="sessionId" 
+                            name="sessionId" 
+                            placeholder="Enter session ID"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="userToken">Access Token</label>
+                        <input 
+                            type="password" 
+                            id="userToken" 
+                            name="userToken" 
+                            placeholder="Enter your access token"
+                            required
+                        >
+                    </div>
+
+                    <div class="form-group">
+                        <label for="userName">Your Name</label>
+                        <input 
+                            type="text" 
+                            id="userName" 
+                            name="userName" 
+                            placeholder="Enter your name"
+                            required
+                        >
+                    </div>
+
+                    <div class="role-buttons">
+                        <button type="button" class="btn btn-teacher" onclick="joinAsTeacher()">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            Join as Teacher
+                        </button>
+                        <button type="button" class="btn btn-student" onclick="joinAsStudent()">
+                            <i class="fas fa-user-graduate"></i>
+                            Join as Student
+                        </button>
+                    </div>
+                </form>
+
+                <div class="quick-access">
+                    <h3>Quick Access</h3>
+                    <div class="quick-links">
+                        <a href="/live-session/teacher" class="quick-link">
+                            <i class="fas fa-plus-circle"></i>
+                            Create New Session
+                        </a>
+                        <a href="#" onclick="showSessionList()" class="quick-link">
+                            <i class="fas fa-list"></i>
+                            View Active Sessions
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div id="sessionList" class="session-list" style="display: none;">
+                <h3>Active Sessions</h3>
+                <div id="sessionItems" class="session-items">
+                    <!-- Sessions will be loaded here -->
+                </div>
+            </div>
+        </main>
+
+        <footer class="footer">
+            <p>&copy; 2025 StartGoals. All rights reserved.</p>
+        </footer>
+    </div>    <script src="/api/web/live-session/assets/js/common.js"></script>
+    <script>
+        function joinAsTeacher() {
+            const form = document.getElementById('joinForm');
+            const formData = new FormData(form);
+            const sessionId = formData.get('sessionId');
+            const token = formData.get('userToken');
+            const name = formData.get('userName');
+
+            if (!sessionId || !token || !name) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // Store user data in session storage
+            sessionStorage.setItem('userToken', token);
+            sessionStorage.setItem('userName', name);
+            sessionStorage.setItem('userRole', 'teacher');
+
+            // Redirect to teacher interface
+            window.location.href = `/api/web/live-session/teacher/${sessionId}`;
+        }
+
+        function joinAsStudent() {
+            const form = document.getElementById('joinForm');
+            const formData = new FormData(form);
+            const sessionId = formData.get('sessionId');
+            const token = formData.get('userToken');
+            const name = formData.get('userName');
+
+            if (!sessionId || !token || !name) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            // Store user data in session storage
+            sessionStorage.setItem('userToken', token);
+            sessionStorage.setItem('userName', name);
+            sessionStorage.setItem('userRole', 'student');            // Redirect to student interface
+            window.location.href = `/api/web/live-session/student/${sessionId}`;
+        }
+
+        async function showSessionList() {
+            const sessionList = document.getElementById('sessionList');
+            const sessionItems = document.getElementById('sessionItems');
+            
+            try {
+                // This would typically fetch from your API
+                sessionItems.innerHTML = `
+                    <div class="session-item">
+                        <div class="session-info">
+                            <h4>Mathematics Live Session</h4>
+                            <p>Session ID: math-session-001</p>
+                            <span class="status active">Active</span>
+                        </div>
+                        <div class="session-actions">
+                            <button onclick="joinSession('math-session-001', 'student')" class="btn btn-sm">Join as Student</button>
+                            <button onclick="joinSession('math-session-001', 'teacher')" class="btn btn-sm btn-teacher">Join as Teacher</button>
+                        </div>
+                    </div>
+                    <div class="session-item">
+                        <div class="session-info">
+                            <h4>Physics Workshop</h4>
+                            <p>Session ID: physics-workshop-002</p>
+                            <span class="status active">Active</span>
+                        </div>
+                        <div class="session-actions">
+                            <button onclick="joinSession('physics-workshop-002', 'student')" class="btn btn-sm">Join as Student</button>
+                            <button onclick="joinSession('physics-workshop-002', 'teacher')" class="btn btn-sm btn-teacher">Join as Teacher</button>
+                        </div>
+                    </div>
+                `;
+                
+                sessionList.style.display = 'block';
+            } catch (error) {
+                console.error('Failed to load sessions:', error);
+                alert('Failed to load active sessions');
+            }
+        }
+
+        function joinSession(sessionId, role) {
+            const token = sessionStorage.getItem('userToken');
+            const name = sessionStorage.getItem('userName');
+
+            if (!token || !name) {
+                alert('Please enter your credentials first');
+                return;
+            }
+
+            sessionStorage.setItem('userRole', role);
+            window.location.href = `/api/live-session/${role}/${sessionId}`;
+        }
+
+        // Auto-fill from URL parameters if present
+        window.addEventListener('load', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const sessionId = urlParams.get('sessionId');
+            if (sessionId) {
+                document.getElementById('sessionId').value = sessionId;
+            }
+        });
+    </script>
+</body>
+</html>

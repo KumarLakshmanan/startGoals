@@ -11,20 +11,24 @@ import courseLevelRoutes from "./courseLevelRoutes.js";
 import sectionRoutes from "./sectionRoutes.js";
 import liveSessionRoutes from "./liveSessionRoutes.js";
 import batchRoutes from "./batchRoutes.js";
+import batchStudentsRoutes from "./batchStudentsRoutes.js";
+import webRoutes from "./webRoutes.js";
 
 const router = express.Router();
 
-router.use(userRoutes);
-router.use(otpRoutes);
-router.use(skillRoutes);
-router.use(categories);
-router.use(LanguageRoutes);
-router.use(onboardingRoutes);
-router.use(goalRoutes);
-router.use(courseRoutes);
-router.use(courseLevelRoutes);
-router.use(sectionRoutes);
-router.use(liveSessionRoutes);
-router.use(batchRoutes);
+router.use('/user', userRoutes);
+router.use('/otp', otpRoutes);
+router.use('/skill', skillRoutes);
+router.use('/category', categories);
+router.use('/language', LanguageRoutes);
+router.use('/onboarding', onboardingRoutes);
+router.use('/goal', goalRoutes);
+router.use('/course', courseRoutes);
+router.use('/course-levels', courseLevelRoutes);
+router.use('/section', sectionRoutes);
+router.use('/live-session', liveSessionRoutes);
+router.use('/batch', batchRoutes);
+router.use('/batch-students', batchStudentsRoutes);
+router.use('/web/live-session', webRoutes);
 
 export default router;

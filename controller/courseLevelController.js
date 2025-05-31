@@ -80,11 +80,10 @@ export const getCourseLevelById = async (req, res) => {
     const courseLevel = await CourseLevel.findOne({
       where: { levelId: levelId },
     });
-
     if (!courseLevel) {
       return res.status(404).json({
         status: false,
-        message: `Course level with ID ${id} not found.`,
+        message: `Course level with ID ${levelId} not found.`,
       });
     }
 

@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Session - StartGoals Live Session</title>    <link rel="stylesheet" href="/api/web/live-session/assets/css/styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="student-interface">
+        <header class="session-header">
+            <div class="header-left">
+                <h1><i class="fas fa-user-graduate"></i> Live Session</h1>
+                <span id="sessionInfo" class="session-info">Session: Loading...</span>
+            </div>
+            <div class="header-right">
+                <span id="userName" class="user-name">Loading...</span>
+                <button id="leaveSessionBtn" class="btn btn-warning" onclick="leaveSession()">
+                    <i class="fas fa-sign-out-alt"></i> Leave Session
+                </button>
+            </div>
+        </header>
+
+        <div class="session-content">
+            <!-- Main Video Area -->
+            <div class="main-content">
+                <div class="teacher-video-container">
+                    <div id="teacherVideo" class="teacher-video">
+                        <div class="video-placeholder">
+                            <i class="fas fa-chalkboard-teacher"></i>
+                            <p>Teacher's Video</p>
+                        </div>
+                    </div>
+                    <div id="sharedScreen" class="shared-screen" style="display: none;">
+                        <!-- Shared screen content -->
+                    </div>
+                </div>
+
+                <div class="student-controls">
+                    <div class="control-group">
+                        <button id="toggleAudio" class="control-btn" onclick="toggleAudio()">
+                            <i class="fas fa-microphone-slash"></i>
+                        </button>
+                        <button id="toggleVideo" class="control-btn" onclick="toggleVideo()">
+                            <i class="fas fa-video-slash"></i>
+                        </button>
+                        <button id="raiseHandBtn" class="control-btn raise-hand-btn" onclick="toggleRaiseHand()">
+                            <i class="fas fa-hand-paper"></i>
+                        </button>
+                    </div>
+                    
+                    <div id="localVideoSmall" class="local-video-small">
+                        <div class="video-placeholder">
+                            <i class="fas fa-user"></i>
+                            <p>You</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Raise Hand Modal -->
+                <div id="raiseHandModal" class="modal">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3>Raise Your Hand</h3>
+                            <span class="close" onclick="closeRaiseHandModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <div class="form-group">
+                                <label for="questionInput">Your Question (Optional)</label>
+                                <textarea 
+                                    id="questionInput" 
+                                    rows="4" 
+                                    placeholder="Type your question here..."
+                                ></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" onclick="closeRaiseHandModal()">Cancel</button>
+                            <button type="button" class="btn btn-primary" onclick="submitRaiseHand()">Raise Hand</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="sidebar">
+                <!-- Session Info Panel -->
+                <div class="panel session-info-panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-info-circle"></i> Session Info</h3>
+                    </div>
+                    <div class="panel-content">
+                        <div class="session-details">
+                            <div class="detail-item">
+                                <span class="label">Status:</span>
+                                <span id="sessionStatus" class="value status-active">Active</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Participants:</span>
+                                <span id="participantCount" class="value">0</span>
+                            </div>
+                            <div class="detail-item">
+                                <span class="label">Duration:</span>
+                                <span id="sessionDuration" class="value">00:00:00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Participants Panel -->
+                <div class="panel participants-panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-users"></i> Participants</h3>
+                    </div>
+                    <div class="panel-content">
+                        <div id="participantsList" class="participants-list">
+                            <!-- Participants will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Panel -->
+                <div class="panel chat-panel">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-comments"></i> Chat</h3>
+                    </div>
+                    <div class="panel-content">
+                        <div id="chatMessages" class="chat-messages">
+                            <!-- Chat messages will be loaded here -->
+                        </div>
+                        <div class="chat-input">
+                            <input type="text" id="chatInput" placeholder="Type a message...">
+                            <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hand Status Panel -->
+                <div id="handStatusPanel" class="panel hand-status-panel" style="display: none;">
+                    <div class="panel-header">
+                        <h3><i class="fas fa-hand-paper"></i> Hand Raised</h3>
+                    </div>
+                    <div class="panel-content">
+                        <div class="hand-status">
+                            <p>Your hand is raised!</p>
+                            <p class="status-message">Waiting for teacher response...</p>
+                            <button class="btn btn-secondary" onclick="lowerHand()">
+                                <i class="fas fa-hand-paper"></i> Lower Hand
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Connection Status -->
+        <div id="connectionStatus" class="connection-status">
+            <div class="status-indicator">
+                <i class="fas fa-circle"></i>
+                <span>Connecting...</span>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div id="notifications" class="notifications-container">
+            <!-- Notifications will appear here -->
+        </div>
+    </div>
+
+    <!-- Agora SDK -->
+    <script src="https://cdn.agora.io/sdk/release/AgoraRTC_N-4.20.0.js"></script>
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>    <!-- Common utilities -->
+    <script src="/api/web/live-session/assets/js/common.js"></script>
+    <!-- Student-specific scripts -->
+    <script src="/api/web/live-session/assets/js/student.js"></script>
+</body>
+</html>
