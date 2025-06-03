@@ -12,10 +12,10 @@ import apiKeyAuth from "../middleware/apiKeyAuth.js";
 const otpRoutes = express.Router();
 
 //Route for user after registration -- OTP for verification
-otpRoutes.post("/verify-otp", apiKeyAuth, validateOtp);
+otpRoutes.post("/verify-otp", validateOtp);
 
 //Route for user to resend the OTP during registration
-otpRoutes.post("/resend-otp", apiKeyAuth, resendOtp);
+otpRoutes.post("/resend-otp", resendOtp);
 
 // 👇 Password reset routes
 otpRoutes.post("/send-reset-otp", sendResetOtp);

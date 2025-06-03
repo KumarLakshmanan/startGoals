@@ -9,13 +9,25 @@ const sequelize = new Sequelize(
   {
     host: process.env.DB_HOST,
     dialect: process.env.DB_DIALECT,
-    dialectOptions: {
-      ssl: false, // <-- Disable SSL
-      // ssl: {
-      //   require: true,
-      //   rejectUnauthorized: false,
-      // },
+    pool: {
+      max: 5,          // Reduced max connections
+      min: 0,
+      acquire: 60000,  // Increased timeout to 60 seconds
+      idle: 10000,
+      evict: 5000
     },
+    retry: {
+      max: 3
+    },
+    dialectOptions: {
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+      connectTimeout: 60000,
+      socketPath: null,
+    },
+    logging: false
   }
 );
 

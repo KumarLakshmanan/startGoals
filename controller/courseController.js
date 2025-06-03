@@ -132,7 +132,6 @@ export const createCourse = async (req, res) => {
     tags,
     goals,
     requirements,
-    createdBy,
     isPaid,
     price,
     type,
@@ -141,7 +140,7 @@ export const createCourse = async (req, res) => {
     liveEndDate,
     thumbnailUrl,
   } = req.body;
-
+  const createdBy = req.user?.userId; // Assuming userId is set in the request by auth middleware
   // Additional validation for UUID fields
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 
@@ -739,15 +738,13 @@ export const searchCourses = async (req, res) => {
 };
 
 export const getCoursesByInstructor = async (req, res) => {
-  const { instructorId } = req.params;
   const { page = 1, limit = 10, status = "active" } = req.query;
-
+  const instructorId = req.user?.userId; // Assuming userId is set in the request by auth middleware
   try {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const { count, rows: courses } = await Course.findAndCountAll({
       where: {
-        createdBy: instructorId,
         status,
       },
       include: [

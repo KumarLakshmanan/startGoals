@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateToken } from "../middleware/authMiddleware.js";
+import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
 import {
   createCategory,
   getAllCategories,
@@ -11,11 +11,11 @@ import {
 
 const router = express.Router();
 
-router.post("/saveCategory", createCategory); // Single insert
-router.post("/saveAllCategories", bulkCreateCategories); // Bulk insert
-router.get("/getCategories", getAllCategories); // All
-router.get("/categoryById/:id", getCategoryById); // By ID
-router.get("/categoryByCode/:code", getCategoryByCode); // By categoryCode
-router.delete("/deleteCategory/:id", deleteCategoryById);
+router.post("/saveCategory", isAdmin, createCategory);
+router.post("/saveAllCategories", isAdmin, bulkCreateCategories);
+router.get("/getCategories", getAllCategories);
+router.get("/categoryById/:id", getCategoryById);
+router.get("/categoryByCode/:code", getCategoryByCode);
+router.delete("/deleteCategory/:id", isAdmin, deleteCategoryById);
 
 export default router;

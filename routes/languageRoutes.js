@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
+import { authenticateToken, isTeacher, } from "../middleware/authMiddleware.js";
 import {
   deleteCourseLanguage,
   uploadLanguagesBulk,
@@ -8,8 +8,8 @@ import {
 
 const router = express.Router();
 
-router.post("/saveAllLanguage", isAdmin, uploadLanguagesBulk);
+router.post("/saveAllLanguage", isTeacher, uploadLanguagesBulk);
 router.get("/getAllLanguage", getAllLanguages);
-router.delete("/deleteCourseLanguageById/:id", isAdmin, deleteCourseLanguage);
+router.delete("/deleteCourseLanguageById/:id", isTeacher, deleteCourseLanguage);
 
 export default router;

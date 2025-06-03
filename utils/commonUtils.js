@@ -44,10 +44,6 @@ export const validateCourseInput = (courseData) => {
     errors.push("Language IDs is required.");
   }
 
-  // Validate createdBy
-  if (!courseData.createdBy) {
-    errors.push("Created By (user ID) is required.");
-  }
 
   // Validate type (must be 'live', 'recorded', or 'hybrid')
   if (

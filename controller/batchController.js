@@ -9,9 +9,10 @@ import { Op } from "sequelize";
 export const createBatch = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { courseId, title, startTime, endTime, userId } = req.body;
+    const userId = req.user?.userId || null; // Get userId from request, if available
+    const { courseId, title, description, startTime, endTime } = req.body;
 
-    if (!courseId || !title || !startTime || !endTime || !userId) {
+    if (!courseId || !title || !description || !startTime || !endTime) {
       return res.status(400).json({
         status: false,
         message: "Missing required fields",
@@ -33,6 +34,7 @@ export const createBatch = async (req, res) => {
       {
         courseId,
         title,
+        description,
         startTime,
         endTime,
         createdBy: userId || null,

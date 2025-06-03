@@ -21,6 +21,10 @@ const CourseLevel = sequelize.define(
       allowNull: false,
       defaultValue: 0,
     },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     ...commonFields,
   },
   {

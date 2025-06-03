@@ -19,6 +19,10 @@ const Batch = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     startTime: {
       type: DataTypes.DATE,
       allowNull: false,

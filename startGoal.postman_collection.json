@@ -1,34 +1,28 @@
 {
 	"info": {
-		"_postman_id": "3f0e3f21-f9c5-4864-9c89-dba064c6724e",
-		"name": "StartGoals API Collection",
-		"description": "Comprehensive API documentation for StartGoals Learning Management System.\n\n## Features\n- User Management (Registration, Login, Authentication)\n- Course Management (CRUD operations)\n- Live Sessions (Agora, Zoom integration)\n- Batch Management\n- OTP Verification\n- File Upload\n- Skills & Goals Management\n- Categories & Languages\n- Onboarding Process\n\n## Base URL\n{{host}}/api\n\n## Authentication\nMost endpoints require Bearer token authentication.\nUse the token obtained from login/registration endpoints.\n\n## Environment Variables\n- `host`: Base URL of the API server\n- `JWT_TOKEN_STUDENT`: Student authentication token\n- `JWT_TOKEN_TEACHER`: Teacher authentication token\n- `JWT_TOKEN_ADMIN`: Admin authentication token",
+		"_postman_id": "7adee3ba-7cd6-4c23-b0a7-ee897b8a0554",
+		"name": "StartGoals API Collection - Complete",
+		"description": "Complete API documentation for StartGoals Learning Management System with all available endpoints.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "45194401",
-		"_collection_link": "https://speeding-equinox-547745.postman.co/workspace/Team-Workspace~228b1363-d8ef-4a65-84cb-dbd63f0064aa/collection/43764555-3f0e3f21-f9c5-4864-9c89-dba064c6724e?action=share&source=collection_link&creator=45194401"
+		"_exporter_id": "45194401"
 	},
 	"item": [
 		{
-			"name": "userController",
+			"name": "User Management",
 			"item": [
 				{
-					"name": "userRegistration",
+					"name": "User Registration",
 					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6ImUyYjBkODNkLWI2YzUtNDNiMC1hNzg5LTJlNmY1NTM3MDQyMSIsInJvbGUiOiJzdHVkZW50IiwiaWF0IjoxNzQ0MTgwODMyLCJleHAiOjE3NDQyNjcyMzJ9.uO1OYEB3wQDZaT3a99J4F2TzZouzpQL8F-B9SvYwXik",
-									"type": "string"
-								}
-							]
-						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"username\": \"Lakshmanan R\",\n  \"email\": \"klakshmanan48@gmail.com\",\n  \"password\": \"siva@123\",\n  \"role\":\"student\"\n}",
+							"raw": "{\n  \"username\": \"Lakshmanan R\",\n  \"email\": \"lakshmanan.w3dev@gmail.com\",\n  \"password\": \"password123\",\n  \"role\": \"owner\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -49,13 +43,18 @@
 					"response": []
 				},
 				{
-					"name": "userLogin",
+					"name": "User Login",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"identifier\": \"lakshmanan.coder@gmail.com\",\n  \"password\": \"siva@123\"\n}\n",
+							"raw": "{\n  \"identifier\": \"lakshmanan.w3dev@gmail.com\",\n  \"password\": \"password123\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -76,18 +75,77 @@
 					"response": []
 				},
 				{
-					"name": "usersDetailsById",
+					"name": "Google Login Redirect",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/usersDetailsById/289bf6f2-3837-408b-baef-263683acbedf",
+							"raw": "{{host}}/user/googleLogin",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"user",
+								"googleLogin"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Google OAuth Callback",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/user/auth/google/callback",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"user",
+								"auth",
+								"google",
+								"callback"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "OAuth Success Handler",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/user/auth/callback/success",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"user",
+								"auth",
+								"callback",
+								"success"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Details by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/user/usersDetailsById/{{STUDENT_UUID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"user",
 								"usersDetailsById",
-								"289bf6f2-3837-408b-baef-263683acbedf"
+								"{{STUDENT_UUID}}"
 							]
 						}
 					},
@@ -96,217 +154,21 @@
 			]
 		},
 		{
-			"name": "SkillsControllerAdmin",
+			"name": "OTP Management",
 			"item": [
 				{
-					"name": "GetSkills",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "http://localhost:3000/api/getSkills",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "3000",
-							"path": [
-								"api",
-								"getSkills"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "PostSkills",
+					"name": "Verify Registration OTP",
 					"request": {
 						"method": "POST",
 						"header": [
 							{
 								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
+								"value": "application/json"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"skill\": \"Java\"\r\n}\r\n",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "http://localhost:3000/api/postSkills",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "3000",
-							"path": [
-								"api",
-								"postSkills"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "userSkillController",
-			"item": [
-				{
-					"name": "GetUserSkills",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{JWT_TOKEN_STUDENT}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"skillIds\": [1]  // Replace with actual skill IDs from your database\r\n}\r\n",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{host}}/user/getSkills",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"user",
-								"getSkills"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "PostUserSkills",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjA2YWUxODZhLTMzMzUtNGY0Yy1hMzQwLTQ2OWQxN2RmNjRlYSIsInJvbGUiOiJzdHVkZW50IiwiaWF0IjoxNzQ0MTkyODkwLCJleHAiOjE3NDQyNzkyOTB9.sb5xzceO2mkNha-pWNApGexOdk8JvikG9PF2Jp-_F8I",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"skillIds\": [1,2,3]  // Replace with actual skill IDs from your database\r\n}\r\n",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "http://localhost:3000/api/user/addskills",
-							"protocol": "http",
-							"host": [
-								"localhost"
-							],
-							"port": "3000",
-							"path": [
-								"api",
-								"user",
-								"addskills"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "OtpController",
-			"item": [
-				{
-					"name": "resendOtp",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"identifier\": \"klakshmanan48@gmail.com\",\r\n  \"method\": \"email\"\r\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{host}}/resend-otp",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"resend-otp"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "verifyOtp",
-					"request": {
-						"auth": {
-							"type": "noauth"
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\r\n  \"identifier\": \"lakshmanan.coder@gmail.com\",\r\n  \"otp\": \"792796\"\r\n}",
+							"raw": "{\n  \"identifier\": \"lakshmanan.w3dev@gmail.com\",\n  \"otp\": \"234360\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -327,16 +189,18 @@
 					"response": []
 				},
 				{
-					"name": "request-password-reset-otp",
+					"name": "Resend Registration OTP",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"identifier\": \"thackm123@gmail.com\",\r\n  \"method\" : \"email\"  // or use a mobile number like \"1234567890\"\r\n}\r\n",
+							"raw": "{\n  \"identifier\": \"john@example.com\",\n  \"method\": \"email\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -344,11 +208,44 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/send-reset-otp",
+							"raw": "{{host}}/otp/resend-otp",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"otp",
+								"resend-otp"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Send Password Reset OTP",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"identifier\": \"john@example.com\",\n  \"method\": \"email\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/otp/send-reset-otp",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"otp",
 								"send-reset-otp"
 							]
 						}
@@ -356,16 +253,18 @@
 					"response": []
 				},
 				{
-					"name": "verify-reset-otp",
+					"name": "Verify Password Reset OTP",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"identifier\": \"thackm123@gmail.com\",  \r\n  \"otp\": \"546212\"                   \r\n}\r\n",
+							"raw": "{\n  \"identifier\": \"john@example.com\",\n  \"otp\": \"123456\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -373,14 +272,12 @@
 							}
 						},
 						"url": {
-							"raw": "http://localhost:3000/api/verify-reset-otp",
-							"protocol": "http",
+							"raw": "{{host}}/otp/verify-reset-otp",
 							"host": [
-								"localhost"
+								"{{host}}"
 							],
-							"port": "3000",
 							"path": [
-								"api",
+								"otp",
 								"verify-reset-otp"
 							]
 						}
@@ -388,16 +285,18 @@
 					"response": []
 				},
 				{
-					"name": "user-reset-password",
+					"name": "Reset Password",
 					"request": {
-						"auth": {
-							"type": "noauth"
-						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n  \"identifier\": \"thackm123@gmail.com\",                \r\n  \"newPassword\":\"Thanush@123\"                  \r\n}",
+							"raw": "{\n  \"identifier\": \"john@example.com\",\n  \"newPassword\": \"newPassword123\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -405,14 +304,12 @@
 							}
 						},
 						"url": {
-							"raw": "http://localhost:3000/api/reset-password",
-							"protocol": "http",
+							"raw": "{{host}}/otp/reset-password",
 							"host": [
-								"localhost"
+								"{{host}}"
 							],
-							"port": "3000",
 							"path": [
-								"api",
+								"otp",
 								"reset-password"
 							]
 						}
@@ -422,145 +319,72 @@
 			]
 		},
 		{
-			"name": "HomePage",
+			"name": "Skills Management",
 			"item": [
 				{
-					"name": "Banner",
-					"item": [
-						{
-							"name": "AddBanner",
-							"request": {
-								"auth": {
-									"type": "noauth"
-								},
-								"method": "POST",
-								"header": [],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n  \"image\": \"https://www.google.com/imgres?q=banner%20image&imgurl=https%3A%2F%2Fplus.unsplash.com%2Fpremium_photo-1701590725747-ac131d4dcffd%3Ffm%3Djpg%26q%3D60%26w%3D3000%26ixlib%3Drb-4.0.3%26ixid%3DM3wxMjA3fDB8MHxzZWFyY2h8MXx8d2Vic2l0ZSUyMGJhbm5lcnxlbnwwfHwwfHx8MA%253D%253D&imgrefurl=https%3A%2F%2Funsplash.com%2Fs%2Fphotos%2Fwebsite-banner&docid=MJaD9YZhSoV-hM&tbnid=2-jnfQwORNd1TM&vet=12ahUKEwjn7e2Gt8qMAxVbd2wGHS3HM0MQM3oFCIQBEAA..i&w=3000&h=1688&hcb=2&ved=2ahUKEwjn7e2Gt8qMAxVbd2wGHS3HM0MQM3oFCIQBEAA\",\r\n  \"title\": \"New Year Offer\"\r\n}\r\n",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "http://localhost:3000/api/homepage/addBanner",
-									"protocol": "http",
-									"host": [
-										"localhost"
-									],
-									"port": "3000",
-									"path": [
-										"api",
-										"homepage",
-										"addBanner"
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "Courses",
-					"item": [
-						{
-							"name": "AddCourse",
-							"request": {
-								"auth": {
-									"type": "noauth"
-								},
-								"method": "POST",
-								"header": [
-									{
-										"key": "Content-Type",
-										"value": "application/json",
-										"type": "text"
-									}
-								],
-								"body": {
-									"mode": "raw",
-									"raw": "{\r\n  \"course_code\": \"PY101\",\r\n  \"course_title\": \"Python for Beginners\",\r\n  \"course_sub_title\": \"Start your Python journey\",\r\n  \"course_description\": \"This course covers the basics of Python programming.\",\r\n  \"course_price\": 499,\r\n  \"image\": \"https://dummyimage.com/600x400/000/fff\",\r\n  \"language\": \"English\",\r\n  \"category\": \"Programming\",\r\n  \"reviews\": 120,\r\n  \"rating\": 4.5,\r\n  \"skills\" :[\"Java\"]\r\n}\r\n",
-									"options": {
-										"raw": {
-											"language": "json"
-										}
-									}
-								},
-								"url": {
-									"raw": "http://localhost:3000/api/homepage/addCourse",
-									"protocol": "http",
-									"host": [
-										"localhost"
-									],
-									"port": "3000",
-									"path": [
-										"api",
-										"homepage",
-										"addCourse"
-									]
-								}
-							},
-							"response": []
-						},
-						{
-							"name": "GetAllCourse",
-							"request": {
-								"auth": {
-									"type": "noauth"
-								},
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "http://localhost:3000/api/homepage/getAllCourses?Content-Type=application/json",
-									"protocol": "http",
-									"host": [
-										"localhost"
-									],
-									"port": "3000",
-									"path": [
-										"api",
-										"homepage",
-										"getAllCourses"
-									],
-									"query": [
-										{
-											"key": "Content-Type",
-											"value": "application/json"
-										}
-									]
-								}
-							},
-							"response": []
-						}
-					]
-				},
-				{
-					"name": "http://localhost:3000/api/homepage",
+					"name": "Bulk Upload Skills",
 					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjA2YWUxODZhLTMzMzUtNGY0Yy1hMzQwLTQ2OWQxN2RmNjRlYSIsInJvbGUiOiJzdHVkZW50IiwiaWF0IjoxNzQ0MTkyODkwLCJleHAiOjE3NDQyNzkyOTB9.sb5xzceO2mkNha-pWNApGexOdk8JvikG9PF2Jp-_F8I",
-									"type": "string"
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "[\n  {\n    \"skillName\": \"JavaScript\",\n    \"goalId\": \"{{GOAL_ID}}\"\n  },\n  {\n    \"skillName\": \"React\",\n    \"goalId\": \"{{GOAL_ID}}\"\n  }\n]",
+							"options": {
+								"raw": {
+									"language": "json"
 								}
-							]
+							}
 						},
+						"url": {
+							"raw": "{{host}}/skill/saveAllSkills",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"skill",
+								"saveAllSkills"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Skills",
+					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "http://localhost:3000/api/homepage",
-							"protocol": "http",
+							"raw": "{{host}}/skill/getAllSkills",
 							"host": [
-								"localhost"
+								"{{host}}"
 							],
-							"port": "3000",
 							"path": [
-								"api",
-								"homepage"
+								"skill",
+								"getAllSkills"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Skills by Goal",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/skill/getSkillsByGoal/{{GOAL_ID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"skill",
+								"getSkillsByGoal",
+								"{{GOAL_ID}}"
 							]
 						}
 					},
@@ -569,16 +393,21 @@
 			]
 		},
 		{
-			"name": "CategoryController",
+			"name": "Category Management",
 			"item": [
 				{
-					"name": "saveCategory",
+					"name": "Create Category",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"categoryName\": \"Web Development\",\n  \"categoryCode\": \"WBD\"\n}\n",
+							"raw": "{\n  \"categoryName\": \"Web Development\",\n  \"categoryCode\": \"WBD\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -586,11 +415,12 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/saveCategory",
+							"raw": "{{host}}/category/saveCategory",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"category",
 								"saveCategory"
 							]
 						}
@@ -598,13 +428,28 @@
 					"response": []
 				},
 				{
-					"name": "saveAllCategories",
+					"name": "Bulk Create Categories",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_OWNER}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "[\n  {\n    \"categoryName\": \"Mobile Development\",\n    \"categoryCode\": \"MOB\"\n  },\n  {\n    \"categoryName\": \"Data Science\",\n    \"categoryCode\": \"DSC\"\n  },\n  {\n    \"categoryName\": \"Cloud Computing\",\n    \"categoryCode\": \"CLD\"\n  }\n]\n",
+							"raw": "[\n  {\n    \"categoryName\": \"Mobile Development\",\n    \"categoryCode\": \"MOB\"\n  },\n  {\n    \"categoryName\": \"Data Science\",\n    \"categoryCode\": \"DSC\"\n  }\n]",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -625,16 +470,17 @@
 					"response": []
 				},
 				{
-					"name": "getCategories",
+					"name": "Get All Categories",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/getCategories",
+							"raw": "{{host}}/category/getCategories",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"category",
 								"getCategories"
 							]
 						}
@@ -642,34 +488,36 @@
 					"response": []
 				},
 				{
-					"name": "categoryById",
+					"name": "Get Category by ID",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/categoryById/18b8b34f-7c1b-42f8-af6d-aeb27b710bb4",
+							"raw": "{{host}}/category/categoryById/{{CATEGORY_ID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"category",
 								"categoryById",
-								"18b8b34f-7c1b-42f8-af6d-aeb27b710bb4"
+								"{{CATEGORY_ID}}"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "categoryByCode",
+					"name": "Get Category by Code",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/categoryByCode/WBD",
+							"raw": "{{host}}/category/categoryByCode/WBD",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"category",
 								"categoryByCode",
 								"WBD"
 							]
@@ -678,18 +526,19 @@
 					"response": []
 				},
 				{
-					"name": "deleteCategory",
+					"name": "Delete Category",
 					"request": {
 						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/deleteCategory/e1f39ea1-995b-4632-a4f6-285da9467c69",
+							"raw": "{{host}}/category/deleteCategory/{{CATEGORY_ID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"category",
 								"deleteCategory",
-								"e1f39ea1-995b-4632-a4f6-285da9467c69"
+								"{{CATEGORY_ID}}"
 							]
 						}
 					},
@@ -698,16 +547,31 @@
 			]
 		},
 		{
-			"name": "LanguageController",
+			"name": "Language Management",
 			"item": [
 				{
-					"name": "saveAllLanguage",
+					"name": "Bulk Upload Languages",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_OWNER}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "[\n  {\n    \"language\": \"English\",\n    \"languageCode\": \"en\",\n    \"languageType\": \"both\"\n  },\n  {\n    \"language\": \"French\",\n    \"languageCode\": \"fr\",\n    \"languageType\": \"both\"\n  },\n  {\n    \"language\": \"Tamil\",\n    \"languageCode\": \"ta\",\n    \"languageType\": \"both\"\n  },\n  {\n    \"language\": \"Hindi\",\n    \"languageCode\": \"hi\",\n    \"languageType\": \"both\"\n  },\n  {\n    \"language\": \"Malayalam\",\n    \"languageCode\": \"ml\",\n    \"languageType\": \"both\"\n  },\n  {\n    \"language\": \"Telugu\",\n    \"languageCode\": \"te\",\n    \"languageType\": \"both\"\n  },\n  {\n    \"language\": \"German\",\n    \"languageCode\": \"de\",\n    \"languageType\": \"both\"\n  }\n]\n",
+							"raw": "[\n  {\n    \"language\": \"English\",\n    \"languageCode\": \"en\",\n    \"languageType\": \"both\"\n  },\n  {\n    \"language\": \"Spanish\",\n    \"languageCode\": \"es\",\n    \"languageType\": \"both\"\n  }\n]",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -728,7 +592,7 @@
 					"response": []
 				},
 				{
-					"name": "getAllLanguage",
+					"name": "Get All Languages",
 					"request": {
 						"method": "GET",
 						"header": [],
@@ -744,48 +608,64 @@
 						}
 					},
 					"response": []
-				}
-			]
-		},
-		{
-			"name": "OnboardingController",
-			"item": [
+				},
 				{
-					"name": "users/languages/userId",
+					"name": "Delete Language",
 					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n    \"languageIds\": [\n        \"80455c8c-192a-40ce-9435-9012dcae07b8\",\n        \"8f880aa4-ec8b-4c9f-ba39-a81e6a9c0c53\"\n    ]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
 								}
-							}
+							]
 						},
+						"method": "DELETE",
+						"header": [],
 						"url": {
-							"raw": "{{host}}/users/languages/d8ff5396-0254-44c9-81ea-3024949e9d0a",
+							"raw": "{{host}}/language/deleteCourseLanguageById/{{LANGUAGE_ID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"users",
-								"languages",
-								"d8ff5396-0254-44c9-81ea-3024949e9d0a"
+								"language",
+								"deleteCourseLanguageById",
+								"{{LANGUAGE_ID}}"
 							]
 						}
 					},
 					"response": []
-				},
+				}
+			]
+		},
+		{
+			"name": "Goals Management",
+			"item": [
 				{
-					"name": "users/goal/userId",
+					"name": "Bulk Upload Goals",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_OWNER}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"goalId\": \"43dbdbad-d706-486c-af2f-27c468cda44f\"\n}",
+							"raw": "[\n  {\n    \"goalName\": \"Prepare for exams\",\n    \"description\": \"Preparation for competitive exams\"\n  },\n  {\n    \"goalName\": \"Improve a skill\",\n    \"description\": \"Learning new skills\"\n  }\n]",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -793,72 +673,12 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/users/goal/d8ff5396-0254-44c9-81ea-3024949e9d0a",
+							"raw": "{{host}}/goal/saveAllGoals",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"users",
 								"goal",
-								"d8ff5396-0254-44c9-81ea-3024949e9d0a"
-							]
-						}
-					},
-					"response": []
-				},
-				{
-					"name": "users/skills/userId",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"goalId\": \"43dbdbad-d706-486c-af2f-27c468cda44f\",\n  \"skillIds\": [\n    \"6bd92803-e740-40c5-b0bc-7862c531648b\",\n    \"7d7d3daa-1e3d-4d28-83a2-b90c21086027\"\n  ]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{host}}/users/skills/d8ff5396-0254-44c9-81ea-3024949e9d0a",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"users",
-								"skills",
-								"d8ff5396-0254-44c9-81ea-3024949e9d0a"
-							]
-						}
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "GoalController",
-			"item": [
-				{
-					"name": "saveAllGoals",
-					"request": {
-						"method": "POST",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "[\n  {\n    \"goalName\": \"Prepare for exams\",\n    \"description\": \"preparation for competative exams\"\n  },\n  {\n    \"goalName\": \"Improve a skill\",\n    \"description\": \"learning new skills\"\n  }\n]\n",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{host}}/saveAllGoals",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
 								"saveAllGoals"
 							]
 						}
@@ -866,16 +686,17 @@
 					"response": []
 				},
 				{
-					"name": "getAllGoals",
+					"name": "Get All Goals",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/getAllGoals",
+							"raw": "{{host}}/goal/getAllGoals",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"goal",
 								"getAllGoals"
 							]
 						}
@@ -885,16 +706,21 @@
 			]
 		},
 		{
-			"name": "SkillController",
+			"name": "Onboarding",
 			"item": [
 				{
-					"name": "saveAllSkills",
+					"name": "Select User Languages",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "[\n    {\n        \"skillName\": \"HTML & CSS\",\n        \"goalId\": \"43dbdbad-d706-486c-af2f-27c468cda44f\"\n    },\n    {\n        \"skillName\": \"Java\",\n        \"goalId\": \"43dbdbad-d706-486c-af2f-27c468cda44f\"\n    },\n    {\n        \"skillName\": \"Python\",\n        \"goalId\": \"43dbdbad-d706-486c-af2f-27c468cda44f\"\n    }\n]",
+							"raw": "{\n  \"languageIds\": [\n    \"{{LANGUAGE_ID}}\",\n    \"language-id-2\"\n  ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -902,47 +728,83 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/saveAllSkills",
+							"raw": "{{host}}/onboarding/users/languages/{{STUDENT_UUID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"saveAllSkills"
+								"onboarding",
+								"users",
+								"languages",
+								"{{STUDENT_UUID}}"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "getAllSkills",
+					"name": "Select User Goal",
 					"request": {
-						"method": "GET",
-						"header": [],
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"goalId\": \"{{GOAL_ID}}\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
 						"url": {
-							"raw": "{{host}}/getAllSkills",
+							"raw": "{{host}}/onboarding/users/goal/{{STUDENT_UUID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"getAllSkills"
+								"onboarding",
+								"users",
+								"goal",
+								"{{STUDENT_UUID}}"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "getSkillsByGoal",
+					"name": "Select User Skills",
 					"request": {
-						"method": "GET",
-						"header": [],
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"goalId\": \"{{GOAL_ID}}\",\n  \"skillIds\": [\n    \"{{SKILL_ID}}\",\n    \"skill-id-2\"\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
 						"url": {
-							"raw": "{{host}}/getSkillsByGoal/43dbdbad-d706-486c-af2f-27c468cda44f",
+							"raw": "{{host}}/onboarding/users/skills/{{STUDENT_UUID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"getSkillsByGoal",
-								"43dbdbad-d706-486c-af2f-27c468cda44f"
+								"onboarding",
+								"users",
+								"skills",
+								"{{STUDENT_UUID}}"
 							]
 						}
 					},
@@ -951,10 +813,10 @@
 			]
 		},
 		{
-			"name": "CourseController",
+			"name": "Course Management",
 			"item": [
 				{
-					"name": "uploadCourse",
+					"name": "Create Course",
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -967,10 +829,15 @@
 							]
 						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Java Live\",\n  \"description\": \"Welcome Java programming.\",\n  \"levelId\":  \"e6cd7e66-2ff5-490a-84dc-e790b2699492\",\n  \"categoryId\": \"{{MOBILE_APP_CODE}}\",\n  \"languageIds\": [\"{{ENGLISH_CODE}}\"],\n  \"tags\": [\"Java\", \"backend\", \"beginners\"],\n  \"goals\": [\"Understand java js basics\", \"Write your first program\"],\n  \"requirements\": [\"No prior experience\", \"Laptop required\"],\n  \"createdBy\": \"{{TEACHER_UUID}}\",\n  \"isPaid\": true,\n  \"price\": 49.99,\n  \"type\": \"hybrid\",\n  \"wasLive\": true,\n  \"liveStartDate\": \"2025-06-01T10:00:00Z\",\n  \"liveEndDate\": \"2025-06-01T12:00:00Z\",\n  \"thumbnailUrl\": \"https://example.com/path-to-thumbnail.jpg\"\n}\n",
+							"raw": "{\n  \"title\": \"Advanced React Development\",\n  \"description\": \"Master React with hooks, context, and advanced patterns\",\n  \"levelId\": \"{{BEGINNER_ID}}\",\n  \"categoryId\": \"{{MOBILE_APP_CODE}}\",\n  \"languageIds\": [\"{{ENGLISH_CODE}}\"],\n  \"tags\": [\"React\", \"JavaScript\", \"Frontend\"],\n  \"goals\": [\"Master React Hooks\", \"Build scalable applications\"],\n  \"requirements\": [\"Basic JavaScript knowledge\", \"Code editor\"],\n  \"isPaid\": true,\n  \"price\": 99.99,\n  \"type\": \"recorded\",\n  \"thumbnailUrl\": \"https://example.com/thumbnail.jpg\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -991,13 +858,74 @@
 					"response": []
 				},
 				{
-					"name": "updateCourse",
+					"name": "Get All Courses",
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"header": [],
+						"url": {
+							"raw": "{{host}}/course/getAllCourses?page=1&limit=10",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"course",
+								"getAllCourses"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Course by ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/course/{{COURSE_ID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"course",
+								"{{COURSE_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Course",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"courseId\": \"UUID_HERE\",\n  \"title\": \"Updated Course\",\n  \"description\": \"Updated Description\",\n  \"levelId\": \"LEVEL_ID\",\n  \"categoryId\": \"CATEGORY_ID\",\n  \"languageIds\": [\"EN_ID\", \"FR_ID\"],\n  \"tags\": [\"Java\", \"Spring Boot\"],\n  \"goals\": [\"Become a Java Pro\", \"Understand Spring Boot\"],\n  \"requirements\": [\"Basic Java knowledge\", \"Internet connection\"],\n  \"isPaid\": true,\n  \"price\": 499,\n  \"type\": \"recorded\",\n  \"thumbnailUrl\": \"https://example.com/image.jpg\"\n}\n",
+							"raw": "{\n  \"title\": \"Updated Course Title\",\n  \"description\": \"Updated description\",\n  \"price\": 199.99\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1005,49 +933,192 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/course/updateCourse",
+							"raw": "{{host}}/course/{{COURSE_ID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"course",
-								"updateCourse"
+								"{{COURSE_ID}}"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "getCourseById",
+					"name": "Delete Course",
 					"request": {
-						"method": "GET",
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/course/c55a6455-e91c-4b20-b22e-fc921f74a5de",
+							"raw": "{{host}}/course/{{COURSE_ID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"course",
-								"c55a6455-e91c-4b20-b22e-fc921f74a5de"
+								"{{COURSE_ID}}"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "get All Courses",
+					"name": "Search Courses",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/course/getAllCourses",
+							"raw": "{{host}}/course/search/courses?q=javascript&category=web&level=beginner&page=1&limit=10",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"course",
-								"getAllCourses"
+								"search",
+								"courses"
+							],
+							"query": [
+								{
+									"key": "q",
+									"value": "javascript"
+								},
+								{
+									"key": "category",
+									"value": "web"
+								},
+								{
+									"key": "level",
+									"value": "beginner"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Courses by Instructor",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/course/instructor/{{TEACHER_UUID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"course",
+								"instructor",
+								"{{TEACHER_UUID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Courses by Category",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/course/category/{{CATEGORY_ID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"course",
+								"category",
+								"{{CATEGORY_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Course Status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"isActive\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/course/{{COURSE_ID}}/status",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"course",
+								"{{COURSE_ID}}",
+								"status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Course Statistics",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/course/admin/stats",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"course",
+								"admin",
+								"stats"
 							]
 						}
 					},
@@ -1056,16 +1127,31 @@
 			]
 		},
 		{
-			"name": "CourseLevelController",
+			"name": "Course Levels",
 			"item": [
 				{
-					"name": "Course Level Bulk",
+					"name": "Bulk Upload Course Levels",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_OWNER}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": " [\n    {\n      \"level\": \"Beginner\",\n      \"order\": 1\n    },\n    {\n      \"level\": \"Intermediate\",\n      \"order\": 2\n    },\n    {\n      \"level\": \"Advanced\",\n      \"order\": 3\n    }\n  ]\n\n",
+							"raw": "[\n  {\n    \"level\": \"Beginner\",\n    \"description\": \"For beginners with no prior experience\",\n    \"order\": 1\n  },\n  {\n    \"level\": \"Intermediate\",\n    \"description\": \"For those with some experience\",\n    \"order\": 2\n  },\n  {\n    \"level\": \"Advanced\",\n    \"description\": \"For experienced learners\",\n    \"order\": 3\n  }\n]",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1104,18 +1190,18 @@
 					"response": []
 				},
 				{
-					"name": "Get Single Course level",
+					"name": "Get Course Level by ID",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/course-levels/e6cd7e66-2ff5-490a-84dc-e790b2699492",
+							"raw": "{{host}}/course-levels/{{LEVEL_ID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"course-levels",
-								"e6cd7e66-2ff5-490a-84dc-e790b2699492"
+								"{{LEVEL_ID}}"
 							]
 						}
 					},
@@ -1124,16 +1210,21 @@
 			]
 		},
 		{
-			"name": "SectionController",
+			"name": "Section Management",
 			"item": [
 				{
-					"name": "uploadSection",
+					"name": "Create Section",
 					"request": {
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"courseId\": \"4e8d40d6-f1ff-449f-870c-7fe317ae3c68\",\n  \"title\": \"Getting Started with JavaScript\",\n  \"description\": \"Introduction to the basics of JavaScript\",\n  \"order\": 1,\n  \"lessons\": [\n    {\n      \"title\": \"What is JavaScript?\",\n      \"type\": \"video\",\n      \"content\": \"JavaScript overview...\",\n      \"videoUrl\": \"https://yourcdn.com/videos/intro.mp4\",\n      \"duration\": 600,\n      \"order\": 1,\n      \"isPreview\": true,\n      \"resources\": [\n        {\n          \"title\": \"Intro Slides\",\n          \"fileUrl\": \"https://yourcdn.com/resources/intro-slides.pdf\",\n          \"type\": \"pdf\"\n        },\n        {\n          \"title\": \"Reference Guide\",\n          \"fileUrl\": \"https://yourcdn.com/resources/js-guide.doc\",\n          \"type\": \"doc\"\n        }\n      ]\n    },\n    {\n      \"title\": \"Variables & Data Types\",\n      \"type\": \"video\",\n      \"content\": \"Learn about let, const, var...\",\n      \"videoUrl\": \"https://yourcdn.com/videos/variables.mp4\",\n      \"duration\": 720,\n      \"order\": 2,\n      \"isPreview\": false,\n      \"resources\": [\n        {\n          \"title\": \"Code Snippets\",\n          \"fileUrl\": \"https://yourcdn.com/resources/variables-code.zip\",\n          \"type\": \"zip\"\n        }\n      ]\n    }\n  ]\n}\n",
+							"raw": "{\n  \"courseId\": \"{{COURSE_ID}}\",\n  \"sectionTitle\": \"Introduction to React\",\n  \"description\": \"Basic concepts and setup\",\n  \"order\": 1,\n  \"lessons\": [\n    {\n      \"lessonTitle\": \"What is React?\",\n      \"description\": \"Introduction to React library\",\n      \"duration\": 600,\n      \"videoUrl\": \"https://example.com/video1.mp4\",\n      \"isPreview\": true,\n      \"order\": 1,\n      \"resources\": [\n        {\n          \"resourceTitle\": \"React Documentation\",\n          \"resourceUrl\": \"https://reactjs.org/docs\",\n          \"resourceType\": \"link\"\n        }\n      ]\n    }\n  ]\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1141,11 +1232,12 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/uploadSection",
+							"raw": "{{host}}/section/uploadSection",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"section",
 								"uploadSection"
 							]
 						}
@@ -1153,13 +1245,18 @@
 					"response": []
 				},
 				{
-					"name": "updateSectionById",
+					"name": "Update Section",
 					"request": {
 						"method": "PUT",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"title\": \"Begain with JavaScript\",\n  \"description\": \"Introduction to JavaScript with Pro concepts\",\n  \"order\": 1\n}\n",
+							"raw": "{\n  \"sectionTitle\": \"Updated Section Title\",\n  \"description\": \"Updated description\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1167,49 +1264,52 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/updateSectionById/608682e1-21fd-4c64-b8d8-2e459d66a1a4",
+							"raw": "{{host}}/section/updateSectionById/{{SECTION_ID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"section",
 								"updateSectionById",
-								"608682e1-21fd-4c64-b8d8-2e459d66a1a4"
+								"{{SECTION_ID}}"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "getSectionsByCourseId",
+					"name": "Get Sections by Course",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/getSectionsByCourseId/4e8d40d6-f1ff-449f-870c-7fe317ae3c68",
+							"raw": "{{host}}/section/getSectionsByCourseId/{{COURSE_ID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"section",
 								"getSectionsByCourseId",
-								"4e8d40d6-f1ff-449f-870c-7fe317ae3c68"
+								"{{COURSE_ID}}"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "getSectionById",
+					"name": "Get Section by ID",
 					"request": {
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/getSectionById/608682e1-21fd-4c64-b8d8-2e459d66a1a4",
+							"raw": "{{host}}/section/getSectionById/{{SECTION_ID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
+								"section",
 								"getSectionById",
-								"608682e1-21fd-4c64-b8d8-2e459d66a1a4"
+								"{{SECTION_ID}}"
 							]
 						}
 					},
@@ -1218,26 +1318,31 @@
 			]
 		},
 		{
-			"name": "LiveSessionController",
+			"name": "Live Session Management",
 			"item": [
 				{
-					"name": "createLiveSession",
+					"name": "Create Live Session",
 					"request": {
 						"auth": {
 							"type": "bearer",
 							"bearer": [
 								{
 									"key": "token",
-									"value": "{{JWT_TOKEN_TEACHER}}",
+									"value": "{{JWT_TOKEN}}",
 									"type": "string"
 								}
 							]
 						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"courseId\": \"{{COURSE_ID}}\",\n  \"batchId\": \"{{BATCH_ID}}\",\n  \"title\": \"Introduction to Java Basics\",\n  \"meetingLink\": \"https://zoom.us/j/1234567890\",\n  \"sessionDate\": \"2025-05-31\",\n  \"startTime\": \"14:30\",\n  \"endTime\": \"15:00\",\n  \"durationMinutes\": 30,\n  \"platform\": \"agora\"\n}\n",
+							"raw": "{\n  \"sessionTitle\": \"React Fundamentals Live Session\",\n  \"description\": \"Interactive session on React basics\",\n  \"scheduledStartTime\": \"2024-12-15T10:00:00Z\",\n  \"duration\": 3600,\n  \"maxParticipants\": 50,\n  \"batchId\": \"{{BATCH_ID}}\",\n  \"courseId\": \"{{COURSE_ID}}\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1258,37 +1363,28 @@
 					"response": []
 				},
 				{
-					"name": "start live session",
+					"name": "Start Live Session",
 					"request": {
 						"auth": {
 							"type": "bearer",
 							"bearer": [
 								{
 									"key": "token",
-									"value": "{{JWT_TOKEN_TEACHER}}",
+									"value": "{{JWT_TOKEN}}",
 									"type": "string"
 								}
 							]
 						},
 						"method": "PUT",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{host}}/live-session/86af39e4-d6ce-485b-bcfb-3539cc042034/start",
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/start",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"live-session",
-								"86af39e4-d6ce-485b-bcfb-3539cc042034",
+								"{{SESSION_ID}}",
 								"start"
 							]
 						}
@@ -1296,37 +1392,28 @@
 					"response": []
 				},
 				{
-					"name": "end live session",
+					"name": "End Live Session",
 					"request": {
 						"auth": {
 							"type": "bearer",
 							"bearer": [
 								{
 									"key": "token",
-									"value": "{{JWT_TOKEN_TEACHER}}",
+									"value": "{{JWT_TOKEN}}",
 									"type": "string"
 								}
 							]
 						},
 						"method": "PUT",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{host}}/live-session/86af39e4-d6ce-485b-bcfb-3539cc042034/end",
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/end",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"live-session",
-								"86af39e4-d6ce-485b-bcfb-3539cc042034",
+								"{{SESSION_ID}}",
 								"end"
 							]
 						}
@@ -1334,23 +1421,94 @@
 					"response": []
 				},
 				{
-					"name": "join live session",
+					"name": "Get Live Session Details",
 					"request": {
 						"auth": {
 							"type": "bearer",
 							"bearer": [
 								{
 									"key": "token",
-									"value": "{{JWT_TOKEN_TEACHER}}",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/live-session/{{SESSION_ID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"live-session",
+								"{{SESSION_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Sessions",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/live-session/sessions?page=1&limit=10",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"live-session",
+								"sessions"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Join Live Session",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
 									"type": "string"
 								}
 							]
 						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\r\n    \"userId\": \"{{STUDENT_UUID}}\"\r\n}",
+							"raw": "{}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1358,13 +1516,13 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/live-session/86af39e4-d6ce-485b-bcfb-3539cc042034/join",
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/join",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"live-session",
-								"86af39e4-d6ce-485b-bcfb-3539cc042034",
+								"{{SESSION_ID}}",
 								"join"
 							]
 						}
@@ -1372,53 +1530,263 @@
 					"response": []
 				},
 				{
-					"name": "get single live session",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "Leave Live Session",
 					"request": {
 						"auth": {
 							"type": "bearer",
 							"bearer": [
 								{
 									"key": "token",
-									"value": "{{JWT_TOKEN_TEACHER}}",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/leave",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"live-session",
+								"{{SESSION_ID}}",
+								"leave"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Participant Mic",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"micEnabled\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/participants/{{STUDENT_UUID}}/mic",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"live-session",
+								"{{SESSION_ID}}",
+								"participants",
+								"{{STUDENT_UUID}}",
+								"mic"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Participant Camera",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"cameraEnabled\": false\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/participants/{{STUDENT_UUID}}/camera",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"live-session",
+								"{{SESSION_ID}}",
+								"participants",
+								"{{STUDENT_UUID}}",
+								"camera"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Remove Participant",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/participants/{{STUDENT_UUID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"live-session",
+								"{{SESSION_ID}}",
+								"participants",
+								"{{STUDENT_UUID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Raise Hand",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"question\": \"Can you explain this concept again?\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/raise-hand",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"live-session",
+								"{{SESSION_ID}}",
+								"raise-hand"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "List Raised Hands",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
 									"type": "string"
 								}
 							]
 						},
 						"method": "GET",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{host}}/live-session/86af39e4-d6ce-485b-bcfb-3539cc042034",
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/raised-hands",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"live-session",
-								"86af39e4-d6ce-485b-bcfb-3539cc042034"
+								"{{SESSION_ID}}",
+								"raised-hands"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "createZoomLive",
+					"name": "Respond to Raised Hand",
 					"request": {
-						"method": "POST",
-						"header": [],
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"topic\":\"manoj\"\n}",
+							"raw": "{\n  \"response\": \"accepted\",\n  \"message\": \"Please go ahead with your question\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1426,25 +1794,44 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/createZoomLive",
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/raised-hands/{{RAISED_HAND_ID}}/respond",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"createZoomLive"
+								"live-session",
+								"{{SESSION_ID}}",
+								"raised-hands",
+								"{{RAISED_HAND_ID}}",
+								"respond"
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "generate-signature",
+					"name": "End Raised Hand Interaction",
 					"request": {
-						"method": "POST",
-						"header": [],
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"meetingNumber\":\"123\",\n    \"role\":1\n}",
+							"raw": "{}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1452,12 +1839,16 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/generate-signature",
+							"raw": "{{host}}/live-session/{{SESSION_ID}}/raised-hands/{{RAISED_HAND_ID}}/end-interaction",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"generate-signature"
+								"live-session",
+								"{{SESSION_ID}}",
+								"raised-hands",
+								"{{RAISED_HAND_ID}}",
+								"end-interaction"
 							]
 						}
 					},
@@ -1466,16 +1857,31 @@
 			]
 		},
 		{
-			"name": "BatchController",
+			"name": "Batch Management",
 			"item": [
 				{
-					"name": "createBatch",
+					"name": "Create Batch",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_TEACHER}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "POST",
-						"header": [],
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"courseId\": \"{{COURSE_ID}}\",\n  \"title\": \"August Evening Batch\",\n  \"startTime\": \"2025-08-01T18:00:00.000Z\",\n  \"endTime\": \"2025-10-31T20:00:00.000Z\",\n  \"userId\": \"{{TEACHER_UUID}}\"\n}\n",
+							"raw": "{\n  \"title\": \"React Batch 2024\",\n  \"description\": \"Complete React development course batch\",\n  \"courseId\": \"{{COURSE_ID}}\",\n  \"instructorId\": \"{{TEACHER_UUID}}\",\n  \"startTime\": \"2024-12-01T00:00:00Z\",\n  \"endTime\": \"2024-12-31T23:59:59Z\",\n  \"maxStudents\": 30\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1496,46 +1902,74 @@
 					"response": []
 				},
 				{
-					"name": "get all batch",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "Get All Batches",
 					"request": {
 						"method": "GET",
 						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"courseId\": \"{{COURSE_ID}}\",\n  \"title\": \"August Evening Batch\",\n  \"startTime\": \"2025-08-01T18:00:00.000Z\",\n  \"endTime\": \"2025-10-31T20:00:00.000Z\",\n  \"userId\": \"{{TEACHER_UUID}}\"\n}\n",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
 						"url": {
-							"raw": "{{host}}/batch/",
+							"raw": "{{host}}/batch/?page=1&limit=10",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"batch",
 								""
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								}
 							]
 						}
 					},
 					"response": []
 				},
 				{
-					"name": "get single batch",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "Get Batch by ID",
 					"request": {
 						"method": "GET",
 						"header": [],
+						"url": {
+							"raw": "{{host}}/batch/{{BATCH_ID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"batch",
+								"{{BATCH_ID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Batch",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"courseId\": \"{{COURSE_ID}}\",\n  \"title\": \"August Evening Batch\",\n  \"startTime\": \"2025-08-01T18:00:00.000Z\",\n  \"endTime\": \"2025-10-31T20:00:00.000Z\",\n  \"userId\": \"{{TEACHER_UUID}}\"\n}\n",
+							"raw": "{\n  \"batchName\": \"Updated Batch Name\",\n  \"description\": \"Updated description\",\n  \"maxStudents\": 50\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1554,37 +1988,29 @@
 						}
 					},
 					"response": []
-				}
-			]
-		},
-		{
-			"name": "BatchStudentController",
-			"item": [
+				},
 				{
-					"name": "statistics",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "Delete Batch",
 					"request": {
-						"method": "GET",
-						"header": [],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"courseId\": \"{{COURSE_ID}}\",\n  \"title\": \"August Evening Batch\",\n  \"startTime\": \"2025-08-01T18:00:00.000Z\",\n  \"endTime\": \"2025-10-31T20:00:00.000Z\",\n  \"userId\": \"{{TEACHER_UUID}}\"\n}\n",
-							"options": {
-								"raw": {
-									"language": "json"
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
 								}
-							}
+							]
 						},
+						"method": "DELETE",
+						"header": [],
 						"url": {
-							"raw": "{{host}}/batch-students/statistics/{{BATCH_ID}}",
+							"raw": "{{host}}/batch/{{BATCH_ID}}",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"batch-students",
-								"statistics",
+								"batch",
 								"{{BATCH_ID}}"
 							]
 						}
@@ -1592,13 +2018,52 @@
 					"response": []
 				},
 				{
-					"name": "add student",
+					"name": "Get Batches by Course",
 					"request": {
-						"method": "POST",
+						"method": "GET",
 						"header": [],
+						"url": {
+							"raw": "{{host}}/batch/course/{{COURSE_ID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"batch",
+								"course",
+								"{{COURSE_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Batch Students Management",
+			"item": [
+				{
+					"name": "Add Student to Batch",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"batchId\": \"{{BATCH_ID}}\",\n  \"userId\": \"{{STUDENT_UUID}}\"\n}\n",
+							"raw": "{\n  \"userId\": \"{{STUDENT_UUID}}\",\n  \"batchId\": \"{{BATCH_ID}}\",\n  \"status\": \"active\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1619,16 +2084,28 @@
 					"response": []
 				},
 				{
-					"name": "status",
-					"protocolProfileBehavior": {
-						"disableBodyPruning": true
-					},
+					"name": "Remove Student from Batch",
 					"request": {
-						"method": "GET",
-						"header": [],
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"courseId\": \"{{COURSE_ID}}\",\n  \"title\": \"August Evening Batch\",\n  \"startTime\": \"2025-08-01T18:00:00.000Z\",\n  \"endTime\": \"2025-10-31T20:00:00.000Z\",\n  \"userId\": \"{{TEACHER_UUID}}\"\n}\n",
+							"raw": "{\n  \"userId\": \"{{STUDENT_UUID}}\",\n  \"batchId\": \"{{BATCH_ID}}\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1636,13 +2113,154 @@
 							}
 						},
 						"url": {
-							"raw": "{{host}}/batch-students/batch/{{BATCH_ID}}",
+							"raw": "{{host}}/batch-students/remove",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"batch-students",
-								"batch",
+								"remove"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Batches for Student",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/batch-students/student/{{STUDENT_UUID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"batch-students",
+								"student",
+								"{{STUDENT_UUID}}"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Student Status in Batch",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"userId\": \"{{STUDENT_UUID}}\",\n  \"batchId\": \"{{BATCH_ID}}\",\n  \"status\": \"active\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/batch-students/status",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"batch-students",
+								"status"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Bulk Add Students to Batch",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_TEACHER}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"batchId\": \"{{BATCH_ID}}\",\n  \"userIds\": [\n    \"{{STUDENT_UUID}}\",\n    \"user-id-2\",\n    \"user-id-3\"\n  ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/batch-students/bulk-add",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"batch-students",
+								"bulk-add"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Batch Statistics",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/batch-students/statistics/{{BATCH_ID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"batch-students",
+								"statistics",
 								"{{BATCH_ID}}"
 							]
 						}
@@ -1650,6 +2268,28 @@
 					"response": []
 				}
 			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
 		}
 	]
 }

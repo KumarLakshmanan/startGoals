@@ -7,11 +7,12 @@ import {
   deleteBatch,
   getBatchesByCourse,
 } from "../controller/batchController.js";
+import { isTeacher } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // POST /api/batch/createBatch - Create a new batch
-router.post("/createBatch", createBatch);
+router.post("/createBatch", isTeacher, createBatch);
 
 // GET /api/batch - Get all batches with pagination and filtering
 router.get("/", getAllBatches);
@@ -20,7 +21,7 @@ router.get("/", getAllBatches);
 router.get("/:batchId", getBatchById);
 
 // PUT /api/batch/:batchId - Update batch
-router.put("/:batchId", updateBatch);
+router.put("/:batchId", isTeacher, updateBatch);
 
 // DELETE /api/batch/:batchId - Delete batch
 router.delete("/:batchId", deleteBatch);
