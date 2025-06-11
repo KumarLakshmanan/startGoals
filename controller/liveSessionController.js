@@ -428,7 +428,7 @@ export const joinLiveSession = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { sessionId } = req.params;
-    const { userId, role } = req.body; // Assuming userId and role are sent in the request body
+    const { userId, role } = req.user;
 
     if (!sessionId || !userId) {
       return res.status(400).json({

@@ -9,8 +9,8 @@ import {
 
 const router = express.Router();
 
-router.post("/users/languages/:userId", selectLanguages); // API to select languages
-router.post("/users/goal/:userId", selectGoal); // API to select goal
-router.post("/users/skills/:userId", selectSkills); // API to select skills
+router.post("/users/languages/:userId", authenticateToken, selectLanguages); // API to select languages
+router.post("/users/goal/:userId", authenticateToken, selectGoal); // API to select goal
+router.post("/users/skills/:userId", authenticateToken, selectSkills); // API to select skills
 
 export default router;

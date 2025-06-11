@@ -12,6 +12,10 @@ import bcrypt from "bcrypt";
 
 // ✅ OTP-related imports
 import { sendOtp } from "../utils/sendOtp.js";
+import Banner from "../model/banner.js";
+import Category from "../model/courseCategory.js";
+import Course from "../model/course.js";
+import { Op } from "sequelize";
 
 export const userRegistration = async (req, res) => {
   const trans = await sequelize.transaction();
@@ -184,6 +188,7 @@ export const userLogin = async (req, res) => {
           name: user.name,
           email: user.email,
           mobile: user.mobile,
+          role: user.role,
           token,
           isVerified: user.isVerified,
           firstTimeLogin: isFirstLogin,
@@ -391,6 +396,146 @@ export const getUserDetails = async (req, res) => {
       status: false,
       message: "An error occurred while fetching user details",
       error: error.message,
+    });
+  }
+};
+
+
+export const getHomePage = async (req, res) => {
+  try {
+    let myClasses = [];
+
+    // Check if user is authenticated
+    try {
+      const { userId } = req.user; // Assuming userId is passed in the request body
+      user = await User.findByPk(userId); if (user) {
+        // Get user's enrolled courses
+        const enrollments = await Enrollment.findAll({
+          where: { userId: userId },
+          include: [
+            {
+              model: Course,
+              include: [
+                {
+                  model: Category,
+                  as: 'category',
+                  attributes: ['categoryId', 'categoryName']
+                }
+              ]
+            }
+          ]
+        });
+
+        myClasses = enrollments.map((enrollment) => {
+          const course = enrollment.Course;
+          return {
+            id: course.courseId,
+            course_code: course.title.substring(0, 10).toUpperCase(),
+            course_title: course.title,
+            course_sub_title: null,
+            course_description: course.description,
+            category: course.category?.categoryName || null,
+            language: "English", // Default language for now
+            course_price: parseFloat(course.price) || 0,
+            image: course.thumbnailUrl,
+            reviews: 0, // You can implement review count later
+            rating: 0, // You can implement rating later
+            purchase_status: true
+          };
+        });
+      }
+    } catch (err) {
+      // If token is invalid, continue without user data
+      console.log("Invalid token:", err.message);
+    }
+
+    // Get all banners
+    const banners = await Banner.findAll({
+      attributes: ['id', 'title', 'image'],
+      order: [['createdAt', 'DESC']]
+    });
+
+    // Get all categories
+    const categories = await Category.findAll({
+      attributes: ['categoryId', 'categoryName'],
+      order: [['categoryName', 'ASC']]
+    });    // Get recommended courses (published courses that user hasn't enrolled in)
+    const enrolledCourseIds = myClasses.map(course => course.id);
+    const recommendedCourses = await Course.findAll({
+      where: {
+        isPublished: true,
+        status: 'active',
+        ...(enrolledCourseIds.length > 0 && {
+          courseId: { [Op.notIn]: enrolledCourseIds }
+        })
+      },
+      include: [
+        {
+          model: Category,
+          as: 'category',
+          attributes: ['categoryId', 'categoryName']
+        }
+      ],
+      limit: 10,
+      order: [['createdAt', 'DESC']]
+    });
+
+    const recommendedList = recommendedCourses.map((course) => ({
+      id: course.courseId,
+      course_code: course.title.substring(0, 10).toUpperCase(),
+      course_title: course.title,
+      course_sub_title: null,
+      course_description: course.description,
+      category: course.category?.categoryName || null,
+      language: "English", // Default language for now
+      course_price: parseFloat(course.price) || 0,
+      image: course.thumbnailUrl,
+      reviews: 0, // You can implement review count later
+      rating: 0, // You can implement rating later
+      purchase_status: false
+    }));
+
+    // Get popular categories (first 2 categories for demo)
+    const popularCategories = categories.slice(0, 2).map(cat => ({
+      id: cat.categoryId,
+      category_name: cat.categoryName
+    }));
+
+    // Format response according to demo structure
+    const response = {
+      success: true,
+      message: "Success",
+      banners: banners.map(banner => ({
+        id: banner.id,
+        title: banner.title,
+        image: banner.image
+      })),
+      categories: categories.map(cat => ({
+        id: cat.categoryId,
+        category_name: cat.categoryName
+      })),
+      courses: [
+        {
+          title: "My Classes",
+          list: myClasses
+        },
+        {
+          title: "Recommended Classes",
+          list: recommendedList
+        }
+      ],
+      popular: {
+        categories: popularCategories,
+        contact: "1234567890"
+      }
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error("Homepage API Error:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
     });
   }
 };

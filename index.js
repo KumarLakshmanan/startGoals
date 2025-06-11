@@ -24,14 +24,18 @@ app.use('/live-session/assets', express.static('web/assets'));
 
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://psychometrics.onrender.com",
-      "http://startgoals.in",
-      "https://startgoals.in",
-    ],
+    origin: "*"
   })
 );
+
+app.use(function (req, res, next) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, GET, PATCH, DELETE, OPTIONS');
+    next();
+});
+
+app.use(express.json({ limit: '50mb' }));
 
 //autoCreate();
 
@@ -66,6 +70,15 @@ const io = new Server(server, {
 
 initializeSocketIO(io);
 app.set("io", io);
+
+process.on("uncaughtException", (err) => {
+  console.error("❌ Uncaught Exception:", err);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.log(promise)
+  console.error("⚠️ Unhandled Rejection at:" + promise + "reason:" + reason);
+});
 
 app.listen(process.env.SERVER_PORT, () => {
   console.log("🚀 Server running on PORT " + process.env.SERVER_PORT);

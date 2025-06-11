@@ -7,7 +7,7 @@ import Skill from "../model/skill.js";
 import { Op } from "sequelize";
 export const selectLanguages = async (req, res) => {
   try {
-    const { userId } = req.params; // Changed from `id` to `userId`
+    const { userId } = req.user;
     const { languageIds } = req.body; // Array of language IDs from the request body
 
     // Step 1: Find user by ID
@@ -53,7 +53,7 @@ export const selectLanguages = async (req, res) => {
 //selecting goals
 export const selectGoal = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { userId } = req.user;
     const { goalId } = req.body;
 
     const user = await User.findByPk(userId);
@@ -98,7 +98,8 @@ export const selectGoal = async (req, res) => {
 //selected skills
 export const selectSkills = async (req, res) => {
   try {
-    const { userId } = req.params;
+        const { userId } = req.user;
+
     const { skillIds, goalId } = req.body;
 
     const user = await User.findByPk(userId);

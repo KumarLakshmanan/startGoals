@@ -4,8 +4,10 @@ import {
   userRegistration,
   googleCallback,
   getUserDetails,
+  getHomePage,
 } from "../controller/userController.js";
 import passport from "passport";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const userRoutes = express.Router();
 
@@ -22,7 +24,8 @@ userRoutes.get(
     failureRedirect: "/login",
   })
 );
-userRoutes.get("/auth/callback/success", googleCallback);
-userRoutes.get("/usersDetailsById/:userId", getUserDetails);
+userRoutes.get("/auth/callback/success", authenticateToken, googleCallback);
+userRoutes.get("/usersDetailsById/:userId", authenticateToken, getUserDetails);
+userRoutes.get("/homepage", authenticateToken, getHomePage);
 
 export default userRoutes;
