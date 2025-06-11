@@ -20,6 +20,16 @@ import Enrollment from "./enrollment.js";
 import LiveSession from "./liveSession.js";
 import RecordedSession from "./recordedSession.js";
 import RecordedSessionResource from "./recordedSessionResource.js";
+import Settings from "./settings.js";
+import SearchAnalytics from "./searchAnalytics.js";
+import CourseRating from "./courseRating.js";
+import InstructorRating from "./instructorRating.js";
+import Project from "./project.js";
+import ProjectFile from "./projectFile.js";
+import ProjectPurchase from "./projectPurchase.js";
+import ProjectRating from "./projectRating.js";
+import DiscountCode from "./discountCode.js";
+import DiscountUsage from "./discountUsage.js";
 
 // All models must be defined before we associate them
 const models = {
@@ -43,6 +53,16 @@ const models = {
   Enrollment,
   LiveSession,
   RecordedSessionResource,
+  Settings,
+  SearchAnalytics,
+  CourseRating,
+  InstructorRating,
+  Project,
+  ProjectFile,
+  ProjectPurchase,
+  ProjectRating,
+  DiscountCode,
+  DiscountUsage,
 };
 
 //user to course
@@ -335,6 +355,327 @@ RecordedSession.hasMany(RecordedSessionResource, {
 RecordedSessionResource.belongsTo(RecordedSession, {
   foreignKey: "recordedId",
   as: "recordedSession",
+});
+
+// SearchAnalytics associations
+SearchAnalytics.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+  onDelete: "SET NULL",
+});
+
+User.hasMany(SearchAnalytics, {
+  foreignKey: "userId",
+  as: "searchHistory",
+});
+
+// Rating system associations
+
+// Course Rating associations
+Course.hasMany(CourseRating, {
+  foreignKey: "courseId",
+  as: "ratings",
+  onDelete: "CASCADE",
+});
+
+CourseRating.belongsTo(Course, {
+  foreignKey: "courseId",
+  as: "course",
+});
+
+User.hasMany(CourseRating, {
+  foreignKey: "userId",
+  as: "courseRatings",
+  onDelete: "CASCADE",
+});
+
+CourseRating.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// Moderation associations for course ratings
+CourseRating.belongsTo(User, {
+  foreignKey: "moderatedBy",
+  as: "moderator",
+});
+
+User.hasMany(CourseRating, {
+  foreignKey: "moderatedBy",
+  as: "moderatedCourseRatings",
+});
+
+// Instructor Rating associations
+User.hasMany(InstructorRating, {
+  foreignKey: "instructorId",
+  as: "receivedRatings",
+  onDelete: "CASCADE",
+});
+
+InstructorRating.belongsTo(User, {
+  foreignKey: "instructorId",
+  as: "instructor",
+});
+
+User.hasMany(InstructorRating, {
+  foreignKey: "userId",
+  as: "givenInstructorRatings",
+  onDelete: "CASCADE",
+});
+
+InstructorRating.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// Optional course reference for instructor ratings
+Course.hasMany(InstructorRating, {
+  foreignKey: "courseId",
+  as: "instructorRatings",
+  onDelete: "SET NULL",
+});
+
+InstructorRating.belongsTo(Course, {
+  foreignKey: "courseId",
+  as: "course",
+});
+
+// Moderation associations for instructor ratings
+InstructorRating.belongsTo(User, {
+  foreignKey: "moderatedBy",
+  as: "moderator",
+});
+
+User.hasMany(InstructorRating, {
+  foreignKey: "moderatedBy",
+  as: "moderatedInstructorRatings",
+});
+
+// ===================== PROJECT MARKETPLACE ASSOCIATIONS =====================
+
+// Project associations
+// Project belongs to User (creator/admin)
+Project.belongsTo(User, {
+  foreignKey: "createdBy",
+  as: "creator",
+});
+
+User.hasMany(Project, {
+  foreignKey: "createdBy",
+  as: "projects",
+});
+
+// Project belongs to Category (using existing CourseCategory)
+Project.belongsTo(CourseCategory, {
+  foreignKey: "categoryId",
+  as: "category",
+});
+
+CourseCategory.hasMany(Project, {
+  foreignKey: "categoryId",
+  as: "projects",
+});
+
+// Project has many Tags (using existing CourseTag many-to-many)
+Project.belongsToMany(CourseTag, {
+  through: "project_tags",
+  foreignKey: "project_id",
+  otherKey: "tag_id",
+  as: "projectTags",
+  onDelete: "CASCADE",
+});
+
+CourseTag.belongsToMany(Project, {
+  through: "project_tags",
+  foreignKey: "tag_id",
+  otherKey: "project_id",
+  as: "projects",
+  onDelete: "CASCADE",
+});
+
+// ProjectFile associations
+Project.hasMany(ProjectFile, {
+  foreignKey: "projectId",
+  as: "files",
+  onDelete: "CASCADE",
+});
+
+ProjectFile.belongsTo(Project, {
+  foreignKey: "projectId",
+  as: "project",
+});
+
+ProjectFile.belongsTo(User, {
+  foreignKey: "uploadedBy",
+  as: "uploader",
+});
+
+User.hasMany(ProjectFile, {
+  foreignKey: "uploadedBy",
+  as: "uploadedProjectFiles",
+});
+
+// ProjectPurchase associations
+Project.hasMany(ProjectPurchase, {
+  foreignKey: "projectId",
+  as: "purchases",
+  onDelete: "CASCADE",
+});
+
+ProjectPurchase.belongsTo(Project, {
+  foreignKey: "projectId",
+  as: "project",
+});
+
+User.hasMany(ProjectPurchase, {
+  foreignKey: "userId",
+  as: "projectPurchases",
+  onDelete: "CASCADE",
+});
+
+ProjectPurchase.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// ProjectPurchase belongs to DiscountCode (optional)
+ProjectPurchase.belongsTo(DiscountCode, {
+  foreignKey: "discountCodeId",
+  as: "appliedDiscountCode",
+});
+
+DiscountCode.hasMany(ProjectPurchase, {
+  foreignKey: "discountCodeId",
+  as: "projectPurchases",
+});
+
+// ProjectRating associations
+Project.hasMany(ProjectRating, {
+  foreignKey: "projectId",
+  as: "ratings",
+  onDelete: "CASCADE",
+});
+
+ProjectRating.belongsTo(Project, {
+  foreignKey: "projectId",
+  as: "project",
+});
+
+User.hasMany(ProjectRating, {
+  foreignKey: "userId",
+  as: "projectRatings",
+  onDelete: "CASCADE",
+});
+
+ProjectRating.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// ProjectRating belongs to ProjectPurchase (only purchased users can rate)
+ProjectRating.belongsTo(ProjectPurchase, {
+  foreignKey: "purchaseId",
+  as: "purchase",
+});
+
+ProjectPurchase.hasOne(ProjectRating, {
+  foreignKey: "purchaseId",
+  as: "rating",
+});
+
+// Moderation associations for project ratings
+ProjectRating.belongsTo(User, {
+  foreignKey: "moderatedBy",
+  as: "moderator",
+});
+
+User.hasMany(ProjectRating, {
+  foreignKey: "moderatedBy",
+  as: "moderatedProjectRatings",
+});
+
+// DiscountCode associations
+DiscountCode.belongsTo(User, {
+  foreignKey: "createdBy",
+  as: "creator",
+});
+
+User.hasMany(DiscountCode, {
+  foreignKey: "createdBy",
+  as: "createdDiscountCodes",
+});
+
+// DiscountCode can apply to categories
+DiscountCode.belongsToMany(CourseCategory, {
+  through: "discount_categories",
+  foreignKey: "discount_code_id",
+  otherKey: "category_id",
+  as: "discountCategories",
+  onDelete: "CASCADE",
+});
+
+CourseCategory.belongsToMany(DiscountCode, {
+  through: "discount_categories",
+  foreignKey: "category_id",
+  otherKey: "discount_code_id",
+  as: "discountCodes",
+  onDelete: "CASCADE",
+});
+
+// DiscountUsage associations
+DiscountCode.hasMany(DiscountUsage, {
+  foreignKey: "discountCodeId",
+  as: "usages",
+  onDelete: "CASCADE",
+});
+
+DiscountUsage.belongsTo(DiscountCode, {
+  foreignKey: "discountCodeId",
+  as: "discountCode",
+});
+
+User.hasMany(DiscountUsage, {
+  foreignKey: "userId",
+  as: "discountUsages",
+  onDelete: "CASCADE",
+});
+
+DiscountUsage.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// DiscountUsage can reference Course (for course discounts)
+DiscountUsage.belongsTo(Course, {
+  foreignKey: "courseId",
+  as: "course",
+});
+
+Course.hasMany(DiscountUsage, {
+  foreignKey: "courseId",
+  as: "discountUsages",
+});
+
+// DiscountUsage can reference Project (for project discounts)
+DiscountUsage.belongsTo(Project, {
+  foreignKey: "projectId",
+  as: "project",
+});
+
+Project.hasMany(DiscountUsage, {
+  foreignKey: "projectId",
+  as: "discountUsages",
+});
+
+// DiscountUsage can reference Enrollment (for course enrollment discounts)
+DiscountUsage.belongsTo(Enrollment, {
+  foreignKey: "enrollmentId",
+  as: "enrollment",
+});
+
+Enrollment.hasOne(DiscountUsage, {
+  foreignKey: "enrollmentId",
+  as: "discountUsage",
 });
 
 // Export all models + sequelize

@@ -1,4 +1,4 @@
-export default function validateInput(req, res, next) {
+function validateInput(req, res, next) {
   const { identifier, method } = req.body;
   if (!identifier || !method)
     return res
@@ -8,3 +8,5 @@ export default function validateInput(req, res, next) {
     return res.status(400).json({ error: "Method must be email or sms" });
   next();
 }
+
+export default validateInput;

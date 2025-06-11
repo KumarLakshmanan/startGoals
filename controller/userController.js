@@ -15,6 +15,8 @@ import { sendOtp } from "../utils/sendOtp.js";
 import Banner from "../model/banner.js";
 import Category from "../model/courseCategory.js";
 import Course from "../model/course.js";
+import Enrollment from "../model/enrollment.js";
+import Settings from "../model/settings.js";
 import { Op } from "sequelize";
 
 export const userRegistration = async (req, res) => {
@@ -493,13 +495,28 @@ export const getHomePage = async (req, res) => {
       reviews: 0, // You can implement review count later
       rating: 0, // You can implement rating later
       purchase_status: false
-    }));
-
-    // Get popular categories (first 2 categories for demo)
+    }));    // Get popular categories (first 2 categories for demo)
     const popularCategories = categories.slice(0, 2).map(cat => ({
       id: cat.categoryId,
       category_name: cat.categoryName
     }));
+
+    // Get contact information from settings
+    const contactSettings = await Settings.findAll({
+      where: {
+        key: {
+          [Op.in]: ['contact_phone', 'contact_email', 'company_name']
+        },
+        isActive: true
+      },
+      attributes: ['key', 'value']
+    });
+
+    // Convert settings array to object for easy access
+    const settingsMap = {};
+    contactSettings.forEach(setting => {
+      settingsMap[setting.key] = setting.value;
+    });
 
     // Format response according to demo structure
     const response = {
@@ -526,8 +543,10 @@ export const getHomePage = async (req, res) => {
       ],
       popular: {
         categories: popularCategories,
-        contact: "1234567890"
-      }
+      },
+      contact: settingsMap.contact_phone || "1234567890",
+      email: settingsMap.contact_email || "support@example.com",
+      company_name: settingsMap.company_name || "StartGoals"
     };
 
     res.json(response);

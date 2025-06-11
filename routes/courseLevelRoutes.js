@@ -14,7 +14,7 @@ router.post("/bulk-upload", isTeacher, bulkUploadCourseLevels);
 // Get all course levels
 router.get("/", isTeacher, getAllCourseLevels);
 
-// Get course level by ID
+// Get course level by ID (public access)
 router.get("/:levelId", getCourseLevelById);
 
 export default router;

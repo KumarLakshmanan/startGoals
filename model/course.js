@@ -65,11 +65,29 @@ const Course = sequelize.define(
     recordedFromId: {
       type: DataTypes.UUID,
       allowNull: true,
-    },
-    status: {
+    },    status: {
       type: DataTypes.ENUM("active", "inactive", "draft", "deleted"),
       defaultValue: "draft",
       allowNull: false,
+    },
+    averageRating: {
+      type: DataTypes.DECIMAL(3, 2),
+      allowNull: true,
+      defaultValue: 0.00,
+      validate: {
+        min: 0.00,
+        max: 5.00,
+      },
+      comment: "Average rating from 0.00 to 5.00",
+    },
+    totalRatings: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+      comment: "Total number of ratings received",
     },
     ...commonFields, // includes createdAt, updatedAt, deletedAt
   },

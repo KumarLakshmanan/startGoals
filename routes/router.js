@@ -13,8 +13,29 @@ import liveSessionRoutes from "./liveSessionRoutes.js";
 import batchRoutes from "./batchRoutes.js";
 import batchStudentsRoutes from "./batchStudentsRoutes.js";
 import webRoutes from "./webRoutes.js";
+import settingsRoutes from "./settingsRoutes.js";
+import bannerRoutes from "./bannerRoutes.js";
+import searchRoutes from "./searchRoutes.js";
+import ratingRoutes from "./ratingRoutes.js";
+import projectRoutes from "./projectRoutes.js";
+import discountRoutes from "./discountRoutes.js";
+import projectFileRoutes from "./projectFileRoutes.js";
+import projectRatingRoutes from "./projectRatingRoutes.js";
+import fileUploadRoutes from "./fileUploadRoutes.js";
+import teacherManagementRoutes from "./teacherManagementRoutes.js";
+import studentManagementRoutes from "./studentManagementRoutes.js";
 
 const router = express.Router();
+
+// Health check endpoint
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Server is running',
+    timestamp: new Date().toISOString(),
+    status: 'healthy'
+  });
+});
 
 router.use('/user', userRoutes);
 router.use('/otp', otpRoutes);
@@ -29,6 +50,17 @@ router.use('/section', sectionRoutes);
 router.use('/live-session', liveSessionRoutes);
 router.use('/batch', batchRoutes);
 router.use('/batch-students', batchStudentsRoutes);
-router.use('/web/live-session', webRoutes);
+router.use('/web', webRoutes);
+router.use('/settings', settingsRoutes);
+router.use('/banners', bannerRoutes);
+router.use('/search', searchRoutes);
+router.use('/ratings', ratingRoutes);
+router.use('/projects', projectRoutes);
+router.use('/project-files', projectFileRoutes);
+router.use('/project-ratings', projectRatingRoutes);
+router.use('/discounts', discountRoutes);
+router.use('/upload', fileUploadRoutes);
+router.use('/admin/teachers', teacherManagementRoutes);
+router.use('/admin/students', studentManagementRoutes);
 
 export default router;

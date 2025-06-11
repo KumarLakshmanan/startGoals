@@ -24,9 +24,11 @@ export const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("JWT error:", error);
-    res.status(401).json({ message: "Invalid or expired token." });
-  }
+    res.status(401).json({ message: "Invalid or expired token." });  }
 };
+
+// Alias for consistency with other parts of the application
+export const verifyToken = authenticateToken;
 
 // General role check middleware factory
 const checkRole = (allowedRoles) => {
@@ -52,7 +54,7 @@ export const isOwner = checkRole(['owner']);
 // Middleware to check if the user is the instructor of the specific session
 export const isSessionInstructor = async (req, res, next) => {
   authenticateToken(req, res, async () => {
-    return next(); // Ensure user is authenticated first
+    // Ensure user is authenticated first
     const { sessionId } = req.params;
     const userId = req.user?.id;
 
@@ -83,4 +85,31 @@ export const isSessionInstructor = async (req, res, next) => {
       return res.status(500).json({ status: false, message: 'Internal server error during session authorization.' });
     }
   });
+};
+
+// Optional authentication middleware - doesn't fail if no token provided
+export const optionalAuth = async (req, res, next) => {
+  const token = req.headers.authorization?.split(" ")[1]; // Bearer <token>
+
+  if (!token) {
+    // No token provided, continue without user
+    req.user = null;
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findByPk(decoded.id);
+
+    if (user) {
+      req.user = user; // Full Sequelize user instance
+    } else {
+      req.user = null; // User not found, but don't fail
+    }
+    next();
+  } catch (error) {
+    // Invalid token, but don't fail - just continue without user
+    req.user = null;
+    next();
+  }
 };

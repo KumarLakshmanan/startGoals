@@ -13,8 +13,9 @@ import bcrypt from "bcryptjs";
 
 const OTP_EXPIRY_MINUTES = 5;
 
-const generateOtp = () =>
-  Math.floor(100000 + Math.random() * 900000).toString();
+const generateOtp = (digits = 6) => {
+  return Math.floor(Math.random() * Math.pow(10, digits)).toString().padStart(digits, '0');
+};
 
 // ✅ Send OTP (initial or for password reset)
 export const sendOtpApi = async (req, res) => {

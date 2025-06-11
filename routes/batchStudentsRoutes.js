@@ -8,7 +8,7 @@ import {
   bulkAddStudentsToBatch,
   getBatchStatistics,
 } from "../controller/batchStudentsController.js";
-import { isTeacher } from "../middleware/authMiddleware.js";
+import { isTeacher, isStudent } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
@@ -19,7 +19,7 @@ router.post("/add", isTeacher, addStudentToBatch);
 router.delete("/remove", isTeacher, removeStudentFromBatch);
 
 // GET /api/batch-students/student/:userId - Get all batches for a specific student
-router.get("/student/:userId", getBatchesForStudent);
+router.get("/student/:userId", isStudent, getBatchesForStudent);
 
 // PUT /api/batch-students/status - Update student status in a batch
 router.put("/status", isTeacher, updateStudentStatusInBatch);
@@ -28,6 +28,6 @@ router.put("/status", isTeacher, updateStudentStatusInBatch);
 router.post("/bulk-add", isTeacher, bulkAddStudentsToBatch);
 
 // GET /api/batch-students/statistics/:batchId - Get batch statistics
-router.get("/statistics/:batchId", getBatchStatistics);
+router.get("/statistics/:batchId", isTeacher, getBatchStatistics);
 
 export default router;

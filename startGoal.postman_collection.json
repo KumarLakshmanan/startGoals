@@ -54,7 +54,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"identifier\": \"lakshmanan.w3dev@gmail.com\",\n  \"password\": \"password123\"\n}",
+							"raw": "{\n  \"identifier\": \"klakshmanan48@gmail.com\",\n  \"password\": \"password123\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -150,6 +150,34 @@
 						}
 					},
 					"response": []
+				},
+				{
+					"name": "Get Home Page Data",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/user/homepage",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"user",
+								"homepage"
+							]
+						}
+					},
+					"response": []
 				}
 			]
 		},
@@ -168,7 +196,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n  \"identifier\": \"lakshmanan.w3dev@gmail.com\",\n  \"otp\": \"234360\"\n}",
+							"raw": "{\n  \"identifier\": \"klakshmanan48@gmail.com\",\n  \"otp\": \"93222\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -2262,6 +2290,1249 @@
 								"batch-students",
 								"statistics",
 								"{{BATCH_ID}}"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "SYNC DB",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://56.228.37.122:8080/sync-db",
+					"protocol": "http",
+					"host": [
+						"56",
+						"228",
+						"37",
+						"122"
+					],
+					"port": "8080",
+					"path": [
+						"sync-db"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Project Marketplace",
+			"item": [
+				{
+					"name": "Project Management",
+					"item": [
+						{
+							"name": "Create Project (Admin)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"title\": \"E-commerce Website Template\",\n  \"description\": \"A complete e-commerce website built with React and Node.js featuring product management, shopping cart, payment integration, and admin dashboard.\",\n  \"shortDescription\": \"Modern e-commerce template with admin panel\",\n  \"price\": 49.99,\n  \"salePrice\": 39.99,\n  \"categoryId\": 1,\n  \"tags\": [1, 2, 3],\n  \"techStack\": [\"React\", \"Node.js\", \"MongoDB\", \"Express\"],\n  \"programmingLanguages\": [\"JavaScript\", \"CSS\", \"HTML\"],\n  \"demoUrl\": \"https://demo.example.com\",\n  \"previewImages\": [\n    \"https://s3.amazonaws.com/bucket/preview1.jpg\",\n    \"https://s3.amazonaws.com/bucket/preview2.jpg\"\n  ],\n  \"requirements\": [\"Node.js 14+\", \"MongoDB\", \"Basic React knowledge\"],\n  \"features\": [\"Responsive design\", \"Admin panel\", \"Payment integration\"],\n  \"compatibility\": [\"Chrome\", \"Firefox\", \"Safari\", \"Edge\"],\n  \"license\": \"Regular License\",\n  \"liveDemoUrl\": \"https://live-demo.example.com\",\n  \"documentationUrl\": \"https://docs.example.com\",\n  \"supportEmail\": \"support@example.com\",\n  \"version\": \"1.0.0\",\n  \"difficulty\": \"intermediate\",\n  \"estimatedTime\": 120\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/projects",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"projects"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Projects",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/projects?page=1&limit=12&category=1&minPrice=0&maxPrice=100&search=react&sortBy=createdAt&sortOrder=DESC&difficulty=intermediate",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"projects"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "12"
+										},
+										{
+											"key": "category",
+											"value": "1"
+										},
+										{
+											"key": "minPrice",
+											"value": "0"
+										},
+										{
+											"key": "maxPrice",
+											"value": "100"
+										},
+										{
+											"key": "search",
+											"value": "react"
+										},
+										{
+											"key": "sortBy",
+											"value": "createdAt"
+										},
+										{
+											"key": "sortOrder",
+											"value": "DESC"
+										},
+										{
+											"key": "difficulty",
+											"value": "intermediate"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Project by ID",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}",
+										"disabled": true
+									}
+								],
+								"url": {
+									"raw": "{{host}}/projects/1",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"projects",
+										"1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Project (Admin)",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"title\": \"Updated E-commerce Website Template\",\n  \"price\": 59.99,\n  \"salePrice\": 49.99,\n  \"status\": \"published\",\n  \"features\": [\"Responsive design\", \"Admin panel\", \"Payment integration\", \"Mobile app\"]\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/projects/1",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"projects",
+										"1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Project (Admin)",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"url": {
+									"raw": "{{host}}/projects/1",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"projects",
+										"1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Project Statistics (Admin)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"url": {
+									"raw": "{{host}}/projects/admin/statistics?period=30d",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"projects",
+										"admin",
+										"statistics"
+									],
+									"query": [
+										{
+											"key": "period",
+											"value": "30d"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Project Purchase",
+					"item": [
+						{
+							"name": "Initiate Project Purchase",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"projectId\": 1,\n  \"discountCode\": \"SAVE20\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/projects/purchase",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"projects",
+										"purchase"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Complete Project Purchase (Webhook)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"purchaseId\": 1,\n  \"paymentId\": \"pi_1234567890\",\n  \"paymentStatus\": \"completed\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/projects/purchase/complete",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"projects",
+										"purchase",
+										"complete"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User Purchases",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"url": {
+									"raw": "{{host}}/projects/purchases/my?page=1&limit=10",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"projects",
+										"purchases",
+										"my"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Project Files",
+					"item": [
+						{
+							"name": "Upload Project Files (Admin)",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"body": {
+									"mode": "formdata",
+									"formdata": [
+										{
+											"key": "files",
+											"type": "file",
+											"src": []
+										},
+										{
+											"key": "fileDescriptions",
+											"value": "[\"Main project source code\", \"Documentation file\"]",
+											"type": "text"
+										},
+										{
+											"key": "isPreview",
+											"value": "[false, true]",
+											"type": "text"
+										}
+									]
+								},
+								"url": {
+									"raw": "{{host}}/project-files/1/files",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-files",
+										"1",
+										"files"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Project Files",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"url": {
+									"raw": "{{host}}/project-files/1/files?fileType=archive&isPreview=false",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-files",
+										"1",
+										"files"
+									],
+									"query": [
+										{
+											"key": "fileType",
+											"value": "archive"
+										},
+										{
+											"key": "isPreview",
+											"value": "false"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Download Project File",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"url": {
+									"raw": "{{host}}/project-files/files/1/download",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-files",
+										"files",
+										"1",
+										"download"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Project File (Admin)",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"description\": \"Updated project source code with bug fixes\",\n  \"isPreview\": false\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/project-files/files/1",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-files",
+										"files",
+										"1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Project File (Admin)",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"url": {
+									"raw": "{{host}}/project-files/files/1",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-files",
+										"files",
+										"1"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				},
+				{
+					"name": "Project Ratings",
+					"item": [
+						{
+							"name": "Add Project Rating",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"projectId\": 1,\n  \"rating\": 5,\n  \"review\": \"Excellent project template! Very well documented and easy to customize. The code quality is top-notch and the design is modern and responsive.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/project-ratings",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-ratings"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get Project Ratings",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/project-ratings/project/1?page=1&limit=10&sortBy=createdAt&sortOrder=DESC",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-ratings",
+										"project",
+										"1"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "sortBy",
+											"value": "createdAt"
+										},
+										{
+											"key": "sortOrder",
+											"value": "DESC"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Project Rating",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"rating\": 4,\n  \"review\": \"Updated review: Good project template with minor improvements needed in documentation.\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/project-ratings/1",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-ratings",
+										"1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Project Rating",
+							"request": {
+								"method": "DELETE",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"url": {
+									"raw": "{{host}}/project-ratings/1",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-ratings",
+										"1"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get User Project Ratings",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"url": {
+									"raw": "{{host}}/project-ratings/user/my?page=1&limit=10",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-ratings",
+										"user",
+										"my"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Get All Ratings for Moderation (Admin)",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"url": {
+									"raw": "{{host}}/project-ratings/admin/moderation?page=1&limit=20&status=pending&sortBy=createdAt&sortOrder=DESC",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-ratings",
+										"admin",
+										"moderation"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										},
+										{
+											"key": "status",
+											"value": "pending"
+										},
+										{
+											"key": "sortBy",
+											"value": "createdAt"
+										},
+										{
+											"key": "sortOrder",
+											"value": "DESC"
+										}
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Moderate Project Rating (Admin)",
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"status\": \"approved\",\n  \"moderationNotes\": \"Rating approved - constructive feedback provided\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{host}}/project-ratings/admin/moderate/1",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"project-ratings",
+										"admin",
+										"moderate",
+										"1"
+									]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "Discount Management",
+			"item": [
+				{
+					"name": "Create Discount Code (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"SAVE20\",\n  \"description\": \"20% off all projects\",\n  \"type\": \"percentage\",\n  \"value\": 20,\n  \"minOrderValue\": 25.00,\n  \"maxDiscount\": 50.00,\n  \"usageLimit\": 100,\n  \"userLimit\": 1,\n  \"startDate\": \"2024-01-01T00:00:00Z\",\n  \"endDate\": \"2024-12-31T23:59:59Z\",\n  \"applicableTo\": \"projects\",\n  \"categoryIds\": [1, 2, 3],\n  \"isActive\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/discounts",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"discounts"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Discount Codes (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{host}}/discounts?page=1&limit=20&isActive=true&type=percentage&applicableTo=projects",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"discounts"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								},
+								{
+									"key": "isActive",
+									"value": "true"
+								},
+								{
+									"key": "type",
+									"value": "percentage"
+								},
+								{
+									"key": "applicableTo",
+									"value": "projects"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Discount Code by ID (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{host}}/discounts/1",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"discounts",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Update Discount Code (Admin)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"Updated: 25% off all projects - Limited time offer\",\n  \"value\": 25,\n  \"maxDiscount\": 75.00,\n  \"usageLimit\": 50\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/discounts/1",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"discounts",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Discount Code (Admin)",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{host}}/discounts/1",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"discounts",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Discount Code",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"SAVE20\",\n  \"applicableTo\": \"projects\",\n  \"categoryId\": 1,\n  \"orderValue\": 49.99\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/discounts/validate",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"discounts",
+								"validate"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Enhanced Search",
+			"item": [
+				{
+					"name": "Smart Suggestions",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{host}}/search/suggestions?query=react&limit=10&type=all&include_recent=true",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"search",
+								"suggestions"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "react"
+								},
+								{
+									"key": "limit",
+									"value": "10"
+								},
+								{
+									"key": "type",
+									"value": "all"
+								},
+								{
+									"key": "include_recent",
+									"value": "true"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Comprehensive Search",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"disabled": true
+							}
+						],
+						"url": {
+							"raw": "{{host}}/search/comprehensive?query=javascript&type=all&page=1&limit=12&category=1,2&skill_level=intermediate,advanced&price_min=0&price_max=100&language=English&sort=relevance&rating_min=4",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"search",
+								"comprehensive"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "javascript"
+								},
+								{
+									"key": "type",
+									"value": "all"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "12"
+								},
+								{
+									"key": "category",
+									"value": "1,2"
+								},
+								{
+									"key": "skill_level",
+									"value": "intermediate,advanced"
+								},
+								{
+									"key": "price_min",
+									"value": "0"
+								},
+								{
+									"key": "price_max",
+									"value": "100"
+								},
+								{
+									"key": "language",
+									"value": "English"
+								},
+								{
+									"key": "sort",
+									"value": "relevance"
+								},
+								{
+									"key": "rating_min",
+									"value": "4"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Search Filters",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/search/filters",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"search",
+								"filters"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Save Search",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"query\": \"javascript courses\",\n  \"filters\": {\n    \"categories\": [1, 2],\n    \"skillLevels\": [\"intermediate\"],\n    \"maxPrice\": 100,\n    \"minRating\": 4\n  },\n  \"name\": \"JavaScript Intermediate Courses\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{host}}/search/save",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"search",
+								"enhanced",
+								"save"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Search History",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{host}}/search/history?page=1&limit=20",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"search",
+								"enhanced",
+								"history"
+							],
+							"query": [
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "20"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Clear Search History",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{host}}/search/history",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"search",
+								"enhanced",
+								"history"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Get Search Analytics (Admin)",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{host}}/search/analytics?startDate=2024-01-01&endDate=2024-12-31&page=1&limit=50",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"search",
+								"enhanced",
+								"analytics"
+							],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2024-01-01"
+								},
+								{
+									"key": "endDate",
+									"value": "2024-12-31"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "limit",
+									"value": "50"
+								}
 							]
 						}
 					},

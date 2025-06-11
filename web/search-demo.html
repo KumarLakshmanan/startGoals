@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StartGoals Search System Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        .header {
+            background: linear-gradient(45deg, #2196F3, #21CBF3);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .search-section {
+            padding: 40px;
+        }
+
+        .search-container {
+            position: relative;
+            margin-bottom: 30px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 15px 20px;
+            font-size: 18px;
+            border: 2px solid #e0e0e0;
+            border-radius: 50px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        .search-box:focus {
+            border-color: #2196F3;
+            box-shadow: 0 0 20px rgba(33, 150, 243, 0.2);
+        }
+
+        .suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+
+        .suggestion-item {
+            padding: 12px 20px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .suggestion-item:hover {
+            background: #f5f5f5;
+        }
+
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .suggestion-icon {
+            font-size: 20px;
+        }
+
+        .suggestion-text {
+            flex: 1;
+        }
+
+        .suggestion-title {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .suggestion-subtitle {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e0e0e0;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            background: none;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .tab.active {
+            color: #2196F3;
+            border-bottom: 3px solid #2196F3;
+        }
+
+        .filters-section {
+            display: grid;
+            grid-template-columns: 250px 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .filters {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 10px;
+            height: fit-content;
+        }
+
+        .filter-group {
+            margin-bottom: 25px;
+        }
+
+        .filter-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .filter-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .filter-option input {
+            margin: 0;
+        }
+
+        .filter-option label {
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .price-range {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .price-input {
+            width: 80px;
+            padding: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        .results {
+            flex: 1;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .results-count {
+            color: #666;
+        }
+
+        .sort-select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .course-card {
+            display: flex;
+            gap: 20px;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .course-card:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
+        }
+
+        .course-thumbnail {
+            width: 150px;
+            height: 100px;
+            background: linear-gradient(45deg, #ff6b6b, #ffa726);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+
+        .course-info {
+            flex: 1;
+        }
+
+        .course-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .course-description {
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.4;
+        }
+
+        .course-meta {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            font-size: 14px;
+            color: #888;
+        }
+
+        .course-price {
+            font-size: 18px;
+            font-weight: 600;
+            color: #2196F3;
+        }
+
+        .course-instructor {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .course-rating {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+
+        .course-tags {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .tag {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .page-btn {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s ease;
+        }
+
+        .page-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .page-btn.active {
+            background: #2196F3;
+            color: white;
+            border-color: #2196F3;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        @media (max-width: 768px) {
+            .filters-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .filters {
+                order: 2;
+            }
+            
+            .results {
+                order: 1;
+            }
+            
+            .course-card {
+                flex-direction: column;
+            }
+            
+            .course-thumbnail {
+                width: 100%;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 StartGoals Search System</h1>
+            <p>Discover courses, instructors, and projects with intelligent search</p>
+        </div>
+
+        <div class="search-section">
+            <!-- Search Box with Autocomplete -->
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    class="search-box" 
+                    placeholder="Search for courses, instructors, or topics..."
+                    id="searchInput"
+                >
+                <div class="suggestions" id="suggestions"></div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="tabs">
+                <button class="tab active" data-tab="courses">📘 Courses</button>
+                <button class="tab" data-tab="instructors">👨‍🏫 Instructors</button>
+                <button class="tab" data-tab="projects">🧪 Projects (Coming Soon)</button>
+            </div>
+
+            <!-- Filters and Results -->
+            <div class="filters-section">
+                <!-- Filters Sidebar -->
+                <div class="filters" id="filtersPanel">
+                    <div class="filter-group">
+                        <div class="filter-title">📁 Category</div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="cat1" value="web-dev">
+                            <label for="cat1">Web Development</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="cat2" value="ai-ml">
+                            <label for="cat2">AI & Machine Learning</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="cat3" value="design">
+                            <label for="cat3">Design & UX</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="cat4" value="mobile">
+                            <label for="cat4">Mobile Development</label>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <div class="filter-title">🏷️ Course Type</div>
+                        <div class="filter-option">
+                            <input type="radio" name="courseType" id="type1" value="live">
+                            <label for="type1">Live</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="radio" name="courseType" id="type2" value="recorded">
+                            <label for="type2">Recorded</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="radio" name="courseType" id="type3" value="hybrid">
+                            <label for="type3">Hybrid</label>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <div class="filter-title">💰 Price Range</div>
+                        <div class="price-range">
+                            <input type="number" class="price-input" placeholder="Min" id="priceMin">
+                            <span>-</span>
+                            <input type="number" class="price-input" placeholder="Max" id="priceMax">
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <div class="filter-title">🎯 Level</div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="level1" value="beginner">
+                            <label for="level1">Beginner</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="level2" value="intermediate">
+                            <label for="level2">Intermediate</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="checkbox" id="level3" value="advanced">
+                            <label for="level3">Advanced</label>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <div class="filter-title">🔓 Access</div>
+                        <div class="filter-option">
+                            <input type="radio" name="accessType" id="access1" value="free">
+                            <label for="access1">Free</label>
+                        </div>
+                        <div class="filter-option">
+                            <input type="radio" name="accessType" id="access2" value="paid">
+                            <label for="access2">Paid</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div class="results">
+                    <div class="results-header">
+                        <div class="results-count" id="resultsCount">Loading...</div>
+                        <select class="sort-select" id="sortSelect">
+                            <option value="relevance">Sort by Relevance</option>
+                            <option value="price">Sort by Price</option>
+                            <option value="title">Sort by Title</option>
+                            <option value="created">Sort by Newest</option>
+                        </select>
+                    </div>
+
+                    <div id="resultsContainer">
+                        <div class="loading">🔍 Loading courses...</div>
+                    </div>
+
+                    <div class="pagination" id="pagination"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Demo data - In real implementation, this would come from API
+        const demoData = {
+            courses: [
+                {
+                    id: '1',
+                    title: 'Complete React Development Bootcamp',
+                    description: 'Learn React from scratch including hooks, context, and modern best practices. Build real-world projects.',
+                    type: 'recorded',
+                    price: 2999,
+                    isPaid: true,
+                    instructor: { username: 'John Smith', profileImage: null },
+                    category: { categoryName: 'Web Development' },
+                    level: { level: 'Intermediate' },
+                    tags: ['react', 'javascript', 'frontend'],
+                    rating: 4.8,
+                    reviewCount: 245
+                },
+                {
+                    id: '2',
+                    title: 'Machine Learning with Python',
+                    description: 'Comprehensive course covering ML algorithms, data preprocessing, and model deployment.',
+                    type: 'live',
+                    price: 4999,
+                    isPaid: true,
+                    instructor: { username: 'Dr. Sarah Johnson', profileImage: null },
+                    category: { categoryName: 'AI & Machine Learning' },
+                    level: { level: 'Advanced' },
+                    tags: ['python', 'machine-learning', 'data-science'],
+                    rating: 4.9,
+                    reviewCount: 189
+                },
+                {
+                    id: '3',
+                    title: 'UI/UX Design Fundamentals',
+                    description: 'Learn design principles, user research, prototyping, and creating beautiful user interfaces.',
+                    type: 'recorded',
+                    price: 0,
+                    isPaid: false,
+                    instructor: { username: 'Emily Chen', profileImage: null },
+                    category: { categoryName: 'Design & UX' },
+                    level: { level: 'Beginner' },
+                    tags: ['ui-ux', 'design', 'figma'],
+                    rating: 4.6,
+                    reviewCount: 567
+                },
+                {
+                    id: '4',
+                    title: 'Flutter Mobile App Development',
+                    description: 'Build cross-platform mobile apps with Flutter and Dart. From basics to advanced concepts.',
+                    type: 'hybrid',
+                    price: 3499,
+                    isPaid: true,
+                    instructor: { username: 'Mike Wilson', profileImage: null },
+                    category: { categoryName: 'Mobile Development' },
+                    level: { level: 'Intermediate' },
+                    tags: ['flutter', 'dart', 'mobile'],
+                    rating: 4.7,
+                    reviewCount: 123
+                }
+            ],
+            suggestions: [
+                { type: 'course', title: 'React Development', subtitle: 'Course', icon: '📘' },
+                { type: 'course', title: 'React Hooks', subtitle: 'Course', icon: '📘' },
+                { type: 'instructor', title: 'John Smith', subtitle: 'Instructor', icon: '👨‍🏫' },
+                { type: 'category', title: 'React Development', subtitle: 'Category', icon: '🏷️' }
+            ]
+        };
+
+        let currentQuery = '';
+        let currentFilters = {};
+        let currentTab = 'courses';
+        let currentResults = demoData.courses;
+
+        // DOM elements
+        const searchInput = document.getElementById('searchInput');
+        const suggestionsDiv = document.getElementById('suggestions');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const resultsCount = document.getElementById('resultsCount');
+        const sortSelect = document.getElementById('sortSelect');
+        const tabs = document.querySelectorAll('.tab');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            renderResults();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Search input with debounce
+            let searchTimeout;
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value;
+                currentQuery = query;
+
+                clearTimeout(searchTimeout);
+                searchTimeout = setTimeout(() => {
+                    if (query.length >= 2) {
+                        showSuggestions(query);
+                    } else {
+                        hideSuggestions();
+                    }
+                    performSearch();
+                }, 300);
+            });
+
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container')) {
+                    hideSuggestions();
+                }
+            });
+
+            // Tab switching
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentTab = tab.dataset.tab;
+                    performSearch();
+                });
+            });
+
+            // Sort change
+            sortSelect.addEventListener('change', performSearch);
+
+            // Filter changes
+            document.querySelectorAll('input[type="checkbox"], input[type="radio"]').forEach(input => {
+                input.addEventListener('change', performSearch);
+            });
+
+            document.getElementById('priceMin').addEventListener('input', debounce(performSearch, 500));
+            document.getElementById('priceMax').addEventListener('input', debounce(performSearch, 500));
+        }
+
+        function showSuggestions(query) {
+            const filteredSuggestions = demoData.suggestions.filter(s => 
+                s.title.toLowerCase().includes(query.toLowerCase())
+            );
+
+            if (filteredSuggestions.length > 0) {
+                suggestionsDiv.innerHTML = filteredSuggestions.map(suggestion => `
+                    <div class="suggestion-item" onclick="selectSuggestion('${suggestion.title}')">
+                        <span class="suggestion-icon">${suggestion.icon}</span>
+                        <div class="suggestion-text">
+                            <div class="suggestion-title">${suggestion.title}</div>
+                            <div class="suggestion-subtitle">${suggestion.subtitle}</div>
+                        </div>
+                    </div>
+                `).join('');
+                suggestionsDiv.style.display = 'block';
+            } else {
+                hideSuggestions();
+            }
+        }
+
+        function hideSuggestions() {
+            suggestionsDiv.style.display = 'none';
+        }
+
+        function selectSuggestion(title) {
+            searchInput.value = title;
+            currentQuery = title;
+            hideSuggestions();
+            performSearch();
+        }
+
+        function performSearch() {
+            // Get current filters
+            currentFilters = getActiveFilters();
+            
+            // Filter results based on query and filters
+            let filteredResults = [...demoData.courses];
+
+            // Text search
+            if (currentQuery) {
+                filteredResults = filteredResults.filter(course => 
+                    course.title.toLowerCase().includes(currentQuery.toLowerCase()) ||
+                    course.description.toLowerCase().includes(currentQuery.toLowerCase()) ||
+                    course.tags.some(tag => tag.toLowerCase().includes(currentQuery.toLowerCase()))
+                );
+            }
+
+            // Category filter
+            if (currentFilters.categories && currentFilters.categories.length > 0) {
+                filteredResults = filteredResults.filter(course => {
+                    const categoryMap = {
+                        'web-dev': 'Web Development',
+                        'ai-ml': 'AI & Machine Learning', 
+                        'design': 'Design & UX',
+                        'mobile': 'Mobile Development'
+                    };
+                    return currentFilters.categories.some(cat => 
+                        course.category.categoryName === categoryMap[cat]
+                    );
+                });
+            }
+
+            // Course type filter
+            if (currentFilters.courseType) {
+                filteredResults = filteredResults.filter(course => 
+                    course.type === currentFilters.courseType
+                );
+            }
+
+            // Price filter
+            if (currentFilters.priceMin !== null && currentFilters.priceMin !== '') {
+                filteredResults = filteredResults.filter(course => 
+                    course.price >= parseFloat(currentFilters.priceMin)
+                );
+            }
+            if (currentFilters.priceMax !== null && currentFilters.priceMax !== '') {
+                filteredResults = filteredResults.filter(course => 
+                    course.price <= parseFloat(currentFilters.priceMax)
+                );
+            }
+
+            // Access type filter
+            if (currentFilters.accessType) {
+                const isPaid = currentFilters.accessType === 'paid';
+                filteredResults = filteredResults.filter(course => 
+                    course.isPaid === isPaid
+                );
+            }
+
+            // Level filter
+            if (currentFilters.levels && currentFilters.levels.length > 0) {
+                filteredResults = filteredResults.filter(course => {
+                    const levelMap = {
+                        'beginner': 'Beginner',
+                        'intermediate': 'Intermediate',
+                        'advanced': 'Advanced'
+                    };
+                    return currentFilters.levels.some(level => 
+                        course.level.level === levelMap[level]
+                    );
+                });
+            }
+
+            // Sort results
+            const sortBy = sortSelect.value;
+            switch (sortBy) {
+                case 'price':
+                    filteredResults.sort((a, b) => a.price - b.price);
+                    break;
+                case 'title':
+                    filteredResults.sort((a, b) => a.title.localeCompare(b.title));
+                    break;
+                case 'created':
+                    // Would sort by creation date in real implementation
+                    break;
+                default: // relevance
+                    // Keep current order for demo
+                    break;
+            }
+
+            currentResults = filteredResults;
+            renderResults();
+        }
+
+        function getActiveFilters() {
+            const filters = {};
+
+            // Categories
+            const categories = Array.from(document.querySelectorAll('input[value="web-dev"], input[value="ai-ml"], input[value="design"], input[value="mobile"]'))
+                .filter(input => input.checked)
+                .map(input => input.value);
+            if (categories.length > 0) filters.categories = categories;
+
+            // Course type
+            const courseType = document.querySelector('input[name="courseType"]:checked');
+            if (courseType) filters.courseType = courseType.value;
+
+            // Price range
+            const priceMin = document.getElementById('priceMin').value;
+            const priceMax = document.getElementById('priceMax').value;
+            if (priceMin) filters.priceMin = priceMin;
+            if (priceMax) filters.priceMax = priceMax;
+
+            // Access type
+            const accessType = document.querySelector('input[name="accessType"]:checked');
+            if (accessType) filters.accessType = accessType.value;
+
+            // Levels
+            const levels = Array.from(document.querySelectorAll('input[value="beginner"], input[value="intermediate"], input[value="advanced"]'))
+                .filter(input => input.checked)
+                .map(input => input.value);
+            if (levels.length > 0) filters.levels = levels;
+
+            return filters;
+        }
+
+        function renderResults() {
+            resultsCount.textContent = `${currentResults.length} courses found`;
+
+            if (currentResults.length === 0) {
+                resultsContainer.innerHTML = `
+                    <div class="no-results">
+                        <h3>😕 No courses found</h3>
+                        <p>Try adjusting your search terms or filters</p>
+                    </div>
+                `;
+                return;
+            }
+
+            resultsContainer.innerHTML = currentResults.map(course => `
+                <div class="course-card">
+                    <div class="course-thumbnail">📘</div>
+                    <div class="course-info">
+                        <div class="course-title">${course.title}</div>
+                        <div class="course-description">${course.description}</div>
+                        <div class="course-meta">
+                            <div class="course-instructor">👨‍🏫 ${course.instructor.username}</div>
+                            <div class="course-rating">⭐ ${course.rating} (${course.reviewCount})</div>
+                            <div>🏷️ ${course.type}</div>
+                            <div>📚 ${course.level.level}</div>
+                        </div>
+                        <div class="course-tags">
+                            ${course.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                        </div>
+                    </div>
+                    <div class="course-price">
+                        ${course.isPaid ? `₹${course.price}` : 'FREE'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+    </script>
+</body>
+</html>

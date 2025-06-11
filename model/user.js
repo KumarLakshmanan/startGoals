@@ -70,8 +70,7 @@ const User = sequelize.define(
     isOnboarded: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-    },
-    goalId: {
+    },    goalId: {
       type: DataTypes.UUID,
       allowNull: true, // Allow null initially
       references: {
@@ -79,7 +78,25 @@ const User = sequelize.define(
         key: "goal_id",
       },
     },
-
+    averageRating: {
+      type: DataTypes.DECIMAL(3, 2),
+      allowNull: true,
+      defaultValue: 0.00,
+      validate: {
+        min: 0.00,
+        max: 5.00,
+      },
+      comment: "Average instructor rating from 0.00 to 5.00",
+    },
+    totalRatings: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+      comment: "Total number of instructor ratings received",
+    },
     ...commonFields, // ✅ createdAt, updatedAt, deletedAt
   },
   {

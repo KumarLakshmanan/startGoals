@@ -12,6 +12,8 @@ const folderMap = {
   resource: "resources/",
   artical: "articals/",
   banner: "banners/",
+  files: "project-files/", // For project files
+  projectFiles: "project-files/", // Alternative name for project files
 };
 
 const upload = multer({
@@ -29,8 +31,8 @@ const upload = multer({
         Math.random() * 1000
       )}${fileExtension}`;
       cb(null, `${folder}${fileName}`);
-    },
-  }),
+    },  }),
 });
 
+export const fileUploadMiddleware = upload;
 export default upload;
