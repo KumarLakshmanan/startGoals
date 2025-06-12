@@ -22,8 +22,7 @@ import discountRoutes from "./discountRoutes.js";
 import projectFileRoutes from "./projectFileRoutes.js";
 import projectRatingRoutes from "./projectRatingRoutes.js";
 import fileUploadRoutes from "./fileUploadRoutes.js";
-import teacherManagementRoutes from "./teacherManagementRoutes.js";
-import studentManagementRoutes from "./studentManagementRoutes.js";
+import teacherRoutes from "./teacherRoutes.js";
 
 const router = express.Router();
 
@@ -60,7 +59,6 @@ router.use('/project-files', projectFileRoutes);
 router.use('/project-ratings', projectRatingRoutes);
 router.use('/discounts', discountRoutes);
 router.use('/upload', fileUploadRoutes);
-router.use('/admin/teachers', teacherManagementRoutes);
-router.use('/admin/students', studentManagementRoutes);
+router.use('/admin/teachers', teacherRoutes);
 
 export default router;

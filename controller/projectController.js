@@ -9,8 +9,11 @@ import DiscountCode from "../model/discountCode.js";
 import DiscountUsage from "../model/discountUsage.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
+import path from "path";
+import fs from "fs";
 
-// ===================== ADMIN PROJECT MANAGEMENT =====================
+// ===================== COMPREHENSIVE PROJECT MANAGEMENT =====================
+// This file combines both user-facing and admin project management functionality
 
 // Create new project (Admin only)
 export const createProject = async (req, res) => {
@@ -932,6 +935,564 @@ export const getProjectStatistics = async (req, res) => {
   }
 };
 
+// ===================== COMPREHENSIVE ADMIN PROJECT MANAGEMENT =====================
+
+/**
+ * Get all projects with advanced filtering and analytics (Admin)
+ * This provides comprehensive project management with detailed analytics
+ */
+export const getAllProjectsAdmin = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      category,
+      priceRange,
+      difficulty,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+      dateRange,
+      creator
+    } = req.query;
+
+    // Build where conditions
+    const whereConditions = {};
+
+    // Status filtering
+    if (status && status !== 'all') {
+      whereConditions.status = status;
+    }
+
+    // Category filtering
+    if (category) {
+      whereConditions.categoryId = category;
+    }
+
+    // Price range filtering
+    if (priceRange) {
+      const [minPrice, maxPrice] = priceRange.split('-').map(Number);
+      whereConditions.price = {};
+      if (minPrice) whereConditions.price[Op.gte] = minPrice;
+      if (maxPrice) whereConditions.price[Op.lte] = maxPrice;
+    }
+
+    // Difficulty filtering
+    if (difficulty) {
+      whereConditions.difficulty = difficulty;
+    }
+
+    // Creator filtering
+    if (creator) {
+      whereConditions.createdBy = creator;
+    }
+
+    // Search functionality
+    if (search) {
+      whereConditions[Op.or] = [
+        { title: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } },
+        { shortDescription: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    // Date range filtering
+    if (dateRange) {
+      const { startDate, endDate } = JSON.parse(dateRange);
+      if (startDate && endDate) {
+        whereConditions.createdAt = {
+          [Op.between]: [new Date(startDate), new Date(endDate)]
+        };
+      }
+    }
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const { count, rows: projects } = await Project.findAndCountAll({
+      where: whereConditions,
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['userId', 'firstName', 'lastName', 'email']
+        },
+        {
+          model: CourseCategory,
+          as: 'category',
+          attributes: ['categoryId', 'title']
+        },
+        {
+          model: CourseTag,
+          as: 'projectTags',
+          attributes: ['id', 'title'],
+          through: { attributes: [] }
+        },
+        {
+          model: ProjectFile,
+          as: 'files',
+          attributes: [
+            [sequelize.fn('COUNT', sequelize.col('files.id')), 'fileCount'],
+            [sequelize.fn('SUM', sequelize.col('files.fileSize')), 'totalSize']
+          ],
+          required: false
+        },
+        {
+          model: ProjectPurchase,
+          as: 'purchases',
+          attributes: [
+            [sequelize.fn('COUNT', sequelize.col('purchases.purchaseId')), 'purchaseCount'],
+            [sequelize.fn('SUM', sequelize.col('purchases.finalPrice')), 'totalRevenue']
+          ],
+          where: { paymentStatus: 'completed' },
+          required: false
+        },
+        {
+          model: ProjectRating,
+          as: 'ratings',
+          attributes: [
+            [sequelize.fn('AVG', sequelize.col('ratings.rating')), 'avgRating'],
+            [sequelize.fn('COUNT', sequelize.col('ratings.ratingId')), 'ratingCount']
+          ],
+          where: { status: 'approved' },
+          required: false
+        }
+      ],
+      order: [[sortBy, sortOrder.toUpperCase()]],
+      limit: parseInt(limit),
+      offset,
+      distinct: true,
+      group: [
+        'Project.id', 'creator.userId', 'category.categoryId',
+        'projectTags.id', 'projectTags->ProjectTag.projectId', 'projectTags->ProjectTag.tagId'
+      ]
+    });
+
+    // Calculate overall statistics
+    const overallStats = {
+      totalProjects: count,
+      draftProjects: projects.filter(p => p.status === 'draft').length,
+      publishedProjects: projects.filter(p => p.status === 'published').length,
+      archivedProjects: projects.filter(p => p.status === 'archived').length,
+      totalRevenue: projects.reduce((sum, p) => sum + parseFloat(p.purchases?.[0]?.totalRevenue || 0), 0),
+      totalSales: projects.reduce((sum, p) => sum + parseInt(p.purchases?.[0]?.purchaseCount || 0), 0),
+      avgRating: projects.length > 0 ? 
+        (projects.reduce((sum, p) => sum + parseFloat(p.ratings?.[0]?.avgRating || 0), 0) / projects.length).toFixed(1) : 0
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Projects retrieved successfully",
+      data: {
+        projects,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(count / parseInt(limit)),
+          totalRecords: count,
+          recordsPerPage: parseInt(limit)
+        },
+        overallStatistics: overallStats
+      }
+    });
+
+  } catch (error) {
+    console.error("Get all projects admin error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve projects",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get detailed project information with comprehensive analytics (Admin)
+ */
+export const getProjectDetailsAdmin = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const project = await Project.findByPk(projectId, {
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['userId', 'firstName', 'lastName', 'email', 'profilePicture']
+        },
+        {
+          model: CourseCategory,
+          as: 'category',
+          attributes: ['categoryId', 'title']
+        },
+        {
+          model: CourseTag,
+          as: 'projectTags',
+          attributes: ['id', 'title'],
+          through: { attributes: [] }
+        },
+        {
+          model: ProjectFile,
+          as: 'files',
+          attributes: ['id', 'fileName', 'fileType', 'fileSize', 'isPreview', 'downloadCount', 'createdAt']
+        }
+      ]
+    });
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found"
+      });
+    }
+
+    // Get purchase history with user details
+    const purchaseHistory = await ProjectPurchase.findAll({
+      where: { projectId, paymentStatus: 'completed' },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['userId', 'firstName', 'lastName', 'email']
+        }
+      ],
+      order: [['purchasedAt', 'DESC']],
+      limit: 50
+    });
+
+    // Get rating statistics
+    const ratingStats = await ProjectRating.findAll({
+      where: { projectId, status: 'approved' },
+      attributes: [
+        'rating',
+        [sequelize.fn('COUNT', sequelize.col('rating')), 'count']
+      ],
+      group: ['rating'],
+      order: [['rating', 'DESC']]
+    });
+
+    // Calculate file analytics
+    const fileAnalytics = {
+      totalFiles: project.files.length,
+      totalSize: project.files.reduce((sum, file) => sum + file.fileSize, 0),
+      fileTypeDistribution: project.files.reduce((acc, file) => {
+        const ext = file.fileName.split('.').pop().toLowerCase();
+        acc[ext] = (acc[ext] || 0) + 1;
+        return acc;
+      }, {}),
+      mostDownloadedFiles: project.files
+        .sort((a, b) => b.downloadCount - a.downloadCount)
+        .slice(0, 5)
+    };
+
+    const detailedData = {
+      ...project.toJSON(),
+      purchaseHistory,
+      ratingStats,
+      fileAnalytics,
+      salesStatistics: {
+        totalSales: purchaseHistory.length,
+        totalRevenue: purchaseHistory.reduce((sum, purchase) => sum + purchase.finalPrice, 0),
+        averageOrderValue: purchaseHistory.length > 0 ? 
+          (purchaseHistory.reduce((sum, purchase) => sum + purchase.finalPrice, 0) / purchaseHistory.length).toFixed(2) : 0
+      }
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Project details retrieved successfully",
+      data: detailedData
+    });
+
+  } catch (error) {
+    console.error("Get project details admin error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve project details",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get project buyer history with detailed analytics (Admin)
+ */
+export const getProjectBuyers = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      dateFrom,
+      dateTo,
+      sortBy = 'purchasedAt',
+      sortOrder = 'DESC'
+    } = req.query;
+
+    // Build where conditions
+    const whereConditions = { projectId, paymentStatus: 'completed' };
+
+    if (dateFrom && dateTo) {
+      whereConditions.purchasedAt = {
+        [Op.between]: [new Date(dateFrom), new Date(dateTo)]
+      };
+    }
+
+    // User search conditions
+    const userSearchConditions = {};
+    if (search) {
+      userSearchConditions[Op.or] = [
+        { firstName: { [Op.iLike]: `%${search}%` } },
+        { lastName: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const { count, rows: buyers } = await ProjectPurchase.findAndCountAll({
+      where: whereConditions,
+      include: [
+        {
+          model: User,
+          as: 'user',
+          where: userSearchConditions,
+          attributes: ['userId', 'firstName', 'lastName', 'email', 'profilePicture', 'createdAt']
+        },
+        {
+          model: DiscountCode,
+          as: 'discountCode',
+          attributes: ['code', 'discountType', 'discountValue'],
+          required: false
+        }
+      ],
+      order: [[sortBy, sortOrder.toUpperCase()]],
+      limit: parseInt(limit),
+      offset
+    });
+
+    // Calculate buyer statistics
+    const buyerStats = {
+      totalBuyers: count,
+      totalRevenue: buyers.reduce((sum, buyer) => sum + buyer.finalPrice, 0),
+      averageOrderValue: count > 0 ? 
+        (buyers.reduce((sum, buyer) => sum + buyer.finalPrice, 0) / count).toFixed(2) : 0,
+      discountUsage: buyers.filter(buyer => buyer.discountAmount > 0).length,
+      returningCustomers: 0 // Would need additional query to calculate
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Project buyers retrieved successfully",
+      data: {
+        buyers,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(count / parseInt(limit)),
+          totalRecords: count,
+          recordsPerPage: parseInt(limit)
+        },
+        statistics: buyerStats
+      }
+    });
+
+  } catch (error) {
+    console.error("Get project buyers error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve project buyers",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get project download tracking and statistics (Admin)
+ */
+export const getProjectDownloads = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const {
+      page = 1,
+      limit = 20,
+      fileId,
+      dateFrom,
+      dateTo
+    } = req.query;
+
+    // Get project files with download statistics
+    const whereConditions = { projectId };
+    if (fileId) {
+      whereConditions.id = fileId;
+    }
+
+    const files = await ProjectFile.findAll({
+      where: whereConditions,
+      attributes: [
+        'id', 'fileName', 'fileType', 'fileSize', 'downloadCount',
+        'createdAt', 'updatedAt'
+      ]
+    });
+
+    // Mock download tracking data (in real implementation, you'd have a downloads table)
+    const downloadTracking = files.map(file => ({
+      fileId: file.id,
+      fileName: file.fileName,
+      fileType: file.fileType,
+      fileSize: file.fileSize,
+      totalDownloads: file.downloadCount,
+      recentDownloads: Math.floor(file.downloadCount * 0.3), // Mock recent downloads
+      uniqueDownloaders: Math.floor(file.downloadCount * 0.8), // Mock unique users
+      averageDownloadsPerDay: (file.downloadCount / 30).toFixed(1), // Mock daily average
+      popularityScore: ((file.downloadCount / files.reduce((sum, f) => sum + f.downloadCount, 0)) * 100).toFixed(1)
+    }));
+
+    // Calculate overall download statistics
+    const downloadStats = {
+      totalFiles: files.length,
+      totalDownloads: files.reduce((sum, file) => sum + file.downloadCount, 0),
+      totalFileSize: files.reduce((sum, file) => sum + file.fileSize, 0),
+      averageDownloadsPerFile: files.length > 0 ? 
+        (files.reduce((sum, file) => sum + file.downloadCount, 0) / files.length).toFixed(1) : 0,
+      mostPopularFile: files.reduce((max, file) => 
+        file.downloadCount > max.downloadCount ? file : max, files[0] || {}),
+      fileTypeDistribution: files.reduce((acc, file) => {
+        const ext = file.fileName.split('.').pop().toLowerCase();
+        acc[ext] = (acc[ext] || 0) + file.downloadCount;
+        return acc;
+      }, {})
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Download tracking retrieved successfully",
+      data: {
+        downloadTracking,
+        statistics: downloadStats
+      }
+    });
+
+  } catch (error) {
+    console.error("Get project downloads error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve download tracking",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Apply discount codes to projects (Admin)
+ */
+export const applyDiscountToProject = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const {
+      discountCode,
+      discountType,
+      discountValue,
+      validUntil,
+      maxUses,
+      description
+    } = req.body;
+
+    // Validate project exists
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found"
+      });
+    }
+
+    // Create or update discount code
+    const [discount, created] = await DiscountCode.findOrCreate({
+      where: { code: discountCode },
+      defaults: {
+        code: discountCode,
+        description: description || `Discount for ${project.title}`,
+        discountType,
+        discountValue,
+        applicableType: 'project',
+        applicableCategories: [projectId],
+        validFrom: new Date(),
+        validUntil: new Date(validUntil),
+        maxUses: maxUses || null,
+        maxUsesPerUser: 1,
+        isActive: true,
+        createdBy: req.user.userId
+      }
+    });
+
+    if (!created && discount.applicableCategories.includes(projectId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Discount code already applied to this project"
+      });
+    }
+
+    // If discount exists but not applied to this project, add it
+    if (!created) {
+      const updatedCategories = [...discount.applicableCategories, projectId];
+      await discount.update({ applicableCategories: updatedCategories });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: created ? "Discount code created and applied successfully" : "Discount code applied to project successfully",
+      data: {
+        discountCode: discount,
+        project: {
+          id: project.id,
+          title: project.title,
+          originalPrice: project.price,
+          discountedPrice: discountType === 'percentage' ? 
+            (project.price * (1 - discountValue / 100)).toFixed(2) :
+            (project.price - discountValue).toFixed(2)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Apply discount to project error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to apply discount to project",
+      error: error.message
+    });
+  }
+};
+
+// ===================== HELPER FUNCTIONS =====================
+
+/**
+ * Helper function to get project analytics
+ */
+const getProjectAnalytics = async (projectId) => {
+  // Mock analytics - in real implementation, aggregate from various tables
+  return {
+    totalViews: Math.floor(Math.random() * 1000) + 100,
+    totalPurchases: Math.floor(Math.random() * 50) + 10,
+    totalDownloads: Math.floor(Math.random() * 200) + 50,
+    totalRevenue: Math.floor(Math.random() * 5000) + 500,
+    conversionRate: (Math.random() * 10 + 1).toFixed(2),
+    ratingTrend: 'increasing'
+  };
+};
+
+/**
+ * Helper function to get recent activity
+ */
+const getProjectRecentActivity = async (projectId) => {
+  // Mock recent activity
+  return [
+    { type: 'purchase', count: 3, date: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    { type: 'download', count: 15, date: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    { type: 'view', count: 45, date: new Date(Date.now() - 24 * 60 * 60 * 1000) }
+  ];
+};
+
 export default {
   createProject,
   getAllProjects,
@@ -941,5 +1502,10 @@ export default {
   initiateProjectPurchase,
   completeProjectPurchase,
   getUserPurchases,
-  getProjectStatistics
+  getProjectStatistics,
+  getAllProjectsAdmin,
+  getProjectDetailsAdmin,
+  getProjectBuyers,
+  getProjectDownloads,
+  applyDiscountToProject
 };

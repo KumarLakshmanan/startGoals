@@ -1,3 +1,9 @@
+// ===========================================================================================
+// PROJECT ROUTES - UNIFIED
+// Combined user-facing project functionality with comprehensive admin management features
+// Includes both public project operations and advanced admin analytics
+// ===========================================================================================
+
 import express from "express";
 import {
     createProject,
@@ -8,7 +14,13 @@ import {
     initiateProjectPurchase,
     completeProjectPurchase,
     getUserPurchases,
-    getProjectStatistics
+    getProjectStatistics,
+    // Admin management functions
+    getAllProjectsAdmin,
+    getProjectDetailsAdmin,
+    getProjectBuyers,
+    getProjectDownloads,
+    applyDiscountToProject
 } from "../controller/projectController.js";
 import { isAdmin, verifyToken } from "../middleware/authMiddleware.js";
 import { validateInput } from "../middleware/validationMiddleware.js";
@@ -156,6 +168,68 @@ router.get(
     ],
     validateInput,
     getProjectStatistics
+);
+
+// ===================== COMPREHENSIVE ADMIN MANAGEMENT ROUTES =====================
+
+/**
+ * @route GET /api/admin/projects
+ * @desc Get all projects with comprehensive analytics and filtering
+ * @access Private (Super Admin, Project Manager, Course Manager)
+ */
+router.get(
+    "/admin/projects",
+    verifyToken,
+    isAdmin,
+    getAllProjectsAdmin
+);
+
+/**
+ * @route GET /api/admin/projects/:projectId
+ * @desc Get detailed project information with analytics
+ * @access Private (Super Admin, Project Manager, Course Manager)
+ */
+router.get(
+    "/admin/projects/:projectId",
+    verifyToken,
+    isAdmin,
+    getProjectDetailsAdmin
+);
+
+/**
+ * @route GET /api/admin/projects/:projectId/buyers
+ * @desc View project buyer history and analytics
+ * @access Private (Super Admin, Project Manager, Payment Manager)
+ */
+router.get(
+    "/admin/projects/:projectId/buyers",
+    verifyToken,
+    isAdmin,
+    getProjectBuyers
+);
+
+/**
+ * @route GET /api/admin/projects/:projectId/downloads
+ * @desc Track project downloads and file statistics
+ * @access Private (Super Admin, Project Manager)
+ */
+router.get(
+    "/admin/projects/:projectId/downloads",
+    verifyToken,
+    isAdmin,
+    getProjectDownloads
+);
+
+/**
+ * @route POST /api/admin/projects/:projectId/apply-discount
+ * @desc Apply discount codes to projects
+ * @access Private (Super Admin, Project Manager, Payment Manager)
+ */
+router.post(
+    "/admin/projects/:projectId/apply-discount",
+    verifyToken,
+    isAdmin,
+    applyDiscountToProject
 );
 
 export default router;

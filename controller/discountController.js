@@ -849,6 +849,513 @@ export const getUserDiscountHistory = async (req, res) => {
   }
 };
 
+// ===================== COMPREHENSIVE ADMIN DISCOUNT MANAGEMENT =====================
+
+/**
+ * Get all discount codes with advanced filtering and analytics (Admin)
+ */
+export const getAllDiscountCodesAdmin = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      status,
+      discountType,
+      applicableTypes,
+      campaignName,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+      dateRange
+    } = req.query;
+
+    // Build where conditions
+    const whereConditions = {};
+
+    // Status filtering
+    if (status === 'active') {
+      whereConditions.isActive = true;
+      whereConditions.validFrom = { [Op.lte]: new Date() };
+      whereConditions.validUntil = { [Op.gte]: new Date() };
+    } else if (status === 'inactive') {
+      whereConditions.isActive = false;
+    } else if (status === 'expired') {
+      whereConditions.validUntil = { [Op.lt]: new Date() };
+    } else if (status === 'scheduled') {
+      whereConditions.validFrom = { [Op.gt]: new Date() };
+    } else if (status === 'usage_exhausted') {
+      whereConditions[Op.and] = [
+        sequelize.where(
+          sequelize.col('currentUsage'),
+          Op.gte,
+          sequelize.col('usageLimit')
+        ),
+        { usageLimit: { [Op.ne]: null } }
+      ];
+    }
+
+    // Discount type filtering
+    if (discountType) {
+      whereConditions.discountType = discountType;
+    }
+
+    // Search functionality
+    if (search) {
+      whereConditions[Op.or] = [
+        { code: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+
+    // Date range filtering
+    if (dateRange) {
+      const { startDate, endDate } = JSON.parse(dateRange);
+      if (startDate && endDate) {
+        whereConditions.createdAt = {
+          [Op.between]: [new Date(startDate), new Date(endDate)]
+        };
+      }
+    }
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const { count, rows: discountCodes } = await DiscountCode.findAndCountAll({
+      where: whereConditions,
+      include: [
+        {
+          model: User,
+          attributes: ['userId', 'firstName', 'lastName', 'email'],
+          as: 'creator'
+        }
+      ],
+      order: [[sortBy, sortOrder.toUpperCase()]],
+      limit: parseInt(limit),
+      offset,
+      distinct: true
+    });
+
+    // Calculate additional analytics for each discount code
+    const enrichedDiscountCodes = await Promise.all(
+      discountCodes.map(async (discount) => {
+        const discountData = discount.toJSON();
+        
+        // Calculate usage statistics        
+        const usageStats = await DiscountUsage.findAll({
+          where: { discountCodeId: discount.id },
+          attributes: [
+            [sequelize.fn('COUNT', sequelize.col('*')), 'totalUsages'],
+            [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscountGiven'],
+            [sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('userId'))), 'uniqueUsers']
+          ],
+          raw: true
+        });
+
+        // Get recent usage activity
+        const recentUsage = await DiscountUsage.findAll({
+          where: { 
+            discountCodeId: discount.id,
+            createdAt: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
+          },
+          include: [
+            {
+              model: User,
+              attributes: ['firstName', 'lastName', 'email']
+            }
+          ],
+          order: [['createdAt', 'DESC']],
+          limit: 5
+        });
+
+        // Calculate effectiveness metrics
+        const effectiveness = {
+          usageRate: discount.maxUses ? 
+            ((usageStats[0]?.totalUsages || 0) / discount.maxUses * 100).toFixed(2) : 
+            null,
+          avgDiscountPerUse: usageStats[0]?.totalUsages > 0 ? 
+            (usageStats[0]?.totalDiscountGiven / usageStats[0]?.totalUsages).toFixed(2) : 
+            0,
+          daysActive: Math.ceil((new Date() - new Date(discount.validFrom)) / (1000 * 60 * 60 * 24)),
+          daysRemaining: Math.ceil((new Date(discount.validUntil) - new Date()) / (1000 * 60 * 60 * 24))
+        };
+
+        return {
+          ...discountData,
+          usageStatistics: usageStats[0] || { totalUsages: 0, totalDiscountGiven: 0, uniqueUsers: 0 },
+          recentUsage,
+          effectiveness,
+          status: getDiscountStatus(discount)
+        };
+      })
+    );
+
+    // Calculate overall statistics
+    const overallStats = {
+      totalCodes: count,
+      activeCodesCount: enrichedDiscountCodes.filter(d => d.status === 'active').length,
+      expiredCodesCount: enrichedDiscountCodes.filter(d => d.status === 'expired').length,
+      scheduledCodesCount: enrichedDiscountCodes.filter(d => d.status === 'scheduled').length,
+      totalDiscountGiven: enrichedDiscountCodes.reduce((sum, d) => 
+        sum + (parseFloat(d.usageStatistics.totalDiscountGiven) || 0), 0
+      ),
+      totalUsages: enrichedDiscountCodes.reduce((sum, d) => 
+        sum + (parseInt(d.usageStatistics.totalUsages) || 0), 0
+      )
+    };
+
+    res.status(200).json({
+      success: true,
+      message: "Discount codes retrieved successfully",
+      data: {
+        discountCodes: enrichedDiscountCodes,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(count / parseInt(limit)),
+          totalRecords: count,
+          recordsPerPage: parseInt(limit)
+        },
+        overallStatistics: overallStats
+      }
+    });
+
+  } catch (error) {
+    console.error("Get all discount codes error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve discount codes",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get discount code usage analytics (Admin)
+ */
+export const getDiscountAnalytics = async (req, res) => {
+  try {
+    const { discountId } = req.params;
+    const {
+      period = '30d',
+      groupBy = 'day'
+    } = req.query;
+
+    // Validate discount code exists
+    const discountCode = await DiscountCode.findByPk(discountId);
+    if (!discountCode) {
+      return res.status(404).json({
+        success: false,
+        message: "Discount code not found"
+      });
+    }
+
+    // Calculate date range based on period
+    let dateFilter = {};
+    const now = new Date();
+    
+    switch (period) {
+      case '7d':
+        dateFilter = { [Op.gte]: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000) };
+        break;
+      case '30d':
+        dateFilter = { [Op.gte]: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) };
+        break;
+      case '90d':
+        dateFilter = { [Op.gte]: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000) };
+        break;
+      case '1y':
+        dateFilter = { [Op.gte]: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000) };
+        break;
+      default:
+        dateFilter = { [Op.gte]: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) };
+    }
+
+    // Get usage statistics over time
+    const usageOverTime = await DiscountUsage.findAll({
+      where: {
+        discountCodeId: discountId,
+        createdAt: dateFilter
+      },
+      attributes: [
+        [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
+        [sequelize.fn('COUNT', sequelize.col('*')), 'usageCount'],
+        [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount']
+      ],
+      group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
+      order: [[sequelize.fn('DATE', sequelize.col('createdAt')), 'ASC']]
+    });
+
+    // Get user demographics
+    const userDemographics = await DiscountUsage.findAll({
+      where: { discountCodeId: discountId },
+      include: [
+        {
+          model: User,
+          attributes: ['createdAt', 'role']
+        }
+      ],
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.fn('DISTINCT', sequelize.col('userId'))), 'uniqueUsers']
+      ]
+    });
+
+    // Get product usage breakdown
+    const productUsage = await DiscountUsage.findAll({
+      where: { discountCodeId: discountId },
+      attributes: [
+        [sequelize.col('courseId'), 'courseId'],
+        [sequelize.col('projectId'), 'projectId'],
+        [sequelize.fn('COUNT', sequelize.col('*')), 'usageCount'],
+        [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscount']
+      ],
+      include: [
+        {
+          model: Course,
+          attributes: ['title'],
+          required: false
+        },
+        {
+          model: Project,
+          attributes: ['title'],
+          required: false
+        }
+      ],
+      group: ['courseId', 'projectId', 'Course.id', 'Project.id']
+    });
+
+    const analytics = {
+      discountCode: discountCode.toJSON(),
+      usageOverTime,
+      userDemographics,
+      productUsage,
+      summary: {
+        totalUsages: usageOverTime.reduce((sum, item) => sum + parseInt(item.dataValues.usageCount), 0),
+        totalDiscountGiven: usageOverTime.reduce((sum, item) => sum + parseFloat(item.dataValues.totalDiscount || 0), 0),
+        avgDiscountPerUse: 0, // Will be calculated
+        conversionRate: 0 // Mock - would need additional data
+      }
+    };
+
+    // Calculate average discount per use
+    if (analytics.summary.totalUsages > 0) {
+      analytics.summary.avgDiscountPerUse = (analytics.summary.totalDiscountGiven / analytics.summary.totalUsages).toFixed(2);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Discount analytics retrieved successfully",
+      data: analytics
+    });
+
+  } catch (error) {
+    console.error("Get discount analytics error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve discount analytics",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Bulk update discount codes (Admin)
+ */
+export const bulkUpdateDiscountCodes = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const { discountIds, updateData } = req.body;
+
+    if (!Array.isArray(discountIds) || discountIds.length === 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Discount IDs array is required"
+      });
+    }
+
+    if (!updateData || Object.keys(updateData).length === 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Update data is required"
+      });
+    }
+
+    // Validate that we're not updating sensitive fields
+    const allowedFields = ['isActive', 'validUntil', 'maxUses', 'maxUsesPerUser', 'description'];
+    const updateFields = Object.keys(updateData);
+    const invalidFields = updateFields.filter(field => !allowedFields.includes(field));
+
+    if (invalidFields.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: `Invalid fields for bulk update: ${invalidFields.join(', ')}`
+      });
+    }
+
+    // Perform bulk update
+    const [updatedCount] = await DiscountCode.update(
+      updateData,
+      {
+        where: { id: { [Op.in]: discountIds } },
+        transaction
+      }
+    );
+
+    await transaction.commit();
+
+    res.status(200).json({
+      success: true,
+      message: `Successfully updated ${updatedCount} discount codes`,
+      data: {
+        updatedCount,
+        updateData
+      }
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Bulk update discount codes error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update discount codes",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Export discount code data (Admin)
+ */
+export const exportDiscountData = async (req, res) => {
+  try {
+    const {
+      format = 'json',
+      includeUsage = true,
+      dateFrom,
+      dateTo
+    } = req.query;
+
+    // Build where conditions
+    const whereConditions = {};
+    if (dateFrom && dateTo) {
+      whereConditions.createdAt = {
+        [Op.between]: [new Date(dateFrom), new Date(dateTo)]
+      };
+    }
+
+    // Get discount codes
+    const discountCodes = await DiscountCode.findAll({
+      where: whereConditions,
+      include: [
+        {
+          model: User,
+          as: 'creator',
+          attributes: ['firstName', 'lastName', 'email']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    let exportData = {
+      exportDate: new Date(),
+      totalRecords: discountCodes.length,
+      discountCodes: discountCodes.map(code => ({
+        id: code.id,
+        code: code.code,
+        description: code.description,
+        discountType: code.discountType,
+        discountValue: code.discountValue,
+        applicableType: code.applicableType,
+        isActive: code.isActive,
+        validFrom: code.validFrom,
+        validUntil: code.validUntil,
+        maxUses: code.maxUses,
+        currentUses: code.currentUses,
+        creator: code.creator ? `${code.creator.firstName} ${code.creator.lastName}` : null,
+        createdAt: code.createdAt
+      }))
+    };
+
+    // Include usage data if requested
+    if (includeUsage) {
+      const usageData = await DiscountUsage.findAll({
+        include: [
+          {
+            model: DiscountCode,
+            where: whereConditions,
+            attributes: ['code']
+          },
+          {
+            model: User,
+            attributes: ['firstName', 'lastName', 'email']
+          }
+        ]
+      });
+
+      exportData.usageData = usageData.map(usage => ({
+        discountCode: usage.DiscountCode.code,
+        user: `${usage.User.firstName} ${usage.User.lastName}`,
+        discountAmount: usage.discountAmount,
+        usedAt: usage.createdAt
+      }));
+    }
+
+    // Format response based on requested format
+    if (format === 'csv') {
+      // In a real implementation, you would convert to CSV format
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="discount_codes.csv"');
+    } else {
+      res.setHeader('Content-Type', 'application/json');
+      res.setHeader('Content-Disposition', 'attachment; filename="discount_codes.json"');
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Discount data exported successfully",
+      data: exportData
+    });
+
+  } catch (error) {
+    console.error("Export discount data error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to export discount data",
+      error: error.message
+    });
+  }
+};
+
+// ===================== HELPER FUNCTIONS =====================
+
+/**
+ * Helper function to determine discount status
+ */
+const getDiscountStatus = (discount) => {
+  const now = new Date();
+  const validFrom = new Date(discount.validFrom);
+  const validUntil = new Date(discount.validUntil);
+
+  if (!discount.isActive) {
+    return 'inactive';
+  }
+
+  if (now < validFrom) {
+    return 'scheduled';
+  }
+
+  if (now > validUntil) {
+    return 'expired';
+  }
+
+  if (discount.maxUses && discount.currentUses >= discount.maxUses) {
+    return 'usage_exhausted';
+  }
+
+  return 'active';
+};
+
 export default {
   createDiscountCode,
   getAllDiscountCodes,
@@ -857,5 +1364,9 @@ export default {
   deleteDiscountCode,
   validateDiscountCode,
   getDiscountUsageStatistics,
-  getUserDiscountHistory
+  getUserDiscountHistory,
+  getAllDiscountCodesAdmin,
+  getDiscountAnalytics,
+  bulkUpdateDiscountCodes,
+  exportDiscountData
 };

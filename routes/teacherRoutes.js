@@ -14,7 +14,7 @@ import {
   getTeacherPerformanceReport,
   getTeacherStudentFeedback,
   getTeacherAssignedCourses
-} from "../controller/teacherManagementController.js";
+} from "../controller/teacherController.js";
 
 const router = express.Router();
 

@@ -1,8 +1,17 @@
+// ===========================================================================================
+// RATING & REVIEW MANAGEMENT CONTROLLER
+// Unified controller for handling course ratings, instructor ratings, and review management
+// Combines user-facing rating functionality with comprehensive admin management features
+// ===========================================================================================
+
 import CourseRating from "../model/courseRating.js";
 import InstructorRating from "../model/instructorRating.js";
+import ProjectRating from "../model/projectRating.js";
 import Course from "../model/course.js";
+import Project from "../model/project.js";
 import User from "../model/user.js";
 import Enrollment from "../model/enrollment.js";
+import ProjectPurchase from "../model/projectPurchase.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 
@@ -435,6 +444,517 @@ export const markReviewHelpful = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
+    });  }
+};
+
+// ===================== COMPREHENSIVE REVIEW & RATING MANAGEMENT =====================
+
+/**
+ * Get all reviews with advanced filtering and moderation tools
+ * GET /api/admin/reviews
+ */
+export const getAllReviews = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      type = 'all', // all, course, project, instructor
+      status = 'all', // all, pending, approved, rejected, hidden
+      rating,
+      search,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+      dateRange,
+      flagged = false
+    } = req.query;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    let allReviews = [];
+
+    // Course Reviews
+    if (type === 'all' || type === 'course') {
+      const courseWhereConditions = {};
+      
+      if (status !== 'all') {
+        courseWhereConditions.status = status;
+      }
+      
+      if (rating) {
+        courseWhereConditions.rating = parseInt(rating);
+      }
+
+      if (flagged === 'true') {
+        courseWhereConditions.flaggedCount = { [Op.gt]: 0 };
+      }
+
+      if (search) {
+        courseWhereConditions[Op.or] = [
+          { review: { [Op.iLike]: `%${search}%` } },
+          { '$User.firstName$': { [Op.iLike]: `%${search}%` } },
+          { '$Course.title$': { [Op.iLike]: `%${search}%` } }
+        ];
+      }
+
+      if (dateRange) {
+        const dates = dateRange.split(',');
+        if (dates.length === 2) {
+          courseWhereConditions.createdAt = {
+            [Op.between]: [new Date(dates[0]), new Date(dates[1])]
+          };
+        }
+      }
+
+      const courseReviews = await CourseRating.findAll({
+        where: courseWhereConditions,
+        include: [
+          {
+            model: User,
+            attributes: ['userId', 'firstName', 'lastName', 'email', 'profileImage']
+          },
+          {
+            model: Course,
+            attributes: ['courseId', 'title', 'thumbnail']
+          }
+        ],
+        order: [[sortBy, sortOrder]],
+        raw: false
+      });
+
+      allReviews = allReviews.concat(
+        courseReviews.map(review => ({
+          ...review.dataValues,
+          type: 'course',
+          contentTitle: review.Course?.title,
+          userInfo: review.User
+        }))
+      );
+    }
+
+    // Project Reviews (if ProjectRating model exists)
+    if (type === 'all' || type === 'project') {
+      try {
+        const projectWhereConditions = {};
+        
+        if (status !== 'all') {
+          projectWhereConditions.status = status;
+        }
+        
+        if (rating) {
+          projectWhereConditions.rating = parseInt(rating);
+        }
+
+        if (flagged === 'true') {
+          projectWhereConditions.flaggedCount = { [Op.gt]: 0 };
+        }
+
+        if (search) {
+          projectWhereConditions[Op.or] = [
+            { review: { [Op.iLike]: `%${search}%` } },
+            { '$User.firstName$': { [Op.iLike]: `%${search}%` } },
+            { '$Project.title$': { [Op.iLike]: `%${search}%` } }
+          ];
+        }
+
+        if (dateRange) {
+          const dates = dateRange.split(',');
+          if (dates.length === 2) {
+            projectWhereConditions.createdAt = {
+              [Op.between]: [new Date(dates[0]), new Date(dates[1])]
+            };
+          }
+        }
+
+        const projectReviews = await ProjectRating.findAll({
+          where: projectWhereConditions,
+          include: [
+            {
+              model: User,
+              attributes: ['userId', 'firstName', 'lastName', 'email', 'profileImage']
+            },
+            {
+              model: Project,
+              attributes: ['projectId', 'title', 'thumbnail']
+            }
+          ],
+          order: [[sortBy, sortOrder]],
+          raw: false
+        });
+
+        allReviews = allReviews.concat(
+          projectReviews.map(review => ({
+            ...review.dataValues,
+            type: 'project',
+            contentTitle: review.Project?.title,
+            userInfo: review.User
+          }))
+        );
+      } catch (error) {
+        // Project ratings might not exist, skip silently
+        console.log("Project ratings not available:", error.message);
+      }
+    }
+
+    // Instructor Reviews
+    if (type === 'all' || type === 'instructor') {
+      const instructorWhereConditions = {};
+      
+      if (status !== 'all') {
+        instructorWhereConditions.moderationStatus = status;
+      }
+      
+      if (rating) {
+        instructorWhereConditions.rating = parseInt(rating);
+      }
+
+      if (flagged === 'true') {
+        instructorWhereConditions.flaggedCount = { [Op.gt]: 0 };
+      }
+
+      if (search) {
+        instructorWhereConditions[Op.or] = [
+          { review: { [Op.iLike]: `%${search}%` } },
+          { '$Reviewer.firstName$': { [Op.iLike]: `%${search}%` } },
+          { '$Instructor.firstName$': { [Op.iLike]: `%${search}%` } }
+        ];
+      }
+
+      if (dateRange) {
+        const dates = dateRange.split(',');
+        if (dates.length === 2) {
+          instructorWhereConditions.createdAt = {
+            [Op.between]: [new Date(dates[0]), new Date(dates[1])]
+          };
+        }
+      }
+
+      const instructorReviews = await InstructorRating.findAll({
+        where: instructorWhereConditions,
+        include: [
+          {
+            model: User,
+            as: 'Reviewer',
+            attributes: ['userId', 'firstName', 'lastName', 'email', 'profileImage']
+          },
+          {
+            model: User,
+            as: 'Instructor',
+            attributes: ['userId', 'firstName', 'lastName', 'email', 'profileImage']
+          }
+        ],
+        order: [[sortBy, sortOrder]],
+        raw: false
+      });
+
+      allReviews = allReviews.concat(
+        instructorReviews.map(review => ({
+          ...review.dataValues,
+          type: 'instructor',
+          contentTitle: `${review.Instructor?.firstName} ${review.Instructor?.lastName}`,
+          userInfo: review.Reviewer,
+          review: review.review
+        }))
+      );
+    }
+
+    // Sort all reviews together
+    allReviews.sort((a, b) => {
+      if (sortOrder === 'ASC') {
+        return new Date(a[sortBy]) - new Date(b[sortBy]);
+      }
+      return new Date(b[sortBy]) - new Date(a[sortBy]);
+    });
+
+    // Paginate results
+    const paginatedReviews = allReviews.slice(offset, offset + parseInt(limit));
+    const totalReviews = allReviews.length;
+
+    // Calculate statistics
+    const stats = {
+      total: totalReviews,
+      pending: allReviews.filter(r => r.status === 'pending' || r.moderationStatus === 'pending').length,
+      approved: allReviews.filter(r => r.status === 'approved' || r.moderationStatus === 'approved').length,
+      rejected: allReviews.filter(r => r.status === 'rejected' || r.moderationStatus === 'rejected').length,
+      flagged: allReviews.filter(r => (r.flaggedCount || 0) > 0).length,
+      averageRating: allReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews || 0
+    };
+
+    res.status(200).json({
+      success: true,
+      data: {
+        reviews: paginatedReviews,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalReviews / parseInt(limit)),
+          totalReviews,
+          hasNext: offset + parseInt(limit) < totalReviews,
+          hasPrev: parseInt(page) > 1
+        },
+        stats
+      }
+    });
+
+  } catch (error) {
+    console.error("Get all reviews error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch reviews",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Moderate a specific review (approve/reject/hide)
+ * PUT /api/admin/reviews/:id/moderate
+ */
+export const moderateReview = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, reason, type } = req.body; // action: approve, reject, hide
+    const adminId = req.user?.userId;
+
+    if (!['approve', 'reject', 'hide'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid moderation action"
+      });
+    }
+
+    let review = null;
+    let updateData = {
+      moderatedBy: adminId,
+      moderatedAt: new Date(),
+      moderationReason: reason
+    };
+
+    // Determine status based on action
+    const statusMap = {
+      approve: 'approved',
+      reject: 'rejected',
+      hide: 'hidden'
+    };
+
+    if (type === 'course') {
+      updateData.status = statusMap[action];
+      const [updatedRows] = await CourseRating.update(updateData, {
+        where: { ratingId: id },
+        returning: true
+      });
+
+      if (updatedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Course review not found"
+        });
+      }
+
+      review = await CourseRating.findByPk(id, {
+        include: [
+          { model: User, attributes: ['firstName', 'lastName', 'email'] },
+          { model: Course, attributes: ['title'] }
+        ]
+      });
+
+      // Update course average rating if approved
+      if (action === 'approve') {
+        await updateCourseAverageRating(review.courseId);
+      }
+
+    } else if (type === 'instructor') {
+      updateData.moderationStatus = statusMap[action];
+      const [updatedRows] = await InstructorRating.update(updateData, {
+        where: { ratingId: id },
+        returning: true
+      });
+
+      if (updatedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Instructor review not found"
+        });
+      }
+
+      review = await InstructorRating.findByPk(id, {
+        include: [
+          { model: User, as: 'Reviewer', attributes: ['firstName', 'lastName', 'email'] },
+          { model: User, as: 'Instructor', attributes: ['firstName', 'lastName', 'email'] }
+        ]
+      });
+
+      // Update instructor average rating if approved
+      if (action === 'approve') {
+        await updateInstructorAverageRating(review.instructorId);
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Review ${action}d successfully`,
+      data: { review, action, moderatedBy: adminId }
+    });
+
+  } catch (error) {
+    console.error("Moderate review error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to moderate review",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get review analytics and statistics
+ * GET /api/admin/reviews/analytics
+ */
+export const getReviewAnalytics = async (req, res) => {
+  try {
+    const { timeRange = '30d', type = 'all' } = req.query;
+
+    // Calculate date range
+    const now = new Date();
+    let startDate = new Date();
+    
+    switch (timeRange) {
+      case '7d':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(now.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(now.getDate() - 90);
+        break;
+      case '1y':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 30);
+    }
+
+    const dateFilter = {
+      createdAt: { [Op.gte]: startDate }
+    };
+
+    let analytics = {
+      totalReviews: 0,
+      averageRating: 0,
+      ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+      moderationStats: {
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        hidden: 0
+      },
+      flaggedReviews: 0,
+      reviewsByType: {
+        course: 0,
+        instructor: 0
+      },
+      topRatedContent: [],
+      recentActivity: []
+    };
+
+    // Course Reviews Analytics
+    if (type === 'all' || type === 'course') {
+      const courseReviews = await CourseRating.findAll({
+        where: dateFilter,
+        include: [{ model: Course, attributes: ['title'] }]
+      });
+
+      analytics.reviewsByType.course = courseReviews.length;
+      analytics.totalReviews += courseReviews.length;
+
+      courseReviews.forEach(review => {
+        analytics.averageRating += review.rating;
+        analytics.ratingDistribution[review.rating]++;
+        
+        if (review.status === 'pending') analytics.moderationStats.pending++;
+        else if (review.status === 'approved') analytics.moderationStats.approved++;
+        else if (review.status === 'rejected') analytics.moderationStats.rejected++;
+        else if (review.status === 'hidden') analytics.moderationStats.hidden++;
+
+        if ((review.flaggedCount || 0) > 0) analytics.flaggedReviews++;
+      });
+    }
+
+    // Instructor Reviews Analytics
+    if (type === 'all' || type === 'instructor') {
+      const instructorReviews = await InstructorRating.findAll({
+        where: dateFilter,
+        include: [{ model: User, as: 'Instructor', attributes: ['firstName', 'lastName'] }]
+      });
+
+      analytics.reviewsByType.instructor = instructorReviews.length;
+      analytics.totalReviews += instructorReviews.length;
+
+      instructorReviews.forEach(review => {
+        analytics.averageRating += review.rating;
+        analytics.ratingDistribution[review.rating]++;
+        
+        if (review.moderationStatus === 'pending') analytics.moderationStats.pending++;
+        else if (review.moderationStatus === 'approved') analytics.moderationStats.approved++;
+        else if (review.moderationStatus === 'rejected') analytics.moderationStats.rejected++;
+        else if (review.moderationStatus === 'hidden') analytics.moderationStats.hidden++;
+
+        if ((review.flaggedCount || 0) > 0) analytics.flaggedReviews++;
+      });
+    }
+
+    // Calculate final average
+    if (analytics.totalReviews > 0) {
+      analytics.averageRating = analytics.averageRating / analytics.totalReviews;
+    }
+
+    // Get top rated content
+    if (type === 'all' || type === 'course') {
+      const topCourses = await Course.findAll({
+        where: { averageRating: { [Op.gte]: 4.0 } },
+        order: [['averageRating', 'DESC'], ['totalRatings', 'DESC']],
+        limit: 5,
+        attributes: ['courseId', 'title', 'averageRating', 'totalRatings']
+      });
+      
+      analytics.topRatedContent.push(...topCourses.map(course => ({
+        type: 'course',
+        id: course.courseId,
+        title: course.title,
+        rating: course.averageRating,
+        totalRatings: course.totalRatings
+      })));
+    }
+
+    // Get recent activity (last 10 reviews)
+    const recentCourseReviews = await CourseRating.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 5,
+      include: [
+        { model: User, attributes: ['firstName', 'lastName'] },
+        { model: Course, attributes: ['title'] }
+      ]
+    });
+
+    analytics.recentActivity = recentCourseReviews.map(review => ({
+      type: 'course',
+      reviewId: review.ratingId,
+      rating: review.rating,
+      userName: `${review.User.firstName} ${review.User.lastName}`,
+      contentTitle: review.Course.title,
+      createdAt: review.createdAt,
+      status: review.status
+    }));
+
+    res.status(200).json({
+      success: true,
+      data: analytics
+    });
+
+  } catch (error) {
+    console.error("Get review analytics error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch review analytics",
+      error: error.message
     });
   }
 };
@@ -485,8 +1005,9 @@ async function updateInstructorAverageRating(instructorId) {
       totalRatings: totalRatings
     }, {
       where: { userId: instructorId, role: 'teacher' }
-    });
-  } catch (error) {
+    });  } catch (error) {
     console.error("Update instructor average rating error:", error);
   }
 }
+
+// All functions are exported individually above using 'export const'

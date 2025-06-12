@@ -1,7 +1,17 @@
+// ===========================================================================================
+// USER & STUDENT MANAGEMENT CONTROLLER
+// Unified controller for user registration, authentication, and comprehensive student management
+// Combines user-facing authentication with advanced admin student management features
+// ===========================================================================================
+
 import User from "../model/user.js";
 import Skill from "../model/skill.js";
 import Language from "../model/language.js";
 import Goal from "../model/goal.js";
+import Batch from "../model/batch.js";
+import BatchStudents from "../model/batchStudents.js";
+import Enrollment from "../model/enrollment.js";
+import CourseCategory from "../model/courseCategory.js";
 import { generateToken } from "../utils/jwtToken.js";
 import sequelize from "../config/db.js";
 import {
@@ -15,7 +25,6 @@ import { sendOtp } from "../utils/sendOtp.js";
 import Banner from "../model/banner.js";
 import Category from "../model/courseCategory.js";
 import Course from "../model/course.js";
-import Enrollment from "../model/enrollment.js";
 import Settings from "../model/settings.js";
 import { Op } from "sequelize";
 
@@ -549,12 +558,662 @@ export const getHomePage = async (req, res) => {
       company_name: settingsMap.company_name || "StartGoals"
     };
 
-    res.json(response);
-  } catch (error) {
+    res.json(response);  } catch (error) {
     console.error("Homepage API Error:", error);
     res.status(500).json({
       success: false,
       message: error.message || "Internal server error"
+    });
+  }
+};
+
+// ===================== COMPREHENSIVE STUDENT MANAGEMENT =====================
+
+/**
+ * Get All Students (Admin/Owner only)
+ * With filters, search, and pagination
+ */
+export const getAllStudents = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search,
+      status,
+      sortBy = 'createdAt',
+      sortOrder = 'DESC',
+      includeStats = true,
+      enrollmentStatus
+    } = req.query;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Build where conditions
+    const whereConditions = {
+      role: 'student'
+    };
+    
+    if (search) {
+      whereConditions[Op.or] = [
+        { firstName: { [Op.iLike]: `%${search}%` } },
+        { lastName: { [Op.iLike]: `%${search}%` } },
+        { username: { [Op.iLike]: `%${search}%` } },
+        { email: { [Op.iLike]: `%${search}%` } },
+        { mobile: { [Op.iLike]: `%${search}%` } }
+      ];
+    }
+    
+    if (status) whereConditions.isVerified = status === 'active';
+
+    // Include associations based on query params
+    const include = [];
+    
+    if (includeStats === 'true') {
+      include.push(
+        {
+          model: Enrollment,
+          as: 'enrollments',
+          include: [{ model: Course, attributes: ['title', 'thumbnail'] }],
+          required: false
+        },
+        {
+          model: BatchStudents,
+          as: 'batchEnrollments',
+          include: [{ model: Batch, attributes: ['batchName', 'status'] }],
+          required: false
+        }
+      );
+    }
+
+    const { count, rows: students } = await User.findAndCountAll({
+      where: whereConditions,
+      include,
+      limit: parseInt(limit),
+      offset,
+      order: [[sortBy, sortOrder]],
+      distinct: true
+    });
+
+    // Calculate stats for each student if requested
+    const studentsWithStats = await Promise.all(
+      students.map(async (student) => {
+        const studentData = student.toJSON();
+        
+        if (includeStats === 'true') {
+          // Calculate enrollment statistics
+          const enrollmentCount = await Enrollment.count({
+            where: { userId: student.userId }
+          });
+          
+          const completedCourses = await Enrollment.count({
+            where: { 
+              userId: student.userId,
+              completionStatus: 'completed'
+            }
+          });
+
+          const batchCount = await BatchStudents.count({
+            where: { userId: student.userId }
+          });
+
+          studentData.stats = {
+            totalEnrollments: enrollmentCount,
+            completedCourses,
+            activeBatches: batchCount,
+            completionRate: enrollmentCount > 0 ? (completedCourses / enrollmentCount * 100).toFixed(1) : 0
+          };
+        }
+
+        return studentData;
+      })
+    );
+
+    const totalPages = Math.ceil(count / parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      message: "Students retrieved successfully",
+      data: {
+        students: studentsWithStats,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages,
+          totalStudents: count,
+          studentsPerPage: parseInt(limit),
+          hasNextPage: parseInt(page) < totalPages,
+          hasPrevPage: parseInt(page) > 1
+        },
+        summary: {
+          totalStudents: count,
+          activeStudents: students.filter(s => s.isVerified).length,
+          inactiveStudents: students.filter(s => !s.isVerified).length
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error("Get all students error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve students",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get student by ID with detailed information
+ */
+export const getStudentById = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { includeProgress = true } = req.query;
+
+    const student = await User.findOne({
+      where: { 
+        userId: studentId, 
+        role: 'student' 
+      },
+      include: [
+        {
+          model: Enrollment,
+          as: 'enrollments',
+          include: [
+            {
+              model: Course,
+              attributes: ['courseId', 'title', 'thumbnail', 'category', 'level', 'duration']
+            }
+          ]
+        },
+        {
+          model: BatchStudents,
+          as: 'batchEnrollments',
+          include: [
+            {
+              model: Batch,
+              attributes: ['batchId', 'batchName', 'status', 'startDate', 'endDate']
+            }
+          ]
+        }
+      ]
+    });
+
+    if (!student) {
+      return res.status(404).json({
+        success: false,
+        message: "Student not found"
+      });
+    }
+
+    const studentData = student.toJSON();
+
+    // Add detailed statistics
+    if (includeProgress === 'true') {
+      const enrollments = studentData.enrollments || [];
+      const totalEnrollments = enrollments.length;
+      const completedCourses = enrollments.filter(e => e.completionStatus === 'completed').length;
+      const inProgressCourses = enrollments.filter(e => e.completionStatus === 'in_progress').length;
+      
+      studentData.progress = {
+        totalEnrollments,
+        completedCourses,
+        inProgressCourses,
+        notStartedCourses: totalEnrollments - completedCourses - inProgressCourses,
+        completionRate: totalEnrollments > 0 ? (completedCourses / totalEnrollments * 100).toFixed(1) : 0,
+        averageProgress: enrollments.length > 0 ? 
+          (enrollments.reduce((sum, e) => sum + (e.progressPercentage || 0), 0) / enrollments.length).toFixed(1) : 0
+      };
+
+      // Recent activity
+      const recentEnrollments = await Enrollment.findAll({
+        where: { userId: studentId },
+        include: [{ model: Course, attributes: ['title'] }],
+        order: [['updatedAt', 'DESC']],
+        limit: 5
+      });
+
+      studentData.recentActivity = recentEnrollments.map(enrollment => ({
+        courseTitle: enrollment.Course.title,
+        status: enrollment.completionStatus,
+        progress: enrollment.progressPercentage,
+        lastAccessed: enrollment.updatedAt
+      }));
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Student details retrieved successfully",
+      data: studentData
+    });
+
+  } catch (error) {
+    console.error("Get student by ID error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to retrieve student details",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Create new student (Admin)
+ */
+export const createStudent = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const {
+      firstName,
+      lastName,
+      username,
+      email,
+      mobile,
+      password,
+      dateOfBirth,
+      address,
+      city,
+      state,
+      country,
+      pincode,
+      emergencyContact,
+      isVerified = false
+    } = req.body;
+
+    // Validation
+    if (!firstName || !lastName || !email) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "First name, last name, and email are required"
+      });
+    }
+
+    if (!validateEmail(email)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format"
+      });
+    }
+
+    if (mobile && !validateMobile(mobile)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Invalid mobile number format"
+      });
+    }
+
+    // Check for existing user
+    const existingUser = await User.findOne({
+      where: {
+        [Op.or]: [
+          { email },
+          ...(mobile ? [{ mobile }] : []),
+          ...(username ? [{ username }] : [])
+        ]
+      }
+    });
+
+    if (existingUser) {
+      await transaction.rollback();
+      return res.status(409).json({
+        success: false,
+        message: "User with this email, mobile, or username already exists"
+      });
+    }
+
+    // Hash password if provided
+    let hashedPassword = null;
+    if (password) {
+      hashedPassword = await bcrypt.hash(password, 10);
+    }
+
+    // Create student
+    const student = await User.create({
+      firstName,
+      lastName,
+      username: username || `student_${Date.now()}`,
+      email,
+      mobile,
+      password: hashedPassword,
+      role: 'student',
+      dateOfBirth,
+      address,
+      city,
+      state,
+      country,
+      pincode,
+      emergencyContact,
+      isVerified,
+      isActive: true
+    }, { transaction });
+
+    await transaction.commit();
+
+    // Return student data without password
+    const { password: _, ...studentData } = student.toJSON();
+
+    res.status(201).json({
+      success: true,
+      message: "Student created successfully",
+      data: studentData
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Create student error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to create student",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Update student information
+ */
+export const updateStudent = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const { studentId } = req.params;
+    const updateData = req.body;
+
+    // Remove sensitive fields that shouldn't be updated via this endpoint
+    delete updateData.password;
+    delete updateData.role;
+    delete updateData.userId;
+
+    // Validate email if provided
+    if (updateData.email && !validateEmail(updateData.email)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Invalid email format"
+      });
+    }
+
+    // Validate mobile if provided
+    if (updateData.mobile && !validateMobile(updateData.mobile)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Invalid mobile number format"
+      });
+    }
+
+    // Check if student exists
+    const student = await User.findOne({
+      where: { userId: studentId, role: 'student' }
+    });
+
+    if (!student) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Student not found"
+      });
+    }
+
+    // Check for unique constraints if email/mobile/username are being updated
+    if (updateData.email || updateData.mobile || updateData.username) {
+      const whereConditions = {
+        userId: { [Op.ne]: studentId }
+      };
+
+      const orConditions = [];
+      if (updateData.email) orConditions.push({ email: updateData.email });
+      if (updateData.mobile) orConditions.push({ mobile: updateData.mobile });
+      if (updateData.username) orConditions.push({ username: updateData.username });
+
+      if (orConditions.length > 0) {
+        whereConditions[Op.or] = orConditions;
+
+        const existingUser = await User.findOne({ where: whereConditions });
+        if (existingUser) {
+          await transaction.rollback();
+          return res.status(409).json({
+            success: false,
+            message: "Email, mobile, or username already exists"
+          });
+        }
+      }
+    }
+
+    // Update student
+    await student.update(updateData, { transaction });
+
+    await transaction.commit();
+
+    // Return updated student data
+    const updatedStudent = await User.findByPk(studentId, {
+      attributes: { exclude: ['password'] }
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Student updated successfully",
+      data: updatedStudent
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Update student error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update student",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Delete student (soft delete)
+ */
+export const deleteStudent = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const { studentId } = req.params;
+    const { permanent = false } = req.query;
+
+    const student = await User.findOne({
+      where: { userId: studentId, role: 'student' }
+    });
+
+    if (!student) {
+      await transaction.rollback();
+      return res.status(404).json({
+        success: false,
+        message: "Student not found"
+      });
+    }
+
+    if (permanent === 'true') {
+      // Hard delete - remove all related data
+      await BatchStudents.destroy({ where: { userId: studentId }, transaction });
+      await Enrollment.destroy({ where: { userId: studentId }, transaction });
+      await student.destroy({ transaction });
+    } else {
+      // Soft delete - deactivate account
+      await student.update({ 
+        isActive: false,
+        deactivatedAt: new Date()
+      }, { transaction });
+    }
+
+    await transaction.commit();
+
+    res.status(200).json({
+      success: true,
+      message: permanent === 'true' ? "Student permanently deleted" : "Student deactivated successfully"
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Delete student error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete student",
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get student analytics and statistics
+ */
+export const getStudentAnalytics = async (req, res) => {
+  try {
+    const { timeRange = '30d' } = req.query;
+
+    // Calculate date range
+    const now = new Date();
+    let startDate = new Date();
+    
+    switch (timeRange) {
+      case '7d':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case '30d':
+        startDate.setDate(now.getDate() - 30);
+        break;
+      case '90d':
+        startDate.setDate(now.getDate() - 90);
+        break;
+      case '1y':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 30);
+    }
+
+    // Basic student counts
+    const totalStudents = await User.count({ where: { role: 'student' } });
+    const activeStudents = await User.count({ 
+      where: { role: 'student', isVerified: true, isActive: true } 
+    });
+    const newStudents = await User.count({
+      where: { 
+        role: 'student',
+        createdAt: { [Op.gte]: startDate }
+      }
+    });
+
+    // Enrollment statistics
+    const totalEnrollments = await Enrollment.count();
+    const activeEnrollments = await Enrollment.count({
+      where: { completionStatus: 'in_progress' }
+    });
+    const completedEnrollments = await Enrollment.count({
+      where: { completionStatus: 'completed' }
+    });
+
+    // Popular courses among students
+    const popularCourses = await Course.findAll({
+      attributes: [
+        'courseId',
+        'title',
+        [sequelize.fn('COUNT', sequelize.col('Enrollments.enrollmentId')), 'enrollmentCount']
+      ],
+      include: [
+        {
+          model: Enrollment,
+          attributes: [],
+          required: true
+        }
+      ],
+      group: ['Course.courseId', 'Course.title'],
+      order: [[sequelize.fn('COUNT', sequelize.col('Enrollments.enrollmentId')), 'DESC']],
+      limit: 10
+    });
+
+    // Student registration trends (last 12 months)
+    const registrationTrends = await User.findAll({
+      where: {
+        role: 'student',
+        createdAt: { [Op.gte]: new Date(now.getFullYear(), now.getMonth() - 11, 1) }
+      },
+      attributes: [
+        [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('createdAt')), 'month'],
+        [sequelize.fn('COUNT', sequelize.col('userId')), 'count']
+      ],
+      group: [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('createdAt'))],
+      order: [[sequelize.fn('DATE_TRUNC', 'month', sequelize.col('createdAt')), 'ASC']]
+    });
+
+    // Completion rates by category
+    const categoryStats = await CourseCategory.findAll({
+      attributes: [
+        'categoryId',
+        'categoryName',
+        [sequelize.fn('COUNT', sequelize.col('Courses.Enrollments.enrollmentId')), 'totalEnrollments'],
+        [sequelize.fn('SUM', sequelize.case()
+          .when(sequelize.col('Courses.Enrollments.completionStatus'), 'completed', 1)
+          .else(0)), 'completedEnrollments']
+      ],
+      include: [
+        {
+          model: Course,
+          include: [
+            {
+              model: Enrollment,
+              attributes: []
+            }
+          ],
+          attributes: []
+        }
+      ],
+      group: ['CourseCategory.categoryId', 'CourseCategory.categoryName'],
+      having: sequelize.where(sequelize.fn('COUNT', sequelize.col('Courses.Enrollments.enrollmentId')), '>', 0)
+    });
+
+    const analytics = {
+      overview: {
+        totalStudents,
+        activeStudents,
+        inactiveStudents: totalStudents - activeStudents,
+        newStudents,
+        growthRate: totalStudents > 0 ? ((newStudents / totalStudents) * 100).toFixed(1) : 0
+      },
+      enrollments: {
+        total: totalEnrollments,
+        active: activeEnrollments,
+        completed: completedEnrollments,
+        completionRate: totalEnrollments > 0 ? ((completedEnrollments / totalEnrollments) * 100).toFixed(1) : 0
+      },
+      popularCourses: popularCourses.map(course => ({
+        courseId: course.courseId,
+        title: course.title,
+        enrollments: parseInt(course.dataValues.enrollmentCount)
+      })),
+      registrationTrends: registrationTrends.map(trend => ({
+        month: trend.dataValues.month,
+        count: parseInt(trend.dataValues.count)
+      })),
+      categoryPerformance: categoryStats.map(cat => ({
+        category: cat.categoryName,
+        totalEnrollments: parseInt(cat.dataValues.totalEnrollments),
+        completedEnrollments: parseInt(cat.dataValues.completedEnrollments),
+        completionRate: cat.dataValues.totalEnrollments > 0 ? 
+          ((cat.dataValues.completedEnrollments / cat.dataValues.totalEnrollments) * 100).toFixed(1) : 0
+      }))
+    };
+
+    res.status(200).json({
+      success: true,
+      data: analytics
+    });
+
+  } catch (error) {
+    console.error("Get student analytics error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch student analytics",
+      error: error.message
     });
   }
 };
