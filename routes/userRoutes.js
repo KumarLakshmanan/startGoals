@@ -17,7 +17,8 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
-  getStudentAnalytics
+  getStudentAnalytics,
+  addUserSkills
 } from "../controller/userController.js";
 import passport from "passport";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
@@ -84,5 +85,12 @@ userRoutes.put("/admin/students/:studentId", isAdmin, updateStudent);
  * @access Private (Admin/Owner only)
  */
 userRoutes.delete("/admin/students/:studentId", isAdmin, deleteStudent);
+
+/**
+ * @route POST /api/admin/students/:studentId/skills
+ * @desc Add skills to student profile
+ * @access Private (Admin/Owner only)
+ */
+userRoutes.post("/admin/students/:studentId/skills", isAdmin, addUserSkills);
 
 export default userRoutes;

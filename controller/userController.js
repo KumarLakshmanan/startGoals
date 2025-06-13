@@ -19,6 +19,13 @@ import {
   validateMobile,
 } from "../utils/commonUtils.js";
 import bcrypt from "bcrypt";
+import { 
+    handleError, 
+    handleValidationError, 
+    handleNotFoundError, 
+    handleAuthorizationError,
+    successResponse 
+} from "../middleware/standardErrorHandler.js";
 
 // ✅ OTP-related imports
 import { sendOtp } from "../utils/sendOtp.js";
@@ -32,33 +39,19 @@ export const userRegistration = async (req, res) => {
   const trans = await sequelize.transaction();
 
   try {
-    const { username, email, mobile, password, role } = req.body;
-
-    if (!email && !mobile) {
-      return res.status(400).json({
-        message: "Email or mobile number is required",
-        status: false,
-      });
+    const { username, email, mobile, password, role } = req.body;    if (!email && !mobile) {
+      return handleValidationError(res, "Email or mobile number is required");
     }
 
     // ✅ Password is required only if role is not 'student'
     if (role !== "student" && !password) {
-      return res.status(400).json({
-        message: "Password is required for non-student roles",
-        status: false,
-      });
-    }
-
-    if (email && !validateEmail(email)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid email format", status: false });
+      return handleValidationError(res, "Password is required for non-student roles");
+    }    if (email && !validateEmail(email)) {
+      return handleValidationError(res, "Invalid email format");
     }
 
     if (mobile && !validateMobile(mobile)) {
-      return res
-        .status(400)
-        .json({ message: "Invalid mobile number format", status: false });
+      return handleValidationError(res, "Invalid mobile number format");
     }
 
     const existingUser = await User.findOne({
@@ -66,12 +59,8 @@ export const userRegistration = async (req, res) => {
         ...(email && { email }),
         ...(mobile && { mobile }),
       },
-    });
-
-    if (existingUser) {
-      return res
-        .status(409)
-        .json({ message: "User already exists", status: false });
+    });    if (existingUser) {
+      return handleValidationError(res, "User already exists");
     }
 
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
@@ -93,33 +82,19 @@ export const userRegistration = async (req, res) => {
 
     await sendOtp(identifier); // Rollback happens on failure
 
-    await trans.commit();
-
-    return res.status(201).json({
-      message: `OTP sent to ${identifier}`,
-      status: true,
-    });
+    await trans.commit();    return successResponse(res, null, `OTP sent to ${identifier}`, 201);
   } catch (error) {
     await trans.rollback();
     console.error("Registration error:", error);
-    return res.status(500).json({
-      message: "Server error during registration",
-      error: error.message,
-      status: false,
-    });
+    return handleError(res, error);
   }
 };
 
 // ✅ User Login
 export const userLogin = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
-
-    if (!identifier) {
-      return res.status(400).json({
-        message: "Email or mobile is required.",
-        status: false,
-      });
+    const { identifier, password } = req.body;    if (!identifier) {
+      return handleValidationError(res, "Email or mobile is required.");
     }
     let user;
 
@@ -127,87 +102,59 @@ export const userLogin = async (req, res) => {
     if (validateEmail(identifier)) {
       user = await User.findOne({ where: { email: identifier } });
     } else if (validateMobile(identifier)) {
-      user = await User.findOne({ where: { mobile: identifier } });
-    } else {
-      return res.status(400).json({
-        message: "Invalid email or mobile number format.",
-        status: false,
-      });
+      user = await User.findOne({ where: { mobile: identifier } });    } else {
+      return handleValidationError(res, "Invalid email or mobile number format.");
     }
 
     // Check if user exists
     if (!user) {
-      return res.status(401).json({
-        message: "Invalid credentials.",
-        status: false,
-      });
+      return handleAuthorizationError(res, "Invalid credentials.");
     }
 
     // ✅ Check if the user is verified
     if (!user.isVerified) {
-      return res.status(403).json({
-        message: "Account not verified. Please verify before logging in.",
-        status: false,
-      });
+      return handleAuthorizationError(res, "Account not verified. Please verify before logging in.");
     }
 
     if (user.role === "student") {
-      // 🟰 For student, send OTP immediately instead of checking password
-
-      // Send OTP
+      // 🟰 For student, send OTP immediately instead of checking password      // Send OTP
       await sendOtp(identifier); // ✅ sending OTP via utils/sendOtp.js
 
-      return res.status(200).json({
-        message: `OTP sent to ${identifier}. Please verify OTP to continue.`,
-        status: true,
-        needOtpVerification: true, // frontend can use this flag
-      });
+      return successResponse(res, {
+        needOtpVerification: true
+      }, `OTP sent to ${identifier}. Please verify OTP to continue.`);
     } else {
-      // 🔒 Other roles require password
-
-      if (!password) {
-        return res.status(400).json({
-          message: "Password is required for this user.",
-          status: false,
-        });
+      // 🔒 Other roles require password      if (!password) {
+        return handleValidationError(res, "Password is required for this user.");
       }
 
       // ✅ Check password match
       const isPasswordCorrect = await bcrypt.compare(password, user.password);
       if (!isPasswordCorrect) {
-        return res.status(401).json({
-          message: "Invalid credentials.",
-          status: false,
-        });
+        return handleAuthorizationError(res, "Invalid credentials.");
       }
 
       // ✅ Generate and send token
       const token = generateToken(user);
 
       // Track first login status
-      const isFirstLogin = user.firstLogin;
-
-      if (isFirstLogin) {
+      const isFirstLogin = user.firstLogin;      if (isFirstLogin) {
         await user.update({ firstLogin: false }); // Mark as logged in
       }
 
-      return res.status(200).json({
-        message: "Login successful.",
-        success: true,
-        data: {
-          userId: user.userId,
-          name: user.name,
-          email: user.email,
-          mobile: user.mobile,
-          role: user.role,
-          token,
-          isVerified: user.isVerified,
-          firstTimeLogin: isFirstLogin,
-        },
-      });
+      return successResponse(res, {
+        userId: user.userId,
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
+        role: user.role,
+        token,
+        isVerified: user.isVerified,
+        firstTimeLogin: isFirstLogin,
+      }, "Login successful.");
     }
   } catch (error) {
-    return res.status(500).json({ message: error.message, status: false });
+    return handleError(res, error);
   }
 };
 

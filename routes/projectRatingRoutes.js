@@ -11,6 +11,15 @@ import {
 import { isAdmin, verifyToken } from "../middleware/authMiddleware.js";
 import { validateInput } from "../middleware/validationMiddleware.js";
 import { body, param, query } from "express-validator";
+import { 
+    projectRatingValidation, 
+    validateSchema, 
+    asyncErrorHandler 
+} from "../middleware/fieldValidation.js";
+import { 
+    errorHandler, 
+    successResponse 
+} from "../middleware/standardErrorHandler.js";
 
 const router = express.Router();
 
@@ -19,14 +28,9 @@ const router = express.Router();
 // Add project rating (Purchased users only)
 router.post(
     "/",
-    verifyToken, // Add authentication
-    [
-        body("projectId").isInt().withMessage("Valid project ID is required"),
-        body("rating").isInt({ min: 1, max: 5 }).withMessage("Rating must be between 1 and 5"),
-        body("review").optional().isLength({ max: 1000 }).withMessage("Review must be under 1000 characters")
-    ],
-    validateInput,
-    addProjectRating
+    verifyToken,
+    validateSchema(projectRatingValidation.add),
+    asyncErrorHandler(addProjectRating)
 );
 
 // Get project ratings with pagination

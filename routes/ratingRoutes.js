@@ -17,16 +17,40 @@ import {
   getReviewAnalytics
 } from "../controller/ratingController.js";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
+import { 
+    courseRatingValidation, 
+    instructorRatingValidation,
+    validateSchema, 
+    asyncErrorHandler 
+} from "../middleware/fieldValidation.js";
+import { 
+    errorHandler, 
+    successResponse 
+} from "../middleware/standardErrorHandler.js";
 
 const router = express.Router();
 
 // Course rating endpoints
-router.post("/courses/:courseId", authenticateToken, rateCourse); // Rate a course
-router.get("/courses/:courseId", getCourseRatings); // Get course ratings (public)
+router.post("/courses/:courseId", 
+    authenticateToken, 
+    validateSchema(courseRatingValidation.rate),
+    asyncErrorHandler(rateCourse)
+);
+router.get("/courses/:courseId", 
+    validateSchema(courseRatingValidation.filter, 'query'),
+    asyncErrorHandler(getCourseRatings)
+);
 
 // Instructor rating endpoints
-router.post("/instructors/:instructorId", authenticateToken, rateInstructor); // Rate an instructor
-router.get("/instructors/:instructorId", getInstructorRatings); // Get instructor ratings (public)
+router.post("/instructors/:instructorId", 
+    authenticateToken, 
+    validateSchema(instructorRatingValidation.rate),
+    asyncErrorHandler(rateInstructor)
+);
+router.get("/instructors/:instructorId", 
+    validateSchema(instructorRatingValidation.filter, 'query'),
+    asyncErrorHandler(getInstructorRatings)
+);
 
 // Review interaction endpoints
 router.post("/helpful/:ratingId", authenticateToken, markReviewHelpful); // Mark review as helpful (authenticated users only)

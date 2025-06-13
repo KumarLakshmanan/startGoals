@@ -14,10 +14,16 @@ import Resource from "../model/resource.js";
 import User from "../model/user.js";
 import Enrollment from "../model/enrollment.js";
 import { Op } from "sequelize";
+import { 
+    handleError, 
+    handleValidationError, 
+    handleNotFoundError, 
+    handleAuthorizationError,
+    successResponse 
+} from "../middleware/standardErrorHandler.js";
 
 export const getCourseById = async (req, res) => {
   const { courseId } = req.params;
-
   // Basic UUID validation
   if (
     !courseId ||
@@ -25,16 +31,14 @@ export const getCourseById = async (req, res) => {
       courseId
     )
   ) {
-    return res.status(400).json({
-      status: false,
-      message: "Invalid course ID format.",
-    });
+    return handleValidationError(res, "Invalid course ID format.");
   }
 
   try {
     const course = await Course.findOne({
       where: { courseId },
       include: [
+        // ...existing includes...
         {
           model: CourseLevel,
           as: "level",
@@ -59,7 +63,6 @@ export const getCourseById = async (req, res) => {
           model: Language,
           through: { attributes: [] },
           attributes: ["languageId", "language", "languageCode"],
-          // course_languages join table
         },
         {
           model: CourseGoal,
@@ -101,23 +104,13 @@ export const getCourseById = async (req, res) => {
     });
 
     if (!course) {
-      return res.status(404).json({
-        status: false,
-        message: "Course not found.",
-      });
+      return handleNotFoundError(res, "Course not found.");
     }
 
-    return res.status(200).json({
-      status: true,
-      message: "Course fetched successfully.",
-      course,
-    });
+    return successResponse(res, course, "Course fetched successfully.");
   } catch (error) {
     console.error("Error fetching course:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred while fetching the course.",
-    });
+    return handleError(res, error);
   }
 };
 
@@ -144,29 +137,22 @@ export const createCourse = async (req, res) => {
   const createdBy = req.user?.userId; // Assuming userId is set in the request by auth middleware
   // Additional validation for UUID fields
   const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
-
   if (levelId && !uuidRegex.test(levelId)) {
-    return res.status(400).json({
-      status: false,
-      message: "Invalid levelId format. Must be a valid UUID.",
+    return handleValidationError(res, "Invalid levelId format. Must be a valid UUID.", {
       field: "levelId",
       value: levelId
     });
   }
 
   if (categoryId && !uuidRegex.test(categoryId)) {
-    return res.status(400).json({
-      status: false,
-      message: "Invalid categoryId format. Must be a valid UUID.",
+    return handleValidationError(res, "Invalid categoryId format. Must be a valid UUID.", {
       field: "categoryId",
       value: categoryId
     });
   }
 
   if (createdBy && !uuidRegex.test(createdBy)) {
-    return res.status(400).json({
-      status: false,
-      message: "Invalid createdBy format. Must be a valid UUID.",
+    return handleValidationError(res, "Invalid createdBy format. Must be a valid UUID.", {
       field: "createdBy",
       value: createdBy
     });
@@ -175,36 +161,24 @@ export const createCourse = async (req, res) => {
   // Validate course input
   const validationErrors = validateCourseInput(req.body);
   if (validationErrors.length > 0) {
-    return res.status(400).json({
-      status: false,
-      errors: validationErrors,
-    });
+    return handleValidationError(res, "Validation failed", { errors: validationErrors });
   }
   const transaction = await sequelize.transaction();
 
   try {
     if (
       (type === "live" || type === "hybrid") &&
-      (!liveStartDate || !liveEndDate)
-    ) {
+      (!liveStartDate || !liveEndDate)    ) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message:
-          "Live and Hybrid courses must have both liveStartDate and liveEndDate.",
-      });
-    }    // Step 1: Validate foreign key references exist
+      return handleValidationError(res, "Live and Hybrid courses must have both liveStartDate and liveEndDate.");
+    }// Step 1: Validate foreign key references exist
     const [levelExists, categoryExists, userExists] = await Promise.all([
       CourseLevel.findByPk(levelId, { transaction }),
       CourseCategory.findByPk(categoryId, { transaction }),
       User.findByPk(createdBy, { transaction })
-    ]);
-
-    if (!levelExists) {
+    ]);    if (!levelExists) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid levelId: Course level does not exist",
+      return handleValidationError(res, "Invalid levelId: Course level does not exist", {
         field: "levelId",
         value: levelId
       });
@@ -212,9 +186,7 @@ export const createCourse = async (req, res) => {
 
     if (!categoryExists) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid categoryId: Course category does not exist",
+      return handleValidationError(res, "Invalid categoryId: Course category does not exist", {
         field: "categoryId",
         value: categoryId
       });
@@ -222,9 +194,7 @@ export const createCourse = async (req, res) => {
 
     if (!userExists) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid createdBy: User does not exist",
+      return handleValidationError(res, "Invalid createdBy: User does not exist", {
         field: "createdBy",
         value: createdBy
       });
@@ -303,19 +273,11 @@ export const createCourse = async (req, res) => {
     }    // Step 8: Commit
     await transaction.commit();
 
-    return res.status(201).json({
-      status: true,
-      message: "Course created successfully!",
-      course: newCourse,
-    });
+    return successResponse(res, newCourse, "Course created successfully!", 201);
   } catch (error) {
     await transaction.rollback();
     console.error("Error creating course:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Error creating course",
-      error: error.message
-    });
+    return handleError(res, error);
   }
 };
 
@@ -338,13 +300,9 @@ export const updateCourse = async (req, res) => {
     liveEndDate,
     thumbnailUrl,
   } = req.body;
-
   // Validate input
   if (!courseId) {
-    return res.status(400).json({
-      status: false,
-      message: "courseId is required to update course",
-    });
+    return handleValidationError(res, "courseId is required to update course");
   }
 
   const validationErrors = validateCourseInput({
@@ -360,36 +318,22 @@ export const updateCourse = async (req, res) => {
   });
 
   if (validationErrors.length > 0) {
-    return res.status(400).json({
-      status: false,
-      errors: validationErrors,
-    });
+    return handleValidationError(res, "Validation failed", { errors: validationErrors });
   }
 
   const transaction = await sequelize.transaction();
 
   try {
     // Find course
-    const existingCourse = await Course.findByPk(courseId, { transaction });
-
-    if (!existingCourse) {
+    const existingCourse = await Course.findByPk(courseId, { transaction });    if (!existingCourse) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
-      });
-    }
-
-    // Validate live/hybrid course dates
+      return handleNotFoundError(res, "Course not found");
+    }    // Validate live/hybrid course dates
     if (
       (type === "live" || type === "hybrid") &&
       (!liveStartDate || !liveEndDate)
     ) {
-      return res.status(400).json({
-        status: false,
-        message:
-          "Live and Hybrid courses must have both liveStartDate and liveEndDate.",
-      });
+      return handleValidationError(res, "Live and Hybrid courses must have both liveStartDate and liveEndDate.");
     }
 
     // Step 1: Update course fields
@@ -465,22 +409,13 @@ export const updateCourse = async (req, res) => {
         );
         await CourseRequirement.bulkCreate(requirementRecords, { transaction });
       }
-    }
+    }    await transaction.commit();
 
-    await transaction.commit();
-
-    return res.status(200).json({
-      status: true,
-      message: "Course updated successfully!",
-      course: existingCourse,
-    });
+    return successResponse(res, existingCourse, "Course updated successfully!");
   } catch (error) {
     await transaction.rollback();
     console.error("Error updating course:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Error updating course",
-    });
+    return handleError(res, error);
   }
 };
 
@@ -549,14 +484,9 @@ export const getAllCourses = async (req, res) => {
       offset,
       order: [[sortBy, sortOrder.toUpperCase()]],
       distinct: true,
-    });
+    });    const totalPages = Math.ceil(count / parseInt(limit));
 
-    const totalPages = Math.ceil(count / parseInt(limit));
-
-    return res.status(200).json({
-      status: true,
-      message: "Courses fetched successfully.",
-      data: {
+    return successResponse(res, {
         courses,
         pagination: {
           currentPage: parseInt(page),
@@ -566,21 +496,16 @@ export const getAllCourses = async (req, res) => {
           hasNextPage: parseInt(page) < totalPages,
           hasPrevPage: parseInt(page) > 1,
         },
-      },
-    });
+      }, "Courses fetched successfully.");
   } catch (error) {
     console.error("Error fetching courses:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred while fetching courses.",
-    });
+    return handleError(res, error);
   }
 };
 
 export const deleteCourse = async (req, res) => {
   const { courseId } = req.params;
   const { hardDelete = false } = req.query;
-
   // Basic UUID validation
   if (
     !courseId ||
@@ -588,23 +513,15 @@ export const deleteCourse = async (req, res) => {
       courseId
     )
   ) {
-    return res.status(400).json({
-      status: false,
-      message: "Invalid course ID format.",
-    });
+    return handleValidationError(res, "Invalid course ID format.");
   }
 
   const transaction = await sequelize.transaction();
 
   try {
-    const course = await Course.findByPk(courseId, { transaction });
-
-    if (!course) {
+    const course = await Course.findByPk(courseId, { transaction });    if (!course) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Course not found.",
-      });
+      return handleNotFoundError(res, "Course not found.");
     }
 
     if (hardDelete === "true") {
@@ -621,28 +538,19 @@ export const deleteCourse = async (req, res) => {
 
       await transaction.commit();
 
-      return res.status(200).json({
-        status: true,
-        message: "Course permanently deleted successfully.",
-      });
+      return successResponse(res, null, "Course permanently deleted successfully.");
     } else {
       // Soft delete - just change status
       await course.update({ status: "deleted" }, { transaction });
 
       await transaction.commit();
 
-      return res.status(200).json({
-        status: true,
-        message: "Course deleted successfully.",
-      });
+      return successResponse(res, null, "Course deleted successfully.");
     }
   } catch (error) {
     await transaction.rollback();
     console.error("Error deleting course:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred while deleting the course.",
-    });
+    return handleError(res, error);
   }
 };
 
@@ -656,10 +564,7 @@ export const searchCourses = async (req, res) => {
     } = req.query;
 
     if (!q || q.trim().length < 2) {
-      return res.status(400).json({
-        status: false,
-        message: "Search query must be at least 2 characters long.",
-      });
+      return handleValidationError(res, "Search query must be at least 2 characters long.");
     }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -713,12 +618,7 @@ export const searchCourses = async (req, res) => {
       offset,
       order: [["createdAt", "DESC"]],
       distinct: true,
-    });
-
-    return res.status(200).json({
-      status: true,
-      message: "Search completed successfully.",
-      data: {
+    });    return successResponse(res, {
         searchQuery: searchTerm,
         courses,
         pagination: {
@@ -727,14 +627,10 @@ export const searchCourses = async (req, res) => {
           totalItems: count,
           itemsPerPage: parseInt(limit),
         },
-      },
-    });
+      }, "Search completed successfully.");
   } catch (error) {
     console.error("Error searching courses:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred while searching courses.",
-    });
+    return handleError(res, error);
   }
 };
 
@@ -781,15 +677,11 @@ export const getCoursesByInstructor = async (req, res) => {
           totalPages: Math.ceil(count / parseInt(limit)),
           totalItems: count,
           itemsPerPage: parseInt(limit),
-        },
-      },
-    });
+        },      },
+    }, "Instructor courses fetched successfully.");
   } catch (error) {
     console.error("Error fetching instructor courses:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred while fetching instructor courses.",
-    });
+    return handleError(res, error);
   }
 };
 
@@ -831,12 +723,7 @@ export const getCoursesByCategory = async (req, res) => {
       offset,
       order: [["createdAt", "DESC"]],
       distinct: true,
-    });
-
-    return res.status(200).json({
-      status: true,
-      message: "Category courses fetched successfully.",
-      data: {
+    });    return successResponse(res, {
         courses,
         pagination: {
           currentPage: parseInt(page),
@@ -844,57 +731,39 @@ export const getCoursesByCategory = async (req, res) => {
           totalItems: count,
           itemsPerPage: parseInt(limit),
         },
-      },
-    });
+      }, "Category courses fetched successfully.");
   } catch (error) {
     console.error("Error fetching category courses:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred while fetching category courses.",
-    });
+    return handleError(res, error);
   }
 };
 
 export const toggleCourseStatus = async (req, res) => {
   const { courseId } = req.params;
   const { status } = req.body;
-
   // Validate status
   const validStatuses = ["active", "inactive", "draft", "deleted"];
   if (!status || !validStatuses.includes(status)) {
-    return res.status(400).json({
-      status: false,
-      message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
-    });
+    return handleValidationError(res, `Invalid status. Must be one of: ${validStatuses.join(", ")}`);
   }
 
   try {
     const course = await Course.findByPk(courseId);
 
     if (!course) {
-      return res.status(404).json({
-        status: false,
-        message: "Course not found.",
-      });
+      return handleNotFoundError(res, "Course not found.");
     }
 
     await course.update({ status });
 
-    return res.status(200).json({
-      status: true,
-      message: `Course status updated to ${status} successfully.`,
-      course: {
+    return successResponse(res, {
         courseId: course.courseId,
         title: course.title,
         status: course.status,
-      },
-    });
+      }, `Course status updated to ${status} successfully.`);
   } catch (error) {
     console.error("Error updating course status:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred while updating course status.",
-    });
+    return handleError(res, error);
   }
 };
 
@@ -920,12 +789,7 @@ export const getCoursesStats = async (req, res) => {
       hybridCourses,
       paidCourses,
       freeCourses,
-    ] = stats;
-
-    return res.status(200).json({
-      status: true,
-      message: "Course statistics fetched successfully.",
-      stats: {
+    ] = stats;    return successResponse(res, {
         byStatus: {
           active: activeCourses,
           inactive: inactiveCourses,
@@ -941,14 +805,10 @@ export const getCoursesStats = async (req, res) => {
           paid: paidCourses,
           free: freeCourses,
         },
-      },
-    });
+      }, "Course statistics fetched successfully.");
   } catch (error) {
     console.error("Error fetching course statistics:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred while fetching course statistics.",
-    });
+    return handleError(res, error);
   }
 };
 

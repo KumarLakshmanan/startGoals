@@ -14,6 +14,13 @@ import Enrollment from "../model/enrollment.js";
 import ProjectPurchase from "../model/projectPurchase.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
+import { 
+    handleError, 
+    handleValidationError, 
+    handleNotFoundError, 
+    handleAuthorizationError,
+    successResponse 
+} from "../middleware/standardErrorHandler.js";
 
 // Create or update course rating
 export const rateCourse = async (req, res) => {

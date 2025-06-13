@@ -11,6 +11,13 @@ import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import path from "path";
 import fs from "fs";
+import { 
+    handleError, 
+    handleValidationError, 
+    handleNotFoundError, 
+    handleAuthorizationError,
+    successResponse 
+} from "../middleware/standardErrorHandler.js";
 
 // ===================== COMPREHENSIVE PROJECT MANAGEMENT =====================
 // This file combines both user-facing and admin project management functionality
@@ -45,25 +52,17 @@ export const createProject = async (req, res) => {
       estimatedTime
     } = req.body;
 
-    const userId = req.user.id; // From auth middleware
-
-    // Validate required fields
+    const userId = req.user.id; // From auth middleware    // Validate required fields
     if (!title || !description || !price || !categoryId) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Title, description, price and category are required"
-      });
+      return handleValidationError(res, "Title, description, price and category are required");
     }
 
     // Check if category exists
     const category = await CourseCategory.findByPk(categoryId);
     if (!category) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Category not found"
-      });
+      return handleNotFoundError(res, "Category not found");
     }
 
     // Create project
@@ -97,9 +96,7 @@ export const createProject = async (req, res) => {
         where: { id: { [Op.in]: tags } }
       });
       await project.setProjectTags(tagObjects, { transaction });
-    }
-
-    await transaction.commit();
+    }    await transaction.commit();
 
     // Fetch complete project with associations
     const completeProject = await Project.findByPk(project.id, {
@@ -122,20 +119,12 @@ export const createProject = async (req, res) => {
       ]
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Project created successfully",
-      data: completeProject
-    });
+    return successResponse(res, completeProject, "Project created successfully", 201);
 
   } catch (error) {
     await transaction.rollback();
     console.error("Create project error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create project",
-      error: error.message
-    });
+    return handleError(res, error);
   }
 };
 
@@ -253,28 +242,21 @@ export const getAllProjects = async (req, res) => {
       
       delete projectData.ratings; // Remove individual ratings from response
       return projectData;
-    });
+    });    const totalPages = Math.ceil(count / parseInt(limit));
 
-    const totalPages = Math.ceil(count / parseInt(limit));
-
-    res.json({
-      success: true,
-      data: formattedProjects,
+    return successResponse(res, {
+      projects: formattedProjects,
       pagination: {
         currentPage: parseInt(page),
         totalPages,
         totalItems: count,
         itemsPerPage: parseInt(limit)
       }
-    });
+    }, "Projects fetched successfully");
 
   } catch (error) {
     console.error("Get all projects error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch projects",
-      error: error.message
-    });
+    return handleError(res, error);
   }
 };
 
@@ -323,21 +305,13 @@ export const getProjectById = async (req, res) => {
           ]
         }
       ]
-    });
-
-    if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: "Project not found"
-      });
+    });    if (!project) {
+      return handleNotFoundError(res, "Project not found");
     }
 
     // Check if project is published or user is the creator
     if (project.status !== 'published' && project.createdBy !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "Project not available"
-      });
+      return handleAuthorizationError(res, "Project not available");
     }
 
     const projectData = project.toJSON();
@@ -363,24 +337,15 @@ export const getProjectById = async (req, res) => {
         }
       });
       projectData.hasPurchased = !!purchase;
-    }
-
-    // Increment view count
+    }    // Increment view count
     await project.increment('views');
     projectData.views = project.views + 1;
 
-    res.json({
-      success: true,
-      data: projectData
-    });
+    return successResponse(res, projectData, "Project fetched successfully");
 
   } catch (error) {
     console.error("Get project by ID error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch project",
-      error: error.message
-    });
+    return handleError(res, error);
   }
 };
 
@@ -391,24 +356,16 @@ export const updateProject = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const updateData = req.body;
-
-    const project = await Project.findByPk(id);
+    const updateData = req.body;    const project = await Project.findByPk(id);
     if (!project) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Project not found"
-      });
+      return handleNotFoundError(res, "Project not found");
     }
 
     // Check if user is creator or admin
     if (project.createdBy !== userId && req.user.role !== 'admin') {
       await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to update this project"
-      });
+      return handleAuthorizationError(res, "Not authorized to update this project");
     }
 
     // Update project
@@ -442,22 +399,12 @@ export const updateProject = async (req, res) => {
           through: { attributes: [] }
         }
       ]
-    });
-
-    res.json({
-      success: true,
-      message: "Project updated successfully",
-      data: updatedProject
-    });
+    });    return successResponse(res, updatedProject, "Project updated successfully");
 
   } catch (error) {
     await transaction.rollback();
     console.error("Update project error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update project",
-      error: error.message
-    });
+    return handleError(res, error);
   }
 };
 
@@ -467,55 +414,35 @@ export const deleteProject = async (req, res) => {
   
   try {
     const { id } = req.params;
-    const userId = req.user.id;
-
-    const project = await Project.findByPk(id);
+    const userId = req.user.id;    const project = await Project.findByPk(id);
     if (!project) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Project not found"
-      });
+      return handleNotFoundError(res, "Project not found");
     }
 
     // Check if user is creator or admin
     if (project.createdBy !== userId && req.user.role !== 'admin') {
       await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to delete this project"
-      });
+      return handleAuthorizationError(res, "Not authorized to delete this project");
     }
 
     // Check if project has purchases (prevent deletion)
     const purchaseCount = await ProjectPurchase.count({
       where: { projectId: id }
-    });
-
-    if (purchaseCount > 0) {
+    });    if (purchaseCount > 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Cannot delete project with existing purchases. Consider setting status to 'inactive' instead."
-      });
+      return handleValidationError(res, "Cannot delete project with existing purchases. Consider setting status to 'inactive' instead.");
     }
 
     await project.destroy({ transaction });
     await transaction.commit();
 
-    res.json({
-      success: true,
-      message: "Project deleted successfully"
-    });
+    return successResponse(res, null, "Project deleted successfully");
 
   } catch (error) {
     await transaction.rollback();
     console.error("Delete project error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete project",
-      error: error.message
-    });
+    return handleError(res, error);
   }
 };
 
@@ -527,24 +454,16 @@ export const initiateProjectPurchase = async (req, res) => {
   
   try {
     const { projectId, discountCode } = req.body;
-    const userId = req.user.id;
-
-    // Validate project
+    const userId = req.user.id;    // Validate project
     const project = await Project.findByPk(projectId);
     if (!project) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Project not found"
-      });
+      return handleNotFoundError(res, "Project not found");
     }
 
     if (project.status !== 'published') {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Project is not available for purchase"
-      });
+      return handleValidationError(res, "Project is not available for purchase");
     }
 
     // Check if user already purchased
@@ -554,14 +473,9 @@ export const initiateProjectPurchase = async (req, res) => {
         projectId,
         paymentStatus: 'completed'
       }
-    });
-
-    if (existingPurchase) {
+    });    if (existingPurchase) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "You have already purchased this project"
-      });
+      return handleValidationError(res, "You have already purchased this project");
     }
 
     let finalPrice = project.salePrice || project.price;
@@ -577,23 +491,15 @@ export const initiateProjectPurchase = async (req, res) => {
           validFrom: { [Op.lte]: new Date() },
           validUntil: { [Op.gte]: new Date() }
         }
-      });
-
-      if (!discount) {
+      });      if (!discount) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Invalid or expired discount code"
-        });
+        return handleValidationError(res, "Invalid or expired discount code");
       }
 
       // Check usage limits
       if (discount.maxUses && discount.currentUses >= discount.maxUses) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Discount code usage limit exceeded"
-        });
+        return handleValidationError(res, "Discount code usage limit exceeded");
       }
 
       if (discount.maxUsesPerUser) {
@@ -603,20 +509,14 @@ export const initiateProjectPurchase = async (req, res) => {
         
         if (userUsages >= discount.maxUsesPerUser) {
           await transaction.rollback();
-          return res.status(400).json({
-            success: false,
-            message: "You have reached the usage limit for this discount code"
-          });
+          return handleValidationError(res, "You have reached the usage limit for this discount code");
         }
       }
 
       // Check minimum purchase amount
       if (discount.minPurchaseAmount && finalPrice < discount.minPurchaseAmount) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: `Minimum purchase amount of $${discount.minPurchaseAmount} required for this discount`
-        });
+        return handleValidationError(res, `Minimum purchase amount of $${discount.minPurchaseAmount} required for this discount`);
       }
 
       // Apply discount
@@ -641,35 +541,25 @@ export const initiateProjectPurchase = async (req, res) => {
       discountCodeId,
       paymentStatus: 'pending',
       orderNumber: `PO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    }, { transaction });
+    }, { transaction });    await transaction.commit();
 
-    await transaction.commit();
-
-    res.status(201).json({
-      success: true,
-      message: "Purchase initiated successfully",
-      data: {
-        purchaseId: purchase.id,
-        orderNumber: purchase.orderNumber,
-        originalPrice: purchase.originalPrice,
-        discountAmount: purchase.discountAmount,
-        finalPrice: purchase.finalPrice,
-        project: {
-          id: project.id,
-          title: project.title,
-          previewImages: project.previewImages
-        }
+    return successResponse(res, {
+      purchaseId: purchase.id,
+      orderNumber: purchase.orderNumber,
+      originalPrice: purchase.originalPrice,
+      discountAmount: purchase.discountAmount,
+      finalPrice: purchase.finalPrice,
+      project: {
+        id: project.id,
+        title: project.title,
+        previewImages: project.previewImages
       }
-    });
+    }, "Purchase initiated successfully", 201);
 
   } catch (error) {
     await transaction.rollback();
     console.error("Initiate purchase error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to initiate purchase",
-      error: error.message
-    });
+    return handleError(res, error);
   }
 };
 
@@ -678,9 +568,7 @@ export const completeProjectPurchase = async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
-    const { purchaseId, paymentId, paymentStatus } = req.body;
-
-    const purchase = await ProjectPurchase.findByPk(purchaseId, {
+    const { purchaseId, paymentId, paymentStatus } = req.body;    const purchase = await ProjectPurchase.findByPk(purchaseId, {
       include: [
         { model: Project, as: "project" },
         { model: User, as: "user" },
@@ -690,10 +578,7 @@ export const completeProjectPurchase = async (req, res) => {
 
     if (!purchase) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Purchase not found"
-      });
+      return handleNotFoundError(res, "Purchase not found");
     }
 
     // Update purchase status
@@ -722,24 +607,14 @@ export const completeProjectPurchase = async (req, res) => {
         // Update discount code usage count
         await purchase.discountCode.increment('currentUses', { transaction });
       }
-    }
+    }    await transaction.commit();
 
-    await transaction.commit();
-
-    res.json({
-      success: true,
-      message: "Purchase status updated successfully",
-      data: purchase
-    });
+    return successResponse(res, purchase, "Purchase status updated successfully");
 
   } catch (error) {
     await transaction.rollback();
     console.error("Complete purchase error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update purchase status",
-      error: error.message
-    });
+    return handleError(res, error);
   }
 };
 
@@ -778,28 +653,21 @@ export const getUserPurchases = async (req, res) => {
       limit: parseInt(limit),
       offset: offset,
       order: [['completedAt', 'DESC']]
-    });
+    });    const totalPages = Math.ceil(count / parseInt(limit));
 
-    const totalPages = Math.ceil(count / parseInt(limit));
-
-    res.json({
-      success: true,
-      data: purchases,
+    return successResponse(res, {
+      purchases,
       pagination: {
         currentPage: parseInt(page),
         totalPages,
         totalItems: count,
         itemsPerPage: parseInt(limit)
       }
-    });
+    }, "Purchases fetched successfully");
 
   } catch (error) {
     console.error("Get user purchases error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch purchases",
-      error: error.message
-    });
+    return handleError(res, error);
   }
 };
 
@@ -906,32 +774,23 @@ export const getProjectStatistics = async (req, res) => {
       ],
       group: ['category.id', 'category.title'],
       order: [[sequelize.fn('COUNT', sequelize.col('Project.id')), 'DESC']]
-    });
-
-    res.json({
-      success: true,
-      data: {
-        overview: {
-          totalProjects,
-          publishedProjects,
-          totalSales,
-          totalRevenue,
-          periodSales,
-          periodRevenue
-        },
-        topProjects,
-        categoryDistribution: categoryStats,
-        period
-      }
-    });
+    });    return successResponse(res, {
+      overview: {
+        totalProjects,
+        publishedProjects,
+        totalSales,
+        totalRevenue,
+        periodSales,
+        periodRevenue
+      },
+      topProjects,
+      categoryDistribution: categoryStats,
+      period
+    }, "Project statistics fetched successfully");
 
   } catch (error) {
     console.error("Get project statistics error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch project statistics",
-      error: error.message
-    });
+    return handleError(res, error);
   }
 };
 

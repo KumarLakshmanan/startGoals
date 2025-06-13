@@ -59,12 +59,7 @@ export const bulkUploadSkills = async (req, res) => {
 export const getAllSkills = async (req, res) => {
   try {
     const skills = await Skill.findAll({
-      attributes: ["skillId", "skillName", "goalId"],
-      include: {
-        model: Goal,
-        as: "goal",
-        attributes: ["goalId", "goalName"],
-      },
+      attributes: ["skillId", "skillName"],
       order: [["createdAt", "ASC"]],
     });
 

@@ -4,34 +4,29 @@ import ProjectPurchase from "../model/projectPurchase.js";
 import User from "../model/user.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
+import { 
+    handleError, 
+    handleValidationError, 
+    handleNotFoundError, 
+    handleAuthorizationError,
+    successResponse 
+} from "../middleware/standardErrorHandler.js";
 
 // ===================== PROJECT RATING MANAGEMENT =====================
 
 // Add project rating (Purchased users only)
-export const addProjectRating = async (req, res) => {
+export const addProjectRating = async (req, res, next) => {
   const transaction = await sequelize.transaction();
   
   try {
     const { projectId, rating, review } = req.body;
     const userId = req.user.id;
 
-    // Validate rating value
-    if (rating < 1 || rating > 5) {
-      await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Rating must be between 1 and 5"
-      });
-    }
-
     // Check if project exists
     const project = await Project.findByPk(projectId);
     if (!project) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Project not found"
-      });
+      return handleNotFoundError(res, "Project not found");
     }
 
     // Check if user has purchased the project
@@ -45,10 +40,7 @@ export const addProjectRating = async (req, res) => {
 
     if (!purchase) {
       await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "You can only rate projects you have purchased"
-      });
+      return handleAuthorizationError(res, "You can only rate projects you have purchased");
     }
 
     // Check if user has already rated this project
@@ -58,10 +50,7 @@ export const addProjectRating = async (req, res) => {
 
     if (existingRating) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "You have already rated this project"
-      });
+      return handleValidationError(res, [{ field: 'projectId', message: 'You have already rated this project' }]);
     }
 
     // Create rating
@@ -95,20 +84,11 @@ export const addProjectRating = async (req, res) => {
       ]
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Rating added successfully",
-      data: completeRating
-    });
+    return successResponse(res, completeRating, "Rating added successfully", 201);
 
   } catch (error) {
     await transaction.rollback();
-    console.error("Add project rating error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to add rating",
-      error: error.message
-    });
+    return handleError(res, error, "Failed to add rating");
   }
 };
 

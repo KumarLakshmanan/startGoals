@@ -4,18 +4,20 @@ import Lesson from "../model/lesson.js";
 import sequelize from "../config/db.js";
 import Resource from "../model/resource.js";
 import Course from "../model/course.js";
+import { 
+    handleError, 
+    handleValidationError, 
+    handleNotFoundError, 
+    handleAuthorizationError,
+    successResponse 
+} from "../middleware/standardErrorHandler.js";
 
 //create section
 export const createSection = async (req, res) => {
   const { courseId, title, description, order, lessons } = req.body;
-
-  // Basic validation
+  // Basic validation - middleware handles detailed validation
   if (!courseId || !title || !Array.isArray(lessons)) {
-    return res.status(400).json({
-      status: false,
-      message:
-        "Missing required fields: courseId, title, or lessons must be provided",
-    });
+    return handleValidationError(res, "Missing required fields: courseId, title, or lessons must be provided");
   }
 
   const transaction = await sequelize.transaction();
@@ -25,10 +27,7 @@ export const createSection = async (req, res) => {
     const course = await Course.findByPk(courseId);
     if (!course) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
-      });
+      return handleNotFoundError(res, "Course not found");
     }
 
     // Create Section
@@ -42,6 +41,7 @@ export const createSection = async (req, res) => {
       { transaction }
     );
 
+    // ...existing code for lessons creation...
     // Create Lessons with Resources
     for (const lesson of lessons) {
       const {
@@ -55,14 +55,10 @@ export const createSection = async (req, res) => {
         resources,
       } = lesson;
 
-      // Lesson validation
+      // Lesson validation - detailed validation handled by middleware
       if (!title || !type || !["video", "article", "quiz"].includes(type)) {
         await transaction.rollback();
-        return res.status(400).json({
-          status: false,
-          message:
-            "Each lesson must have a valid title and type (video, article, quiz)",
-        });
+        return handleValidationError(res, "Each lesson must have a valid title and type (video, article, quiz)");
       }
 
       const newLesson = await Lesson.create(
@@ -91,11 +87,7 @@ export const createSection = async (req, res) => {
             )
           ) {
             await transaction.rollback();
-            return res.status(400).json({
-              status: false,
-              message:
-                "Each resource must have a valid title, fileUrl, and allowed type",
-            });
+            return handleValidationError(res, "Each resource must have a valid title, fileUrl, and allowed type");
           }
 
           await Resource.create(
@@ -113,18 +105,11 @@ export const createSection = async (req, res) => {
 
     await transaction.commit();
 
-    return res.status(201).json({
-      status: true,
-      message: "Section, lessons, and resources created successfully",
-      sectionId: section.sectionId,
-    });
+    return successResponse(res, { sectionId: section.sectionId }, "Section, lessons, and resources created successfully", 201);
   } catch (error) {
     console.error("Error creating section with lessons/resources:", error);
     await transaction.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return handleError(res, error);
   }
 };
 
@@ -132,34 +117,21 @@ export const createSection = async (req, res) => {
 export const updateSectionById = async (req, res) => {
   const { sectionId } = req.params;
   const { title, description, order } = req.body;
-
-  // Validation
+  // Validation - middleware handles detailed validation
   if (!sectionId) {
-    return res.status(400).json({
-      status: false,
-      message: "Section ID is required in the URL.",
-    });
+    return handleValidationError(res, "Section ID is required in the URL.");
   }
 
   if (title !== undefined && typeof title !== "string") {
-    return res.status(400).json({
-      status: false,
-      message: "Title must be a string.",
-    });
+    return handleValidationError(res, "Title must be a string.");
   }
 
   if (description !== undefined && typeof description !== "string") {
-    return res.status(400).json({
-      status: false,
-      message: "Description must be a string.",
-    });
+    return handleValidationError(res, "Description must be a string.");
   }
 
   if (order !== undefined && (typeof order !== "number" || order < 0)) {
-    return res.status(400).json({
-      status: false,
-      message: "Order must be a non-negative number.",
-    });
+    return handleValidationError(res, "Order must be a non-negative number.");
   }
 
   const transaction = await sequelize.transaction();
@@ -169,10 +141,7 @@ export const updateSectionById = async (req, res) => {
 
     if (!section) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Section not found",
-      });
+      return handleNotFoundError(res, "Section not found");
     }
 
     section.title = title !== undefined ? title : section.title;
@@ -183,40 +152,26 @@ export const updateSectionById = async (req, res) => {
     await section.save({ transaction });
     await transaction.commit();
 
-    return res.status(200).json({
-      status: true,
-      message: "Section updated successfully!",
-      section,
-    });
+    return successResponse(res, section, "Section updated successfully!");
   } catch (error) {
     console.error("Error updating section:", error);
     await transaction.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return handleError(res, error);
   }
 };
 
 //get all sections by its courseId
 export const getSectionsByCourseId = async (req, res) => {
   const { courseId } = req.params;
-
   if (!courseId) {
-    return res.status(400).json({
-      status: false,
-      message: "courseId parameter is required",
-    });
+    return handleValidationError(res, "courseId parameter is required");
   }
 
   try {
     // Ensure course exists
     const course = await Course.findByPk(courseId);
     if (!course) {
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
-      });
+      return handleNotFoundError(res, "Course not found");
     }
 
     const sections = await Section.findAll({
@@ -240,9 +195,7 @@ export const getSectionsByCourseId = async (req, res) => {
       attributes: {
         exclude: ["createdAt", "updatedAt", "deletedAt"],
       },
-    });
-
-    // Manual sorting of sections, lessons, and resources
+    });    // Manual sorting of sections, lessons, and resources
     sections.sort((a, b) => a.order - b.order);
     sections.forEach((section) => {
       section.lessons.sort((a, b) => a.order - b.order);
@@ -253,17 +206,10 @@ export const getSectionsByCourseId = async (req, res) => {
       });
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Sections fetched successfully",
-      sections,
-    });
+    return successResponse(res, sections, "Sections fetched successfully");
   } catch (error) {
     console.error("Error fetching sections:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return handleError(res, error);
   }
 };
 
@@ -288,13 +234,8 @@ export const getSectionById = async (req, res) => {
           order: [["order", "ASC"]], // ordering lessons within section
         },
       ],
-    });
-
-    if (!section) {
-      return res.status(404).json({
-        status: false,
-        message: "Section not found",
-      });
+    });    if (!section) {
+      return handleNotFoundError(res, "Section not found");
     }
 
     // Force nested sorting if Sequelize didn't fully sort nested arrays
@@ -305,16 +246,10 @@ export const getSectionById = async (req, res) => {
       }
     });
 
-    return res.status(200).json({
-      status: true,
-      section,
-    });
+    return successResponse(res, section, "Section fetched successfully");
   } catch (error) {
     console.error("Error fetching section by ID:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return handleError(res, error);
   }
 };
 

@@ -14,7 +14,12 @@ import bcrypt from "bcryptjs";
 const OTP_EXPIRY_MINUTES = 5;
 
 const generateOtp = (digits = 6) => {
-  return Math.floor(Math.random() * Math.pow(10, digits)).toString().padStart(digits, '0');
+  let numbers = "0123456789";
+  let otp = "";
+  for (let i = 0; i < digits; i++) {
+    otp += numbers[Math.floor(Math.random() * numbers.length)];
+  }
+  return otp;
 };
 
 // ✅ Send OTP (initial or for password reset)
