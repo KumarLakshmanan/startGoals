@@ -24,10 +24,10 @@ export const getAllBanners = async (req, res) => {
 
         const { count, rows: banners } = await Banner.findAndCountAll({
             where: whereClause,
-            attributes: ['id', 'title', 'image', 'createdAt', 'updatedAt'],
+            attributes: ['id', 'title', 'description', 'imageUrl', 'isActive', 'order', 'image', 'createdAt', 'updatedAt'],
             limit: parseInt(limit),
             offset,
-            order: [[sortBy, sortOrder.toUpperCase()]],
+            order: [['order', 'ASC'], [sortBy, sortOrder.toUpperCase()]],
         });
 
         const totalPages = Math.ceil(count / parseInt(limit));
@@ -69,7 +69,7 @@ export const getBannerById = async (req, res) => {
         }
 
         const banner = await Banner.findByPk(id, {
-            attributes: ['id', 'title', 'image', 'createdAt', 'updatedAt']
+            attributes: ['id', 'title', 'description', 'imageUrl', 'isActive', 'order', 'image', 'createdAt', 'updatedAt']
         });
 
         if (!banner) {
@@ -96,10 +96,17 @@ export const getBannerById = async (req, res) => {
 // Create new banner
 export const createBanner = async (req, res) => {
     try {
-        const { title, image } = req.body;
+        const { title, description, imageUrl, isActive = true, order = 1, image } = req.body;
 
         // Validation
-        if (!image) {
+        if (!title) {
+            return res.status(400).json({
+                success: false,
+                message: "Title is required"
+            });
+        }
+
+        if (!imageUrl && !image) {
             return res.status(400).json({
                 success: false,
                 message: "Image URL is required"
@@ -113,10 +120,35 @@ export const createBanner = async (req, res) => {
             });
         }
 
+        if (description && typeof description !== 'string') {
+            return res.status(400).json({
+                success: false,
+                message: "Description must be a string"
+            });
+        }
+
+        if (typeof isActive !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                message: "isActive must be a boolean"
+            });
+        }
+
+        if (order && (!Number.isInteger(order) || order < 0)) {
+            return res.status(400).json({
+                success: false,
+                message: "Order must be a positive integer"
+            });
+        }
+
         // Create banner
         const banner = await Banner.create({
-            title: title || null,
-            image
+            title,
+            description: description || null,
+            imageUrl: imageUrl || image, // Use imageUrl if provided, fallback to image for backward compatibility
+            isActive,
+            order,
+            image: image || imageUrl // Keep for backward compatibility
         });
 
         return res.status(201).json({
@@ -137,7 +169,7 @@ export const createBanner = async (req, res) => {
 export const updateBanner = async (req, res) => {
     try {
         const { id } = req.params;
-        const { title, image } = req.body;
+        const { title, description, imageUrl, isActive, order, image } = req.body;
 
         // Validation
         if (!id || isNaN(parseInt(id))) {
@@ -147,10 +179,10 @@ export const updateBanner = async (req, res) => {
             });
         }
 
-        if (!title && !image) {
+        if (!title && !description && !imageUrl && !image && isActive === undefined && order === undefined) {
             return res.status(400).json({
                 success: false,
-                message: "At least one field (title or image) is required to update"
+                message: "At least one field is required to update"
             });
         }
 
@@ -161,10 +193,31 @@ export const updateBanner = async (req, res) => {
             });
         }
 
-        if (image && typeof image !== 'string') {
+        if (description && typeof description !== 'string') {
             return res.status(400).json({
                 success: false,
-                message: "Image must be a valid URL string"
+                message: "Description must be a string"
+            });
+        }
+
+        if ((imageUrl && typeof imageUrl !== 'string') || (image && typeof image !== 'string')) {
+            return res.status(400).json({
+                success: false,
+                message: "Image URL must be a valid string"
+            });
+        }
+
+        if (isActive !== undefined && typeof isActive !== 'boolean') {
+            return res.status(400).json({
+                success: false,
+                message: "isActive must be a boolean"
+            });
+        }
+
+        if (order !== undefined && (!Number.isInteger(order) || order < 0)) {
+            return res.status(400).json({
+                success: false,
+                message: "Order must be a positive integer"
             });
         }
 
@@ -180,7 +233,17 @@ export const updateBanner = async (req, res) => {
         // Update banner
         const updateData = {};
         if (title !== undefined) updateData.title = title;
-        if (image !== undefined) updateData.image = image;
+        if (description !== undefined) updateData.description = description;
+        if (imageUrl !== undefined) {
+            updateData.imageUrl = imageUrl;
+            updateData.image = imageUrl; // Keep for backward compatibility
+        }
+        if (image !== undefined && !imageUrl) {
+            updateData.imageUrl = image;
+            updateData.image = image;
+        }
+        if (isActive !== undefined) updateData.isActive = isActive;
+        if (order !== undefined) updateData.order = order;
 
         await banner.update(updateData);
 
@@ -251,10 +314,17 @@ export const bulkCreateBanners = async (req, res) => {
 
         // Validate each banner
         for (const [index, banner] of banners.entries()) {
-            if (!banner.image) {
+            if (!banner.title) {
                 return res.status(400).json({
                     success: false,
-                    message: `Banner at index ${index} is missing required field: image`
+                    message: `Banner at index ${index} is missing required field: title`
+                });
+            }
+
+            if (!banner.imageUrl && !banner.image) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Banner at index ${index} is missing required field: imageUrl or image`
                 });
             }
 
@@ -265,16 +335,47 @@ export const bulkCreateBanners = async (req, res) => {
                 });
             }
 
-            if (typeof banner.image !== 'string') {
+            if (banner.description && typeof banner.description !== 'string') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Banner at index ${index} has invalid description (must be string)`
+                });
+            }
+
+            if ((banner.imageUrl && typeof banner.imageUrl !== 'string') || (banner.image && typeof banner.image !== 'string')) {
                 return res.status(400).json({
                     success: false,
                     message: `Banner at index ${index} has invalid image URL (must be string)`
                 });
             }
+
+            if (banner.isActive !== undefined && typeof banner.isActive !== 'boolean') {
+                return res.status(400).json({
+                    success: false,
+                    message: `Banner at index ${index} has invalid isActive (must be boolean)`
+                });
+            }
+
+            if (banner.order !== undefined && (!Number.isInteger(banner.order) || banner.order < 0)) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Banner at index ${index} has invalid order (must be positive integer)`
+                });
+            }
         }
 
+        // Process banners for creation
+        const processedBanners = banners.map(banner => ({
+            title: banner.title,
+            description: banner.description || null,
+            imageUrl: banner.imageUrl || banner.image,
+            isActive: banner.isActive !== undefined ? banner.isActive : true,
+            order: banner.order || 1,
+            image: banner.image || banner.imageUrl // Keep for backward compatibility
+        }));
+
         // Create banners
-        const createdBanners = await Banner.bulkCreate(banners, {
+        const createdBanners = await Banner.bulkCreate(processedBanners, {
             validate: true,
             returning: true
         });
@@ -299,9 +400,10 @@ export const getActiveBanners = async (req, res) => {
         const { limit = 10 } = req.query;
 
         const banners = await Banner.findAll({
-            attributes: ['id', 'title', 'image'],
+            where: { isActive: true },
+            attributes: ['id', 'title', 'description', 'imageUrl', 'order', 'image'],
             limit: parseInt(limit),
-            order: [['createdAt', 'DESC']]
+            order: [['order', 'ASC'], ['createdAt', 'DESC']]
         });
 
         return res.status(200).json({

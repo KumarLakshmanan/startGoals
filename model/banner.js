@@ -10,19 +10,37 @@ const Banner = sequelize.define(
       primaryKey: true,
       autoIncrement: true,
     },
-    image: {
+    title: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    imageUrl: {
       type: DataTypes.STRING(10000),
       allowNull: false,
     },
-    title: {
-      type: DataTypes.STRING,
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    order: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+    },
+    image: {
+      type: DataTypes.STRING(10000),
       allowNull: true,
     },
-    ...commonFields, // ⬅️ adds createdAt, updatedAt, deletedAt
+    ...commonFields,
   },
   {
     tableName: "banners",
-    ...commonOptions, // ⬅️ includes timestamps, paranoid, underscored
+    ...commonOptions,
   }
 );
 

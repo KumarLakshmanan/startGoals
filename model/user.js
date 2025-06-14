@@ -14,6 +14,25 @@ const User = sequelize.define(
     username: {
       type: DataTypes.STRING,
       allowNull: false,
+      unique: true,
+      validate: {
+        len: [3, 30],
+        isAlphanumeric: true,
+      },
+    },
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        len: [2, 50]
+      }
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        len: [2, 50]
+      }
     },
     email: {
       type: DataTypes.STRING,
@@ -70,7 +89,8 @@ const User = sequelize.define(
     isOnboarded: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-    },    goalId: {
+    },
+    goalId: {
       type: DataTypes.UUID,
       allowNull: true, // Allow null initially
       references: {

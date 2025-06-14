@@ -467,7 +467,7 @@ export const deleteDiscountCode = async (req, res) => {
 
     // Check if discount code has been used
     const usageCount = await DiscountUsage.count({
-      where: { discountCodeId: id }
+      where: { discountId: id }
     });
 
     if (usageCount > 0) {
@@ -554,7 +554,7 @@ export const validateDiscountCode = async (req, res) => {
 
     if (discountCode.maxUsesPerUser) {
       const userUsages = await DiscountUsage.count({
-        where: { userId, discountCodeId: discountCode.id }
+        where: { userId, discountId: discountCode.id }
       });
       
       if (userUsages >= discountCode.maxUsesPerUser) {
@@ -700,7 +700,7 @@ export const getDiscountUsageStatistics = async (req, res) => {
     };
 
     if (discountCodeId) {
-      whereConditions.discountCodeId = discountCodeId;
+      whereConditions.discountId = discountCodeId;
     }
 
     // Total usages and discount amount
@@ -941,7 +941,7 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
         
         // Calculate usage statistics        
         const usageStats = await DiscountUsage.findAll({
-          where: { discountCodeId: discount.id },
+          where: { discountId: discount.id },
           attributes: [
             [sequelize.fn('COUNT', sequelize.col('*')), 'totalUsages'],
             [sequelize.fn('SUM', sequelize.col('discountAmount')), 'totalDiscountGiven'],
@@ -953,7 +953,7 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
         // Get recent usage activity
         const recentUsage = await DiscountUsage.findAll({
           where: { 
-            discountCodeId: discount.id,
+            discountId: discount.id,
             createdAt: { [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } // Last 7 days
           },
           include: [
@@ -1085,7 +1085,7 @@ export const getDiscountAnalytics = async (req, res) => {
 
     // Get user demographics
     const userDemographics = await DiscountUsage.findAll({
-      where: { discountCodeId: discountId },
+      where: { discountId: discountId },
       include: [
         {
           model: User,
@@ -1099,7 +1099,7 @@ export const getDiscountAnalytics = async (req, res) => {
 
     // Get product usage breakdown
     const productUsage = await DiscountUsage.findAll({
-      where: { discountCodeId: discountId },
+      where: { discountId: discountId },
       attributes: [
         [sequelize.col('courseId'), 'courseId'],
         [sequelize.col('projectId'), 'projectId'],

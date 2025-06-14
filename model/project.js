@@ -201,11 +201,11 @@ const Project = sequelize.define(
         type: "BTREE",
       },
       {
-        fields: ["categoryId"],
+        fields: ["category_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["skillLevel"],
+        fields: ["skill_level"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
@@ -221,19 +221,19 @@ const Project = sequelize.define(
         type: "BTREE",
       },
       {
-        fields: ["averageRating"],
+        fields: ["average_rating"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["totalSales"],
+        fields: ["total_sales"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["createdAt"],
+        fields: ["created_at"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["publishedAt"],
+        fields: ["published_at"], // Fixed: use snake_case column name
         type: "BTREE",
       },
     ],

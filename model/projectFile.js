@@ -77,19 +77,19 @@ const ProjectFile = sequelize.define(
     ...commonOptions,
     indexes: [
       {
-        fields: ["projectId"],
+        fields: ["project_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["fileType"],
+        fields: ["file_type"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["isMain"],
+        fields: ["is_main"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["downloadOrder"],
+        fields: ["download_order"], // Fixed: use snake_case column name
         type: "BTREE",
       },
     ],

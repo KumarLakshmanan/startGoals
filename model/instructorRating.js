@@ -64,7 +64,7 @@ const InstructorRating = sequelize.define(
     moderationStatus: {
       type: DataTypes.ENUM("pending", "approved", "rejected", "hidden"),
       defaultValue: "pending",
-      comment: "Review moderation status",
+      // comment: "Review moderation status", // Temporarily commented to avoid Sequelize SQL generation bug
     },
     moderatedBy: {
       type: DataTypes.UUID,
@@ -87,15 +87,15 @@ const InstructorRating = sequelize.define(
     ...commonOptions,
     indexes: [
       {
-        fields: ["instructorId"],
+        fields: ["instructor_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["userId"],
+        fields: ["user_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["courseId"],
+        fields: ["course_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
@@ -103,17 +103,17 @@ const InstructorRating = sequelize.define(
         type: "BTREE",
       },
       {
-        fields: ["moderationStatus"],
+        fields: ["moderation_status"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["createdAt"],
+        fields: ["created_at"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
         // Ensure one rating per user per instructor per course
         unique: true,
-        fields: ["instructorId", "userId", "courseId"],
+        fields: ["instructor_id", "user_id", "course_id"], // Fixed: use snake_case column names
         name: "unique_instructor_user_course_rating",
       },
     ],

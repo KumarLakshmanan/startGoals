@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import Otp from "../model/otp.js";
 import bcrypt from "bcrypt";
 import { Op } from "sequelize";
+import { generateOtp } from "./commonUtils.js";
 
 dotenv.config();
 
@@ -176,9 +177,6 @@ export async function sendOtp(identifier) {
 
   if (deliveryMethod === "email") await sendEmailOtp(identifier, otp);
   else await sendSmsOtp(identifier, otp);
-}
-export function generateOtp() {
-  return Math.floor(1000 + Math.random() * 900000).toString();
 }
 
 // Verify OTP

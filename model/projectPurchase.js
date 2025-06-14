@@ -30,7 +30,7 @@ const ProjectPurchase = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
-      comment: "Generated order ID for tracking",
+      // comment: "Generated order ID for tracking", // Temporarily commented to avoid Sequelize SQL generation bug
     },    originalPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
@@ -41,12 +41,12 @@ const ProjectPurchase = sequelize.define(
       allowNull: true,
       comment: "Applied discount code",
     },
-    discountCodeId: {
+    discountId: {
       type: DataTypes.UUID,
       allowNull: true,
       references: {
         model: "discount_codes",
-        key: "discount_code_id",
+        key: "discount_id", // Fixed: should reference the actual primary key column
       },
       comment: "Foreign key to discount code record",
     },
@@ -132,29 +132,29 @@ const ProjectPurchase = sequelize.define(
     ...commonOptions,
     indexes: [
       {
-        fields: ["projectId"],
+        fields: ["project_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["userId"],
+        fields: ["user_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["orderId"],
+        fields: ["order_id"], // Fixed: use snake_case column name
         type: "BTREE",
         unique: true,
       },
       {
-        fields: ["paymentStatus"],
+        fields: ["payment_status"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["purchaseDate"],
+        fields: ["purchase_date"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
         unique: true,
-        fields: ["projectId", "userId"],
+        fields: ["project_id", "user_id"], // Fixed: use snake_case column names
         name: "unique_project_user_purchase",
       },
     ],

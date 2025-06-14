@@ -1,8 +1,10 @@
 // middleware/upload.js
 import multer from "multer";
-import multerS3 from "multer-s3";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { Upload } from "@aws-sdk/lib-storage";
 import { s3, bucketName } from "../config/awsS3Config.js";
 import path from "path";
+import crypto from "crypto";
 
 // Allowed field names and their S3 folder paths
 const folderMap = {
@@ -16,23 +18,113 @@ const folderMap = {
   projectFiles: "project-files/", // Alternative name for project files
 };
 
-const upload = multer({
-  storage: multerS3({
-    s3: s3,
-    bucket: bucketName,
-    acl: "public-read",
-    metadata: (req, file, cb) => {
-      cb(null, { fieldName: file.fieldname });
-    },
-    key: (req, file, cb) => {
-      const folder = folderMap[file.fieldname] || "others/"; // fallback folder
-      const fileExtension = path.extname(file.originalname);
-      const fileName = `${Date.now()}-${Math.floor(
-        Math.random() * 1000
-      )}${fileExtension}`;
-      cb(null, `${folder}${fileName}`);
-    },  }),
+// Custom S3 storage engine for AWS SDK v3
+class S3Storage {
+  constructor(options) {
+    this.s3 = options.s3;
+    this.bucket = options.bucket;
+    this.metadata = options.metadata;
+    this.key = options.key;
+  }
+
+  _handleFile(req, file, cb) {
+    const folder = folderMap[file.fieldname] || "others/";
+    const fileExtension = path.extname(file.originalname);
+    const fileName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${fileExtension}`;
+    const key = `${folder}${fileName}`;
+
+    const metadata = this.metadata ? this.metadata(req, file, (err, metadata) => metadata) : {};
+
+    const uploadParams = {
+      Bucket: this.bucket,
+      Key: key,
+      Body: file.stream,
+      ContentType: file.mimetype,
+      // Removed ACL parameter as bucket doesn't allow ACLs
+      Metadata: {
+        fieldName: file.fieldname,
+        ...metadata
+      }
+    };
+
+    const upload = new Upload({
+      client: this.s3,
+      params: uploadParams,
+    });
+
+    upload.done()
+      .then(result => {
+        // Generate public URL manually since we can't use ACL
+        const publicUrl = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
+        
+        cb(null, {
+          bucket: this.bucket,
+          key: key,
+          location: publicUrl, // Use constructed public URL
+          etag: result.ETag
+        });
+      })
+      .catch(err => {
+        cb(err);
+      });
+  }
+
+  _removeFile(req, file, cb) {
+    // Implement file removal if needed
+    cb(null);
+  }
+}
+
+// Custom multer storage
+const customS3Storage = new S3Storage({
+  s3: s3,
+  bucket: bucketName,
+  // Removed ACL configuration as bucket doesn't allow ACLs
+  metadata: (req, file, cb) => {
+    cb(null, { fieldName: file.fieldname });
+  },
+  key: (req, file, cb) => {
+    const folder = folderMap[file.fieldname] || "others/";
+    const fileExtension = path.extname(file.originalname);
+    const fileName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${fileExtension}`;
+    cb(null, `${folder}${fileName}`);
+  }
 });
+
+const upload = multer({
+  storage: customS3Storage,
+  limits: {
+    fileSize: 100 * 1024 * 1024, // 100MB file size limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Define allowed file types based on fieldname
+    const allowedTypes = {
+      thumbnail: /jpeg|jpg|png|gif|webp/,
+      video: /mp4|avi|mov|wmv|flv|webm/,
+      profileImage: /jpeg|jpg|png|gif|webp/,
+      resource: /pdf|doc|docx|ppt|pptx|txt|zip|rar/,
+      artical: /pdf|doc|docx|txt/,
+      banner: /jpeg|jpg|png|gif|webp/,
+      files: /.*/, // Allow all file types for project files
+      projectFiles: /.*/, // Allow all file types for project files
+    };
+
+    const fieldType = allowedTypes[file.fieldname] || /jpeg|jpg|png|gif/;
+    const extname = fieldType.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = fieldType.test(file.mimetype);
+
+    if (extname && mimetype) {
+      return cb(null, true);
+    } else {
+      cb(new Error(`Only ${file.fieldname} files are allowed!`));
+    }
+  },
+});
+
+// Export different upload configurations
+export const uploadSingle = (fieldName) => upload.single(fieldName);
+export const uploadMultiple = (fieldName, maxCount) => upload.array(fieldName, maxCount);
+export const uploadFields = (fields) => upload.fields(fields);
 
 export const fileUploadMiddleware = upload;
 export default upload;

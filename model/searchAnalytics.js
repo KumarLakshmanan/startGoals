@@ -74,7 +74,7 @@ const SearchAnalytics = sequelize.define(
       type: DataTypes.ENUM("enrollment", "inquiry", "view", "none"),
       allowNull: false,
       defaultValue: "none",
-      comment: "Type of conversion after search",
+      // comment: "Type of conversion after search", // Temporarily commented to avoid Sequelize SQL generation bug
     },
     conversionValue: {
       type: DataTypes.DECIMAL(10, 2),
@@ -88,23 +88,23 @@ const SearchAnalytics = sequelize.define(
     ...commonOptions,
     indexes: [
       {
-        fields: ["searchQuery"],
+        fields: ["search_query"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["userId"],
+        fields: ["user_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["searchType"],
+        fields: ["search_type"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["createdAt"],
+        fields: ["created_at"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["conversionType"],
+        fields: ["conversion_type"], // Fixed: use snake_case column name
         type: "BTREE",
       },
     ],

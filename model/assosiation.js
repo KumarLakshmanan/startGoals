@@ -540,12 +540,12 @@ ProjectPurchase.belongsTo(User, {
 
 // ProjectPurchase belongs to DiscountCode (optional)
 ProjectPurchase.belongsTo(DiscountCode, {
-  foreignKey: "discountCodeId",
+  foreignKey: "discount_id",
   as: "appliedDiscountCode",
 });
 
 DiscountCode.hasMany(ProjectPurchase, {
-  foreignKey: "discountCodeId",
+  foreignKey: "discount_id",
   as: "projectPurchases",
 });
 
@@ -608,7 +608,7 @@ User.hasMany(DiscountCode, {
 // DiscountCode can apply to categories
 DiscountCode.belongsToMany(CourseCategory, {
   through: "discount_categories",
-  foreignKey: "discount_code_id",
+  foreignKey: "discount_id", // Corrected to match actual primary key
   otherKey: "category_id",
   as: "discountCategories",
   onDelete: "CASCADE",
@@ -617,20 +617,20 @@ DiscountCode.belongsToMany(CourseCategory, {
 CourseCategory.belongsToMany(DiscountCode, {
   through: "discount_categories",
   foreignKey: "category_id",
-  otherKey: "discount_code_id",
+  otherKey: "discount_id", // Corrected to match actual primary key
   as: "discountCodes",
   onDelete: "CASCADE",
 });
 
 // DiscountUsage associations
 DiscountCode.hasMany(DiscountUsage, {
-  foreignKey: "discountCodeId",
+  foreignKey: "discount_id",
   as: "usages",
   onDelete: "CASCADE",
 });
 
 DiscountUsage.belongsTo(DiscountCode, {
-  foreignKey: "discountCodeId",
+  foreignKey: "discount_id",
   as: "discountCode",
 });
 

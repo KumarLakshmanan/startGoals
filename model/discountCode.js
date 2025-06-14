@@ -127,23 +127,23 @@ const DiscountCode = sequelize.define(
         unique: true,
       },
       {
-        fields: ["validFrom", "validUntil"],
+        fields: ["valid_from", "valid_until"], // Fixed: use snake_case column names
         type: "BTREE",
       },
       {
-        fields: ["isActive"],
+        fields: ["is_active"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["discountType"],
+        fields: ["discount_type"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["createdBy"],
+        fields: ["created_by"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["campaignName"],
+        fields: ["campaign_name"], // Fixed: use snake_case column name
         type: "BTREE",
       },
     ],

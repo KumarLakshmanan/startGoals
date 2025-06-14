@@ -12,9 +12,9 @@ export const isValidSkill = (skill) => {
   return typeof skill === "string" && skill.trim().length > 0;
 };
 
-export function generateOtp() {
-  return Math.floor(1000 + Math.random() * 900000).toString();
-}
+export const generateOtp = (digits = 6) => {
+  return Math.floor(Math.random() * Math.pow(10, digits)).toString().padStart(digits, '0');
+};
 
 export const validateCourseInput = (courseData) => {
   const errors = [];

@@ -72,27 +72,27 @@ const DiscountUsage = sequelize.define(
     ...commonOptions,
     indexes: [
       {
-        fields: ["discountId"],
+        fields: ["discount_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["userId"],
+        fields: ["user_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["orderId"],
+        fields: ["order_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["itemType", "itemId"],
+        fields: ["item_type", "item_id"], // Fixed: use snake_case column names
         type: "BTREE",
       },
       {
-        fields: ["usedAt"],
+        fields: ["used_at"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["discountId", "userId"],
+        fields: ["discount_id", "user_id"], // Fixed: use snake_case column names
         type: "BTREE",
       },
     ],

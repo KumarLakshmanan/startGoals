@@ -86,11 +86,11 @@ const ProjectRating = sequelize.define(
     ...commonOptions,
     indexes: [
       {
-        fields: ["projectId"],
+        fields: ["project_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["userId"],
+        fields: ["user_id"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
@@ -98,16 +98,16 @@ const ProjectRating = sequelize.define(
         type: "BTREE",
       },
       {
-        fields: ["moderationStatus"],
+        fields: ["moderation_status"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
-        fields: ["createdAt"],
+        fields: ["created_at"], // Fixed: use snake_case column name
         type: "BTREE",
       },
       {
         unique: true,
-        fields: ["projectId", "userId"],
+        fields: ["project_id", "user_id"], // Fixed: use snake_case column names
         name: "unique_project_user_rating",
       },
     ],

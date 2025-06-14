@@ -566,7 +566,7 @@ export const initiateProjectPurchase = async (req, res) => {
 
     let finalPrice = project.salePrice || project.price;
     let discountAmount = 0;
-    let discountCodeId = null;
+    let discountId = null;
 
     // Apply discount code if provided
     if (discountCode) {
@@ -598,7 +598,7 @@ export const initiateProjectPurchase = async (req, res) => {
 
       if (discount.maxUsesPerUser) {
         const userUsages = await DiscountUsage.count({
-          where: { userId, discountCodeId: discount.id }
+          where: { userId, discountId: discount.id }
         });
         
         if (userUsages >= discount.maxUsesPerUser) {
@@ -628,7 +628,7 @@ export const initiateProjectPurchase = async (req, res) => {
 
       discountAmount = Math.min(discountAmount, finalPrice); // Don't exceed original price
       finalPrice = finalPrice - discountAmount;
-      discountCodeId = discount.id;
+      discountId = discount.id;
     }
 
     // Create purchase record
@@ -638,7 +638,7 @@ export const initiateProjectPurchase = async (req, res) => {
       originalPrice: project.salePrice || project.price,
       discountAmount,
       finalPrice,
-      discountCodeId,
+      discountId,
       paymentStatus: 'pending',
       orderNumber: `PO-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
     }, { transaction });
@@ -709,10 +709,10 @@ export const completeProjectPurchase = async (req, res) => {
       await purchase.project.increment('totalSales', { transaction });
 
       // Record discount usage if discount was applied
-      if (purchase.discountCodeId) {
+      if (purchase.discountId) {
         await DiscountUsage.create({
           userId: purchase.userId,
-          discountCodeId: purchase.discountCodeId,
+          discountId: purchase.discountId,
           projectId: purchase.projectId,
           discountAmount: purchase.discountAmount,
           originalAmount: purchase.originalPrice,

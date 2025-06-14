@@ -16,11 +16,11 @@ const router = express.Router();
 router.get("/active", getActiveBanners); // Get active banners for public use
 
 // Admin routes (require authentication and admin role)
-router.get("/", isAdmin, getAllBanners); // Get all banners with pagination
-router.get("/:id", isAdmin, getBannerById); // Get banner by ID
-router.post("/", isAdmin, createBanner); // Create new banner
-router.put("/:id", isAdmin, updateBanner); // Update banner by ID
-router.delete("/:id", isAdmin, deleteBanner); // Delete banner by ID
-router.post("/bulk", isAdmin, bulkCreateBanners); // Bulk create banners
+router.get("/getAll", getAllBanners); // Get all banners with pagination
+router.get("/get/:id", isAdmin, getBannerById); // Get banner by ID
+router.post("/create", isAdmin, createBanner); // Create new banner
+router.put("/update:id", isAdmin, updateBanner); // Update banner by ID
+router.delete("/delete/:id", isAdmin, deleteBanner); // Delete banner by ID
+router.post("/bulkCreate", isAdmin, bulkCreateBanners); // Bulk create banners
 
 export default router;

@@ -32,7 +32,15 @@ export const userRegistration = async (req, res) => {
   const trans = await sequelize.transaction();
 
   try {
-    const { username, email, mobile, password, role } = req.body;
+    const { firstName, lastName, email, mobile, password, role } = req.body;
+
+    // Validate required fields
+    if (!firstName || !lastName) {
+      return res.status(400).json({
+        message: "First name and last name are required",
+        status: false,
+      });
+    }
 
     if (!email && !mobile) {
       return res.status(400).json({
@@ -78,7 +86,8 @@ export const userRegistration = async (req, res) => {
 
     const newUser = await User.create(
       {
-        username,
+        firstName,
+        lastName,
         email: email || null,
         mobile: mobile || null,
         password: hashedPassword,
@@ -196,7 +205,8 @@ export const userLogin = async (req, res) => {
         success: true,
         data: {
           userId: user.userId,
-          name: user.name,
+          firstName: user.firstName,
+          lastName: user.lastName,
           email: user.email,
           mobile: user.mobile,
           role: user.role,
@@ -238,8 +248,14 @@ export const googleCallback = async (req, res) => {
 
     // If not, create the user
     if (!user) {
+      // Extract first and last name from Google profile
+      const nameParts = profile.name.split(' ');
+      const firstName = nameParts[0] || 'User';
+      const lastName = nameParts.slice(1).join(' ') || 'Name';
+
       user = await User.create({
-        username: profile.name,
+        firstName,
+        lastName,
         email: profile.email,
         profileImage: profile.picture || null,
         googleId: profile.sub, // Save Google user ID here
@@ -462,7 +478,7 @@ export const getHomePage = async (req, res) => {
 
     // Get all banners
     const banners = await Banner.findAll({
-      attributes: ['id', 'title', 'image'],
+      attributes: ['id', 'title', 'description', 'imageUrl', 'order'],
       order: [['createdAt', 'DESC']]
     });
 
@@ -597,7 +613,6 @@ export const getAllStudents = async (req, res) => {
       whereConditions[Op.or] = [
         { firstName: { [Op.iLike]: `%${search}%` } },
         { lastName: { [Op.iLike]: `%${search}%` } },
-        { username: { [Op.iLike]: `%${search}%` } },
         { email: { [Op.iLike]: `%${search}%` } },
         { mobile: { [Op.iLike]: `%${search}%` } }
       ];
@@ -806,7 +821,6 @@ export const createStudent = async (req, res) => {
     const {
       firstName,
       lastName,
-      username,
       email,
       mobile,
       password,
@@ -850,8 +864,7 @@ export const createStudent = async (req, res) => {
       where: {
         [Op.or]: [
           { email },
-          ...(mobile ? [{ mobile }] : []),
-          ...(username ? [{ username }] : [])
+          ...(mobile ? [{ mobile }] : [])
         ]
       }
     });
@@ -860,7 +873,7 @@ export const createStudent = async (req, res) => {
       await transaction.rollback();
       return res.status(409).json({
         success: false,
-        message: "User with this email, mobile, or username already exists"
+        message: "User with this email or mobile already exists"
       });
     }
 
@@ -874,7 +887,6 @@ export const createStudent = async (req, res) => {
     const student = await User.create({
       firstName,
       lastName,
-      username: username || `student_${Date.now()}`,
       email,
       mobile,
       password: hashedPassword,
@@ -958,8 +970,8 @@ export const updateStudent = async (req, res) => {
       });
     }
 
-    // Check for unique constraints if email/mobile/username are being updated
-    if (updateData.email || updateData.mobile || updateData.username) {
+    // Check for unique constraints if email/mobile are being updated
+    if (updateData.email || updateData.mobile) {
       const whereConditions = {
         userId: { [Op.ne]: studentId }
       };
@@ -967,7 +979,6 @@ export const updateStudent = async (req, res) => {
       const orConditions = [];
       if (updateData.email) orConditions.push({ email: updateData.email });
       if (updateData.mobile) orConditions.push({ mobile: updateData.mobile });
-      if (updateData.username) orConditions.push({ username: updateData.username });
 
       if (orConditions.length > 0) {
         whereConditions[Op.or] = orConditions;
@@ -977,7 +988,7 @@ export const updateStudent = async (req, res) => {
           await transaction.rollback();
           return res.status(409).json({
             success: false,
-            message: "Email, mobile, or username already exists"
+            message: "Email or mobile already exists"
           });
         }
       }
