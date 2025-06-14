@@ -20,20 +20,6 @@ const User = sequelize.define(
         isAlphanumeric: true,
       },
     },
-    firstName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        len: [2, 50]
-      }
-    },
-    lastName: {
-      type: DataTypes.STRING,
-      allowNull: false,
-      validate: {
-        len: [2, 50]
-      }
-    },
     email: {
       type: DataTypes.STRING,
       allowNull: true,
