@@ -274,8 +274,10 @@ export async function validateOtp(req, res) {
     const isValid = await verifyOtp(identifier, otp);
     if (!isValid) {
       return res.status(400).json({
-        error: "Invalid or expired OTP",
+        message: "Invalid or expired OTP",
         status: false,
+        success: false,
+        data: null,
       });
     }
 
@@ -288,8 +290,10 @@ export async function validateOtp(req, res) {
 
     if (!user) {
       return res.status(404).json({
-        error: "User not found",
+        message: "User not found",
         status: false,
+        success: false,
+        data: null,
       });
     }
 
@@ -302,26 +306,30 @@ export async function validateOtp(req, res) {
     // ✅ Generate token
     const token = generateToken(user);
 
-    return res.json({
+    return res.status(200).json({
       message: "OTP verification successful",
       status: true,
+      success: true,
       data: {
         userId: user.userId,
-        name: user.username,
+        name: user.username || user.firstName || user.email,
         email: user.email,
         mobile: user.mobile,
         profileImage: user.profileImage,
         role: user.role,
         isVerified: user.isVerified,
-        firstTimeLogin: user.firstLogin, // if you are tracking it
+        firstTimeLogin: user.firstLogin,
         token,
       },
     });
   } catch (err) {
     console.error("Error validating OTP:", err);
-    res.status(500).json({
-      error: "Internal server error during OTP verification",
+    return res.status(500).json({
+      message: "Internal server error during OTP verification",
       status: false,
+      success: false,
+      data: null,
+      error: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error',
     });
   }
 }

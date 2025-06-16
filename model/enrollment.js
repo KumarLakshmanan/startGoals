@@ -26,13 +26,18 @@ const Enrollment = sequelize.define(
         key: "course_id", // Foreign key in Course model
       },
     },
+    enrollmentDate: {
+      type: DataTypes.DATE,
+      defaultValue: DataTypes.NOW,
+      allowNull: false,
+    },
     enrolledAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
     validTill: {
       type: DataTypes.DATE,
-      allowNull: false,
+      allowNull: true,
     },
     batchId: {
       type: DataTypes.UUID,
@@ -41,6 +46,65 @@ const Enrollment = sequelize.define(
         model: "batches",
         key: "batch_id",
       },
+    },
+    // Payment related fields
+    paymentStatus: {
+      type: DataTypes.ENUM('pending', 'completed', 'failed', 'refunded'),
+      defaultValue: 'pending',
+      allowNull: false,
+    },
+    paymentId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Razorpay payment ID',
+    },
+    orderId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: 'Razorpay order ID',
+    },
+    amountPaid: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      comment: 'Amount paid for the course',
+    },
+    paymentMethod: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'razorpay',
+    },
+    // Course progress fields
+    completionStatus: {
+      type: DataTypes.ENUM('not_started', 'in_progress', 'completed', 'dropped'),
+      defaultValue: 'not_started',
+      allowNull: false,
+    },
+    progressPercentage: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      allowNull: false,
+      validate: {
+        min: 0,
+        max: 100,
+      },
+    },
+    enrollmentType: {
+      type: DataTypes.ENUM('live', 'recorded'),
+      allowNull: true,
+      comment: 'Type of course enrolled in',
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      allowNull: false,
+    },
+    completedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastAccessedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
     },
     ...commonFields, // Include shared fields like createdAt, updatedAt, deletedAt
   },

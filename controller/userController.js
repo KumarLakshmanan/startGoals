@@ -1,9 +1,3 @@
-// ===========================================================================================
-// USER & STUDENT MANAGEMENT CONTROLLER
-// Unified controller for user registration, authentication, and comprehensive student management
-// Combines user-facing authentication with advanced admin student management features
-// ===========================================================================================
-
 import User from "../model/user.js";
 import Skill from "../model/skill.js";
 import Language from "../model/language.js";
@@ -35,6 +29,7 @@ export const userRegistration = async (req, res) => {
     const { username, email, mobile, password, role } = req.body;
 
     if (!email && !mobile) {
+      await trans.rollback();
       return res.status(400).json({
         message: "Email or mobile number is required",
         status: false,
@@ -43,6 +38,7 @@ export const userRegistration = async (req, res) => {
 
     // ✅ Password is required only if role is not 'student'
     if (role !== "student" && !password) {
+      await trans.rollback();
       return res.status(400).json({
         message: "Password is required for non-student roles",
         status: false,
@@ -50,30 +46,62 @@ export const userRegistration = async (req, res) => {
     }
 
     if (email && !validateEmail(email)) {
+      await trans.rollback();
       return res
         .status(400)
         .json({ message: "Invalid email format", status: false });
     }
 
     if (mobile && !validateMobile(mobile)) {
+      await trans.rollback();
       return res
         .status(400)
         .json({ message: "Invalid mobile number format", status: false });
     }
+    // Check for existing email
+    if (email) {
+      const existingEmail = await User.findOne({
+        where: { email },
+        transaction: trans
+      });
 
-    const existingUser = await User.findOne({
-      where: {
-        ...(email && { email }),
-        ...(mobile && { mobile }),
-      },
-    });
-
-    if (existingUser) {
-      return res
-        .status(409)
-        .json({ message: "User already exists", status: false });
+      if (existingEmail) {
+        await trans.rollback();
+        return res
+          .status(409)
+          .json({ message: "This email is already registered", status: false });
+      }
     }
 
+    // Check for existing username
+    if (username) {
+      const existingUsername = await User.findOne({
+        where: { username },
+        transaction: trans
+      });
+
+      if (existingUsername) {
+        await trans.rollback();
+        return res
+          .status(409)
+          .json({ message: "This username is already taken", status: false });
+      }
+    }
+
+    // Check for existing mobile
+    if (mobile) {
+      const existingMobile = await User.findOne({
+        where: { mobile },
+        transaction: trans
+      });
+
+      if (existingMobile) {
+        await trans.rollback();
+        return res
+          .status(409)
+          .json({ message: "This mobile number is already registered", status: false });
+      }
+    }
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const newUser = await User.create(
@@ -91,8 +119,20 @@ export const userRegistration = async (req, res) => {
 
     const identifier = email || mobile;
 
-    await sendOtp(identifier); // Rollback happens on failure
+    try {
+      // Try to send OTP
+      await sendOtp(identifier);
+    } catch (otpError) {
+      // If OTP sending fails, rollback the transaction
+      await trans.rollback();
+      console.error("OTP sending error:", otpError);
+      return res.status(500).json({
+        message: "Failed to send OTP. Please try again.",
+        status: false,
+      });
+    }
 
+    // If everything succeeded, commit the transaction
     await trans.commit();
 
     return res.status(201).json({
@@ -115,12 +155,16 @@ export const userLogin = async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
+    // Validate required fields
     if (!identifier) {
       return res.status(400).json({
         message: "Email or mobile is required.",
         status: false,
+        success: false,
+        data: null,
       });
     }
+
     let user;
 
     // Determine if identifier is email or mobile
@@ -132,43 +176,66 @@ export const userLogin = async (req, res) => {
       return res.status(400).json({
         message: "Invalid email or mobile number format.",
         status: false,
+        success: false,
+        data: null,
       });
     }
 
     // Check if user exists
     if (!user) {
       return res.status(401).json({
-        message: "Invalid credentials.",
+        message: "Invalid credentials. Please check your email/mobile and password.",
         status: false,
+        success: false,
+        data: null,
       });
     }
 
     // ✅ Check if the user is verified
     if (!user.isVerified) {
       return res.status(403).json({
-        message: "Account not verified. Please verify before logging in.",
+        message: "Account not verified. Please verify your account before logging in.",
         status: false,
+        success: false,
+        data: null,
       });
     }
 
     if (user.role === "student") {
       // 🟰 For student, send OTP immediately instead of checking password
+      try {
+        await sendOtp(identifier); // ✅ sending OTP via utils/sendOtp.js
 
-      // Send OTP
-      await sendOtp(identifier); // ✅ sending OTP via utils/sendOtp.js
-
-      return res.status(200).json({
-        message: `OTP sent to ${identifier}. Please verify OTP to continue.`,
-        status: true,
-        needOtpVerification: true, // frontend can use this flag
-      });
+        return res.status(200).json({
+          message: `OTP sent to ${identifier}. Please verify OTP to continue.`,
+          status: true,
+          success: true,
+          needOtpVerification: true, // frontend can use this flag
+          data: {
+            userId: user.userId,
+            email: user.email,
+            mobile: user.mobile,
+            role: user.role,
+            needOtpVerification: true,
+          },
+        });
+      } catch (otpError) {
+        console.error("OTP sending error:", otpError);
+        return res.status(500).json({
+          message: "Failed to send OTP. Please try again.",
+          status: false,
+          success: false,
+          data: null,
+        });
+      }
     } else {
       // 🔒 Other roles require password
-
       if (!password) {
         return res.status(400).json({
-          message: "Password is required for this user.",
+          message: "Password is required for this user role.",
           status: false,
+          success: false,
+          data: null,
         });
       }
 
@@ -176,8 +243,10 @@ export const userLogin = async (req, res) => {
       const isPasswordCorrect = await bcrypt.compare(password, user.password);
       if (!isPasswordCorrect) {
         return res.status(401).json({
-          message: "Invalid credentials.",
+          message: "Invalid credentials. Please check your email/mobile and password.",
           status: false,
+          success: false,
+          data: null,
         });
       }
 
@@ -193,10 +262,11 @@ export const userLogin = async (req, res) => {
 
       return res.status(200).json({
         message: "Login successful.",
+        status: true,
         success: true,
         data: {
           userId: user.userId,
-          name: user.name,
+          name: user.username || user.firstName || user.email,
           email: user.email,
           mobile: user.mobile,
           role: user.role,
@@ -207,7 +277,14 @@ export const userLogin = async (req, res) => {
       });
     }
   } catch (error) {
-    return res.status(500).json({ message: error.message, status: false });
+    console.error("Login error:", error);
+    return res.status(500).json({
+      message: "An internal server error occurred during login.",
+      status: false,
+      success: false,
+      data: null,
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error',
+    });
   }
 };
 
@@ -558,7 +635,8 @@ export const getHomePage = async (req, res) => {
       company_name: settingsMap.company_name || "StartGoals"
     };
 
-    res.json(response);  } catch (error) {
+    res.json(response);
+  } catch (error) {
     console.error("Homepage API Error:", error);
     res.status(500).json({
       success: false,
@@ -587,12 +665,12 @@ export const getAllStudents = async (req, res) => {
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Build where conditions
     const whereConditions = {
       role: 'student'
     };
-    
+
     if (search) {
       whereConditions[Op.or] = [
         { firstName: { [Op.iLike]: `%${search}%` } },
@@ -602,12 +680,12 @@ export const getAllStudents = async (req, res) => {
         { mobile: { [Op.iLike]: `%${search}%` } }
       ];
     }
-    
+
     if (status) whereConditions.isVerified = status === 'active';
 
     // Include associations based on query params
     const include = [];
-    
+
     if (includeStats === 'true') {
       include.push(
         {
@@ -638,15 +716,15 @@ export const getAllStudents = async (req, res) => {
     const studentsWithStats = await Promise.all(
       students.map(async (student) => {
         const studentData = student.toJSON();
-        
+
         if (includeStats === 'true') {
           // Calculate enrollment statistics
           const enrollmentCount = await Enrollment.count({
             where: { userId: student.userId }
           });
-          
+
           const completedCourses = await Enrollment.count({
-            where: { 
+            where: {
               userId: student.userId,
               completionStatus: 'completed'
             }
@@ -710,9 +788,9 @@ export const getStudentById = async (req, res) => {
     const { includeProgress = true } = req.query;
 
     const student = await User.findOne({
-      where: { 
-        userId: studentId, 
-        role: 'student' 
+      where: {
+        userId: studentId,
+        role: 'student'
       },
       include: [
         {
@@ -753,14 +831,14 @@ export const getStudentById = async (req, res) => {
       const totalEnrollments = enrollments.length;
       const completedCourses = enrollments.filter(e => e.completionStatus === 'completed').length;
       const inProgressCourses = enrollments.filter(e => e.completionStatus === 'in_progress').length;
-      
+
       studentData.progress = {
         totalEnrollments,
         completedCourses,
         inProgressCourses,
         notStartedCourses: totalEnrollments - completedCourses - inProgressCourses,
         completionRate: totalEnrollments > 0 ? (completedCourses / totalEnrollments * 100).toFixed(1) : 0,
-        averageProgress: enrollments.length > 0 ? 
+        averageProgress: enrollments.length > 0 ?
           (enrollments.reduce((sum, e) => sum + (e.progressPercentage || 0), 0) / enrollments.length).toFixed(1) : 0
       };
 
@@ -801,7 +879,7 @@ export const getStudentById = async (req, res) => {
  */
 export const createStudent = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const {
       firstName,
@@ -917,7 +995,7 @@ export const createStudent = async (req, res) => {
  */
 export const updateStudent = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { studentId } = req.params;
     const updateData = req.body;
@@ -1015,7 +1093,7 @@ export const updateStudent = async (req, res) => {
  */
 export const deleteStudent = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { studentId } = req.params;
     const { permanent = false } = req.query;
@@ -1039,7 +1117,7 @@ export const deleteStudent = async (req, res) => {
       await student.destroy({ transaction });
     } else {
       // Soft delete - deactivate account
-      await student.update({ 
+      await student.update({
         isActive: false,
         deactivatedAt: new Date()
       }, { transaction });
@@ -1073,7 +1151,7 @@ export const getStudentAnalytics = async (req, res) => {
     // Calculate date range
     const now = new Date();
     let startDate = new Date();
-    
+
     switch (timeRange) {
       case '7d':
         startDate.setDate(now.getDate() - 7);
@@ -1093,11 +1171,11 @@ export const getStudentAnalytics = async (req, res) => {
 
     // Basic student counts
     const totalStudents = await User.count({ where: { role: 'student' } });
-    const activeStudents = await User.count({ 
-      where: { role: 'student', isVerified: true, isActive: true } 
+    const activeStudents = await User.count({
+      where: { role: 'student', isVerified: true, isActive: true }
     });
     const newStudents = await User.count({
-      where: { 
+      where: {
         role: 'student',
         createdAt: { [Op.gte]: startDate }
       }
@@ -1198,7 +1276,7 @@ export const getStudentAnalytics = async (req, res) => {
         category: cat.categoryName,
         totalEnrollments: parseInt(cat.dataValues.totalEnrollments),
         completedEnrollments: parseInt(cat.dataValues.completedEnrollments),
-        completionRate: cat.dataValues.totalEnrollments > 0 ? 
+        completionRate: cat.dataValues.totalEnrollments > 0 ?
           ((cat.dataValues.completedEnrollments / cat.dataValues.totalEnrollments) * 100).toFixed(1) : 0
       }))
     };

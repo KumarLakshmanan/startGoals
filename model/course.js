@@ -47,8 +47,13 @@ const Course = sequelize.define(
       defaultValue: false,
     },
     price: {
-      type: DataTypes.DECIMAL,
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
+    },
+    salePrice: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+      comment: "Discounted price for the course",
     },
     liveStartDate: {
       type: DataTypes.DATE,
@@ -65,7 +70,7 @@ const Course = sequelize.define(
     recordedFromId: {
       type: DataTypes.UUID,
       allowNull: true,
-    },    status: {
+    }, status: {
       type: DataTypes.ENUM("active", "inactive", "draft", "deleted"),
       defaultValue: "draft",
       allowNull: false,

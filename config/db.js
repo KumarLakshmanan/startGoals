@@ -10,23 +10,23 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     dialect: process.env.DB_DIALECT,
     pool: {
-      max: 5,          // Reduced max connections
+      max: 5,
       min: 0,
-      acquire: 60000,  // Increased timeout to 60 seconds
+      acquire: 60000,
       idle: 10000,
       evict: 5000
     },
     retry: {
       max: 3
     },
-    dialectOptions: {
+    dialectOptions: process.env.SERVER_TYPE === "production" ? {
       ssl: {
         require: true,
         rejectUnauthorized: false,
       },
       connectTimeout: 60000,
       socketPath: null,
-    },
+    } : {},
     logging: false
   }
 );

@@ -23,6 +23,7 @@ import projectFileRoutes from "./projectFileRoutes.js";
 import projectRatingRoutes from "./projectRatingRoutes.js";
 import fileUploadRoutes from "./fileUploadRoutes.js";
 import teacherRoutes from "./teacherRoutes.js";
+import coursePurchaseRoutes from "./coursePurchaseRoutes.js";
 
 const router = express.Router();
 
@@ -60,5 +61,6 @@ router.use('/project-ratings', projectRatingRoutes);
 router.use('/discounts', discountRoutes);
 router.use('/upload', fileUploadRoutes);
 router.use('/admin/teachers', teacherRoutes);
+router.use('/course-purchase', coursePurchaseRoutes);
 
 export default router;

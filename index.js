@@ -10,6 +10,7 @@ import session from "express-session"; // Import express-session
 import { Server } from "socket.io";
 import initializeSocketIO from "./services/socketHandler.js";
 import http from "http";
+import requestLogger from "./middleware/requestLogger.js";
 
 // to use  .env file atributes
 dotenv.config();
@@ -37,6 +38,9 @@ app.use(function (req, res, next) {
 
 app.use(express.json({ limit: '50mb' }));
 
+// Request logging middleware
+app.use(requestLogger);
+
 //autoCreate();
 
 // Use sessions for tracking login state
@@ -53,7 +57,31 @@ configurePassport(passport);
 app.use(passport.initialize());
 app.use(passport.session());
 
+// 🔄 Sync DB
+app.get('/sync-db', (req, res) => {
+  autoSyncDatabase()
+    .then(() => {
+      console.log("✅ Database synced successfully");
+      res.status(200).json({ message: "Database synced successfully" });
+      return;
+    })
+    .catch((err) => {
+      console.error("💥 Failed to sync database:", err);
+      res.status(500).json({ error: "Failed to sync database" });
+      return;
+    });
+});
+
 app.use("/api", router);
+
+// Global error handler (must be after all routes)
+import { globalErrorHandler, notFoundHandler } from './middleware/globalErrorHandler.js';
+
+// 404 handler for undefined routes
+app.use(notFoundHandler);
+
+// Global error handler (must be last)
+app.use(globalErrorHandler);
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -80,21 +108,7 @@ process.on("unhandledRejection", (reason, promise) => {
   console.error("⚠️ Unhandled Rejection at:" + promise + "reason:" + reason);
 });
 
-app.listen(process.env.SERVER_PORT, () => {
+// Start the server using the HTTP server instance (for socket.io)
+server.listen(process.env.SERVER_PORT, () => {
   console.log("🚀 Server running on PORT " + process.env.SERVER_PORT);
-});
-
-// 🔄 Sync DB
-app.use('/sync-db', (req, res) => {
-  autoSyncDatabase()
-    .then(() => {
-      console.log("✅ Database synced successfully");
-      res.status(200).json({ message: "Database synced successfully" });
-      return;
-    })
-    .catch((err) => {
-      console.error("💥 Failed to sync database:", err);
-      res.status(500).json({ error: "Failed to sync database" });
-      return;
-    });
 });

@@ -17,13 +17,33 @@ const Category = sequelize.define(
       unique: true,
     },
     categoryCode: {
-      type: DataTypes.STRING(3),
+      type: DataTypes.STRING(50), // Increased length to accommodate longer codes
       allowNull: false,
       unique: true,
       validate: {
-        len: [2, 3],
-        isUppercase: true,
+        notEmpty: true
       },
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    parentCategoryId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: 'course_categories',
+        key: 'category_id'
+      }
+    },
+    icon: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    displayOrder: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0,
     },
     ...commonFields, // ✅ shared fields like createdAt, updatedAt, deletedAt
   },

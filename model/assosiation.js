@@ -310,6 +310,17 @@ Enrollment.belongsTo(Course, { foreignKey: "courseId" });
 //enrollment
 Enrollment.belongsTo(Batch, { foreignKey: "batchId" });
 
+// Reverse associations for Enrollment
+User.hasMany(Enrollment, {
+  foreignKey: "userId",
+  as: "enrollments",
+});
+
+Course.hasMany(Enrollment, {
+  foreignKey: "courseId",
+  as: "enrollments",
+});
+
 // Course → Batches
 Course.hasMany(Batch, {
   foreignKey: "courseId",
