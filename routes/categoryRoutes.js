@@ -4,6 +4,7 @@ import {
   createCategory,
   getAllCategories,
   bulkCreateCategories,
+  saveAllCategories,
   getCategoryById,
   getCategoryByCode,
   deleteCategoryById,
@@ -12,7 +13,7 @@ import {
 const router = express.Router();
 
 router.post("/saveCategory", isAdmin, createCategory);
-router.post("/saveAllCategories", isAdmin, bulkCreateCategories);
+router.post("/saveAllCategories", isAdmin, saveAllCategories);
 router.get("/getCategories", getAllCategories);
 router.get("/categoryById/:id", getCategoryById);
 router.get("/categoryByCode/:code", getCategoryByCode);

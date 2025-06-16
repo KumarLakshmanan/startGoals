@@ -12,6 +12,8 @@ import CourseGoal from "./courseGoal.js";
 import CourseRequirement from "./courseRequirement.js";
 import CourseLevel from "./courseLevel.js";
 import Section from "./section.js";
+import UserGoal from "./userGoal.js";
+import UserSkill from "./userSkill.js";
 import Lesson from "./lesson.js";
 import Resource from "./resource.js";
 import Batch from "./batch.js";
@@ -30,6 +32,8 @@ import ProjectPurchase from "./projectPurchase.js";
 import ProjectRating from "./projectRating.js";
 import DiscountCode from "./discountCode.js";
 import DiscountUsage from "./discountUsage.js";
+import UserLanguage from "./userLanguage.js";
+import CourseLanguage from "./courseLanguage.js";
 
 // All models must be defined before we associate them
 const models = {
@@ -41,7 +45,10 @@ const models = {
   CourseTag,
   Banner,
   Goal,
-  Skill,
+  Skill,  UserGoal,
+  UserSkill,
+  UserLanguage,
+  CourseLanguage,
   CourseGoal,
   CourseRequirement,
   CourseLevel,
@@ -80,14 +87,14 @@ User.hasMany(Course, {
 //User to language
 // Associations (✅ define them after all models are loaded)
 User.belongsToMany(Language, {
-  through: "user_languages",
+  through: UserLanguage,
   foreignKey: "user_id",
   otherKey: "language_id",
   onDelete: "CASCADE",
 });
 
 Language.belongsToMany(User, {
-  through: "user_languages",
+  through: UserLanguage,
   foreignKey: "language_id",
   otherKey: "user_id",
   onDelete: "CASCADE",
@@ -95,14 +102,14 @@ Language.belongsToMany(User, {
 
 //course to language
 Course.belongsToMany(Language, {
-  through: "course_languages",
+  through: CourseLanguage,
   foreignKey: "course_id",
   otherKey: "language_id",
   onDelete: "CASCADE",
 });
 
 Language.belongsToMany(Course, {
-  through: "course_languages",
+  through: CourseLanguage,
   foreignKey: "language_id",
   otherKey: "course_id",
   onDelete: "CASCADE",
@@ -143,14 +150,14 @@ CourseLevel.hasMany(Goal, {
 // user to goal
 // User can select multiple goals (many-to-many relationship)
 User.belongsToMany(Goal, {
-  through: "user_goals", // join table for user-goals relationship
+  through: UserGoal,
   foreignKey: "user_id",
   otherKey: "goal_id",
   onDelete: "CASCADE",
 });
 
 Goal.belongsToMany(User, {
-  through: "user_goals",
+  through: UserGoal,
   foreignKey: "goal_id",
   otherKey: "user_id",
   onDelete: "CASCADE",
@@ -159,13 +166,13 @@ Goal.belongsToMany(User, {
 ///user to skill
 // User selects multiple skills related to the selected goal (many-to-many relationship)
 User.belongsToMany(Skill, {
-  through: "user_skills", // join table for user-skills relationship
+  through: UserSkill,
   foreignKey: "user_id",
   otherKey: "skill_id",
   onDelete: "CASCADE",
 });
 Skill.belongsToMany(User, {
-  through: "user_skills",
+  through: UserSkill,
   foreignKey: "skill_id",
   otherKey: "user_id",
   onDelete: "CASCADE",

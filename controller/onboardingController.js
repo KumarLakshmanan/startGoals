@@ -9,7 +9,7 @@ import { Op } from "sequelize";
 export const selectLanguages = async (req, res) => {
   try {
     const { userId } = req.user;
-    const { languageIds } = req.body; // Array of language IDs from the request body
+    const { languageIds, proficiencyLevels } = req.body; // Array of language IDs and optional proficiency levels
 
     // Step 1: Find user by ID
     const user = await User.findByPk(userId);
@@ -34,8 +34,27 @@ export const selectLanguages = async (req, res) => {
       });
     }
 
-    // Step 3: Associate the selected languages with the user
-    await user.addLanguages(languages);
+    // Step 3: Remove any existing language associations
+    await user.setLanguages([]);
+
+    // Step 4: Associate the selected languages with the user with explicit proficiency levels
+    const languageAssociations = languages.map((language, index) => {
+      // If proficiencyLevels is provided and has a value for this language, use it
+      // Otherwise default to 'intermediate'
+      const proficiencyLevel = 
+        proficiencyLevels && proficiencyLevels[index] 
+          ? proficiencyLevels[index] 
+          : 'intermediate';
+      
+      return {
+        languageId: language.languageId,
+        proficiencyLevel: proficiencyLevel
+      };
+    });
+
+    await user.addLanguages(languages, { 
+      through: languageAssociations 
+    });
 
     return res.status(200).json({
       status: true,

@@ -5,7 +5,6 @@ import sequelize from "./config/db.js";
 import router from "./routes/router.js";
 import { configurePassport } from "./utils/passport.js";
 import passport from "passport";
-import { autoSyncDatabase } from "./config/autoSyncDb.js"; // 👈 import sync function
 import session from "express-session"; // Import express-session
 import { Server } from "socket.io";
 import initializeSocketIO from "./services/socketHandler.js";
@@ -60,11 +59,15 @@ app.use(passport.session());
 // 🔄 Manual DB Sync
 import { getModels, syncModels, serveSyncDbPage } from './config/manualSyncDb.js';
 import { syncDbMiddleware } from './middleware/syncDbMiddleware.js';
+import { createRequiredTables, createTablesHandler } from './utils/createRequiredTables.js';
 
 // Serve the sync-db HTML page
 app.get('/sync-db', syncDbMiddleware, (req, res) => {
   serveSyncDbPage(req, res);
 });
+
+// API endpoint to create required tables
+app.post('/create-required-tables', syncDbMiddleware, createTablesHandler);
 
 // API to get all database models and their fields
 app.get('/db-models', syncDbMiddleware, async (req, res) => {
@@ -148,6 +151,26 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 // Start the server using the HTTP server instance (for socket.io)
-server.listen(process.env.SERVER_PORT, () => {
-  console.log("🚀 Server running on PORT " + process.env.SERVER_PORT);
-});
+const startServer = async () => {
+  try {
+    // First, create required tables to ensure they exist
+    console.log('Creating required tables...');
+    const tablesResult = await createRequiredTables();
+    if (tablesResult.success) {
+      console.log('✅ Required tables created or verified successfully');
+    } else {
+      console.error('⚠️ Error creating required tables:', tablesResult.error);
+      // Continue server startup even if table creation fails
+    }
+
+    // Start the server
+    server.listen(process.env.SERVER_PORT, () => {
+      console.log("🚀 Server running on PORT " + process.env.SERVER_PORT);
+    });
+  } catch (error) {
+    console.error('💥 Server startup error:', error);
+    process.exit(1);
+  }
+};
+
+startServer();

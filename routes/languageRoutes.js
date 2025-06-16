@@ -3,6 +3,7 @@ import { authenticateToken, isTeacher } from "../middleware/authMiddleware.js";
 import {
   deleteCourseLanguage,
   uploadLanguagesBulk,
+  saveAllLanguages,
   getAllLanguages,
   getLanguagesByType,
   getLanguageStats,
@@ -18,6 +19,7 @@ router.delete("/:id", isTeacher, deleteCourseLanguage);
 
 // Legacy routes for backward compatibility
 router.post("/saveAllLanguage", isTeacher, uploadLanguagesBulk);
+router.post("/saveAllLanguages", isTeacher, saveAllLanguages);
 router.get("/getAllLanguages", getAllLanguages);
 router.get("/getLanguagesByType/:type", getLanguagesByType);
 router.get("/getLanguageStats", getLanguageStats);

@@ -294,3 +294,128 @@ export const getLanguageStats = async (req, res) => {
     });
   }
 };
+
+export const saveAllLanguages = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const requestBody = req.body;
+    let languages;
+    
+    // Handle both direct array and wrapper object formats
+    if (Array.isArray(requestBody)) {
+      languages = requestBody;
+    } else if (requestBody.languages && Array.isArray(requestBody.languages)) {
+      languages = requestBody.languages;
+    } else {
+      return res.status(400).json({
+        status: false,
+        message: "Request body must be an array of languages or an object with a 'languages' array property"
+      });
+    }
+    
+    if (languages.length === 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        status: false,
+        message: "Languages array cannot be empty"
+      });
+    }
+    
+    // Ensure the languages table exists
+    try {
+      await Language.sync({ alter: false });
+    } catch (error) {
+      console.error("Error with languages table:", error);
+      await transaction.rollback();
+      return res.status(500).json({
+        status: false,
+        message: "Database error: Languages table might not exist",
+        error: error.message
+      });
+    }
+    
+    // Process languages
+    const languagesToCreate = [];
+    const validationErrors = [];
+    
+    for (let i = 0; i < languages.length; i++) {
+      const lang = languages[i];
+      
+      // Validate required fields
+      if (!lang.language || !lang.languageCode) {
+        validationErrors.push({
+          index: i,
+          errors: ["Language name and code are required"]
+        });
+        continue;
+      }
+      
+      // Check for existing languages with the same name or code
+      const existing = await Language.findOne({
+        where: {
+          [Op.or]: [
+            { language: lang.language },
+            { languageCode: lang.languageCode }
+          ]
+        },
+        transaction
+      });
+      
+      if (existing) {
+        validationErrors.push({
+          index: i,
+          errors: [
+            existing.language === lang.language
+              ? "Language with this name already exists."
+              : "Language with this code already exists."
+          ]
+        });
+        continue;
+      }
+      
+      // Create language object
+      const languageData = {
+        language: lang.language,
+        languageCode: lang.languageCode,
+        nativeName: lang.nativeName || lang.language,
+        languageType: lang.languageType || "both"
+      };
+      
+      languagesToCreate.push(languageData);
+    }
+    
+    // Return validation errors if any
+    if (validationErrors.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        status: false,
+        message: "Validation failed for one or more languages.",
+        validationErrors
+      });
+    }
+    
+    // Create languages in bulk
+    const createdLanguages = await Language.bulkCreate(languagesToCreate, {
+      transaction,
+      ignoreDuplicates: false // we already checked for duplicates
+    });
+    
+    await transaction.commit();
+    
+    return res.status(201).json({
+      status: true,
+      message: "Languages created successfully",
+      data: createdLanguages
+    });
+    
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Bulk language upload error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to upload languages",
+      error: error.message
+    });
+  }
+};

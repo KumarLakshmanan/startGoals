@@ -29,6 +29,15 @@ export const bulkUploadGoals = async (req, res) => {
       });
     }
 
+    // Ensure the goals table exists
+    try {
+      await Goal.sync({ alter: false });
+    } catch (error) {
+      console.error("Error with goals table:", error);
+      // Continue with the operation even if there's an error checking the table
+      // The subsequent operations will fail if the table doesn't exist
+    }
+
     // Process goals with level lookup
     const goalsToCreate = [];
     const validationErrors = [];

@@ -328,3 +328,130 @@ export const deleteCategoryById = async (req, res) => {
     });
   }
 };
+
+
+export const saveAllCategories = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
+  try {
+    const requestBody = req.body;
+    let categories;
+    
+    // Handle both direct array and wrapper object formats
+    if (Array.isArray(requestBody)) {
+      categories = requestBody;
+    } else if (requestBody.categories && Array.isArray(requestBody.categories)) {
+      categories = requestBody.categories;
+    } else {
+      return res.status(400).json({
+        status: false,
+        message: "Request body must be an array of categories or an object with a 'categories' array property"
+      });
+    }
+    
+    if (categories.length === 0) {
+      return res.status(400).json({
+        status: false,
+        message: "Categories array cannot be empty"
+      });
+    }
+    
+    // Ensure the categories table exists
+    try {
+      await Category.sync({ alter: false });
+    } catch (error) {
+      console.error("Error with categories table:", error);
+      await transaction.rollback();
+      return res.status(500).json({
+        status: false,
+        message: "Database error: Categories table might not exist",
+        error: error.message
+      });
+    }
+    
+    // Process categories
+    const categoriesToCreate = [];
+    const validationErrors = [];
+    
+    for (let i = 0; i < categories.length; i++) {
+      const category = categories[i];
+      
+      // Validate required fields
+      if (!category.name || !category.code) {
+        validationErrors.push({
+          index: i,
+          errors: ["Category name and code are required"]
+        });
+        continue;
+      }
+      
+      // Check for existing categories with the same name or code
+      const existing = await Category.findOne({
+        where: {
+          [Op.or]: [
+            { categoryName: category.name },
+            { categoryCode: category.code }
+          ]
+        },
+        transaction
+      });
+      
+      if (existing) {
+        validationErrors.push({
+          index: i,
+          errors: [
+            existing.categoryName === category.name
+              ? "Category with this name already exists."
+              : "Category with this code already exists."
+          ]
+        });
+        continue;
+      }
+      
+      // Create category object
+      const categoryData = {
+        categoryName: category.name,
+        categoryCode: category.code,
+        description: category.description || null,
+        parentCategoryId: category.parentCategoryId || null,
+        icon: category.icon || null,
+        displayOrder: category.displayOrder || 0
+      };
+      
+      categoriesToCreate.push(categoryData);
+    }
+    
+    // Return validation errors if any
+    if (validationErrors.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        status: false,
+        message: "Validation failed for one or more categories.",
+        validationErrors
+      });
+    }
+    
+    // Create categories in bulk
+    const createdCategories = await Category.bulkCreate(categoriesToCreate, {
+      transaction,
+      ignoreDuplicates: false // we already checked for duplicates
+    });
+    
+    await transaction.commit();
+    
+    return res.status(201).json({
+      status: true,
+      message: "Categories created successfully",
+      data: createdCategories
+    });
+    
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Bulk category upload error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to upload categories",
+      error: error.message
+    });
+  }
+};

@@ -7,12 +7,37 @@ import { validateSkillInput } from "../utils/commonUtils.js";
 import { Op } from "sequelize";
 export const bulkUploadSkills = async (req, res) => {
   try {
-    const skills = req.body;
+    const requestBody = req.body;
+    let skills;
+    
+    // Handle both direct array and wrapper object formats
+    if (Array.isArray(requestBody)) {
+      skills = requestBody;
+    } else if (requestBody.skills && Array.isArray(requestBody.skills)) {
+      skills = requestBody.skills;
+    } else {
+      return res.status(400).json({
+        status: false,
+        message: "Request body must be an array of skills or an object with a 'skills' array property",
+      });
+    }
 
-    if (!Array.isArray(skills) || skills.length === 0) {
+    if (skills.length === 0) {
       return res.status(400).json({
         status: false,
         message: "Request body must be a non-empty array of skills",
+      });
+    }
+    
+    // Check if skills table exists, if not create it
+    try {
+      await Skill.sync({ alter: false });
+    } catch (error) {
+      console.error("Error checking skills table:", error);
+      return res.status(500).json({
+        status: false,
+        message: "Database error: Skills table might not exist",
+        error: error.message
       });
     }
 

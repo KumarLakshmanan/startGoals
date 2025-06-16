@@ -95,12 +95,11 @@ export const getAllCourseLevels = async (req, res) => {
       order: [[sortField, order]],
     });
 
-    if (!courseLevels || courseLevels.length === 0) {
-      return res.status(404).json({
-        status: false,
+      return res.status(200).json({
+        status: true,
         message: "No course levels found.",
+        data: courseLevels,
       });
-    }
 
     // Add statistics if requested
     let responseData = courseLevels;
