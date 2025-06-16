@@ -448,7 +448,19 @@ export const getUserSkills = async (req, res) => {
 //user details by userId , languages ,goals ,skill will also come
 export const getUserDetails = async (req, res) => {
   try {
-    const { userId } = req.params;
+    let { userId } = req.params;
+    
+    // If userId is not provided in params, get it from req.user
+    if (!userId && req.user) {
+      userId = req.user.userId;
+    }
+    
+    if (!userId) {
+      return res.status(400).json({
+      status: false,
+      message: "User ID is required",
+      });
+    }
 
     const user = await User.findByPk(userId, {
       attributes: { exclude: ["password"] }, // Optional: Hide sensitive data
@@ -460,7 +472,8 @@ export const getUserDetails = async (req, res) => {
         },
         {
           model: Goal,
-          as: "goal", // 👈 Use alias if defined
+          as: "goals", // Use correct plural alias for many-to-many relationship
+          through: { attributes: [] },
         },
         {
           model: Skill,
