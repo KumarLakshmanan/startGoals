@@ -37,7 +37,7 @@ const Section = sequelize.define(
   {
     tableName: "sections",
     ...commonOptions,
-  }
+  },
 );
 
 export default Section;

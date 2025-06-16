@@ -2,8 +2,8 @@ import Settings from "../model/settings.js";
 import User from "../model/user.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
-import fs from 'fs/promises';
-import path from 'path';
+import fs from "fs/promises";
+import path from "path";
 
 // ===================== COMPREHENSIVE SETTINGS MANAGEMENT =====================
 // This file combines both basic settings and advanced admin settings management
@@ -12,7 +12,7 @@ import path from 'path';
 export const getSettings = async (req, res) => {
   try {
     const { key } = req.query;
-    
+
     let whereClause = { isActive: true };
     if (key) {
       whereClause.key = key;
@@ -20,8 +20,8 @@ export const getSettings = async (req, res) => {
 
     const settings = await Settings.findAll({
       where: whereClause,
-      attributes: ['id', 'key', 'value', 'description', 'dataType'],
-      order: [['key', 'ASC']]
+      attributes: ["id", "key", "value", "description", "dataType"],
+      order: [["key", "ASC"]],
     });
 
     // If specific key requested, return single object
@@ -29,20 +29,20 @@ export const getSettings = async (req, res) => {
       return res.json({
         success: true,
         message: "Setting retrieved successfully",
-        data: settings[0]
+        data: settings[0],
       });
     }
 
     res.json({
       success: true,
       message: "Settings retrieved successfully",
-      data: settings
+      data: settings,
     });
   } catch (error) {
     console.error("Get settings error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -55,7 +55,7 @@ export const upsertSetting = async (req, res) => {
     if (!key) {
       return res.status(400).json({
         success: false,
-        message: "Setting key is required"
+        message: "Setting key is required",
       });
     }
 
@@ -68,7 +68,7 @@ export const upsertSetting = async (req, res) => {
       await existingSetting.update({
         value,
         description,
-        dataType
+        dataType,
       });
       setting = existingSetting;
     } else {
@@ -77,20 +77,22 @@ export const upsertSetting = async (req, res) => {
         key,
         value,
         description,
-        dataType
+        dataType,
       });
     }
 
     res.json({
       success: true,
-      message: existingSetting ? "Setting updated successfully" : "Setting created successfully",
-      data: setting
+      message: existingSetting
+        ? "Setting updated successfully"
+        : "Setting created successfully",
+      data: setting,
     });
   } catch (error) {
     console.error("Upsert setting error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -104,7 +106,7 @@ export const deleteSetting = async (req, res) => {
     if (!setting) {
       return res.status(404).json({
         success: false,
-        message: "Setting not found"
+        message: "Setting not found",
       });
     }
 
@@ -112,13 +114,13 @@ export const deleteSetting = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Setting deleted successfully"
+      message: "Setting deleted successfully",
     });
   } catch (error) {
     console.error("Delete setting error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -131,41 +133,41 @@ export const initializeDefaultSettings = async (req, res) => {
         key: "contact_phone",
         value: "1234567890",
         description: "Contact phone number for customer support",
-        dataType: "string"
+        dataType: "string",
       },
       {
         key: "contact_email",
         value: "support@example.com",
         description: "Contact email for customer support",
-        dataType: "string"
+        dataType: "string",
       },
       {
         key: "company_name",
         value: "StartGoals",
         description: "Company name",
-        dataType: "string"
+        dataType: "string",
       },
       {
         key: "app_version",
         value: "1.0.0",
         description: "Current app version",
-        dataType: "string"
+        dataType: "string",
       },
       {
         key: "maintenance_mode",
         value: "false",
         description: "Enable/disable maintenance mode",
-        dataType: "boolean"
-      }
+        dataType: "boolean",
+      },
     ];
 
     const createdSettings = [];
-    
+
     for (const settingData of defaultSettings) {
-      const existingSetting = await Settings.findOne({ 
-        where: { key: settingData.key } 
+      const existingSetting = await Settings.findOne({
+        where: { key: settingData.key },
       });
-      
+
       if (!existingSetting) {
         const setting = await Settings.create(settingData);
         createdSettings.push(setting);
@@ -175,13 +177,13 @@ export const initializeDefaultSettings = async (req, res) => {
     res.json({
       success: true,
       message: `Initialized ${createdSettings.length} default settings`,
-      data: createdSettings
+      data: createdSettings,
     });
   } catch (error) {
     console.error("Initialize settings error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -201,65 +203,71 @@ export const getNotificationTemplates = async (req, res) => {
       category, // user_registration, course_completion, payment, etc.
       status, // active, inactive, draft
       search,
-      sortBy = 'createdAt',
-      sortOrder = 'DESC'
+      sortBy = "createdAt",
+      sortOrder = "DESC",
     } = req.query;
 
     // Since we don't have a notification templates table yet, let's create mock data structure
     const mockTemplates = [
       {
         templateId: 1,
-        name: 'Welcome Email',
-        type: 'email',
-        category: 'user_registration',
-        subject: 'Welcome to StartGoals!',
-        content: '<p>Welcome {{firstName}}! Your account has been created successfully.</p>',
-        variables: ['firstName', 'lastName', 'email'],
-        status: 'active',
+        name: "Welcome Email",
+        type: "email",
+        category: "user_registration",
+        subject: "Welcome to StartGoals!",
+        content:
+          "<p>Welcome {{firstName}}! Your account has been created successfully.</p>",
+        variables: ["firstName", "lastName", "email"],
+        status: "active",
         createdAt: new Date(),
         updatedAt: new Date(),
         usageCount: 1250,
-        lastUsed: new Date(Date.now() - 2 * 60 * 60 * 1000)
+        lastUsed: new Date(Date.now() - 2 * 60 * 60 * 1000),
       },
       {
         templateId: 2,
-        name: 'Course Completion SMS',
-        type: 'sms',
-        category: 'course_completion',
+        name: "Course Completion SMS",
+        type: "sms",
+        category: "course_completion",
         subject: null,
-        content: 'Congratulations {{firstName}}! You have completed {{courseName}}. Certificate: {{certificateUrl}}',
-        variables: ['firstName', 'courseName', 'certificateUrl'],
-        status: 'active',
+        content:
+          "Congratulations {{firstName}}! You have completed {{courseName}}. Certificate: {{certificateUrl}}",
+        variables: ["firstName", "courseName", "certificateUrl"],
+        status: "active",
         createdAt: new Date(),
         updatedAt: new Date(),
         usageCount: 890,
-        lastUsed: new Date(Date.now() - 5 * 60 * 60 * 1000)
+        lastUsed: new Date(Date.now() - 5 * 60 * 60 * 1000),
       },
       {
         templateId: 3,
-        name: 'Payment Confirmation',
-        type: 'email',
-        category: 'payment',
-        subject: 'Payment Received - Order #{{orderId}}',
-        content: '<p>Dear {{firstName}}, your payment of ${{amount}} has been received for {{itemName}}.</p>',
-        variables: ['firstName', 'orderId', 'amount', 'itemName'],
-        status: 'active',
+        name: "Payment Confirmation",
+        type: "email",
+        category: "payment",
+        subject: "Payment Received - Order #{{orderId}}",
+        content:
+          "<p>Dear {{firstName}}, your payment of ${{amount}} has been received for {{itemName}}.</p>",
+        variables: ["firstName", "orderId", "amount", "itemName"],
+        status: "active",
         createdAt: new Date(),
         updatedAt: new Date(),
         usageCount: 2100,
-        lastUsed: new Date(Date.now() - 1 * 60 * 60 * 1000)
-      }
+        lastUsed: new Date(Date.now() - 1 * 60 * 60 * 1000),
+      },
     ];
 
     // Apply filtering to mock data
-    let filteredTemplates = mockTemplates.filter(template => {
+    let filteredTemplates = mockTemplates.filter((template) => {
       if (type && template.type !== type) return false;
       if (category && template.category !== category) return false;
       if (status && template.status !== status) return false;
       if (search) {
         const searchLower = search.toLowerCase();
-        return template.name.toLowerCase().includes(searchLower) ||
-               (template.subject && template.subject.toLowerCase().includes(searchLower));
+        return (
+          template.name.toLowerCase().includes(searchLower) ||
+          (template.subject &&
+            template.subject.toLowerCase().includes(searchLower))
+        );
       }
       return true;
     });
@@ -267,17 +275,25 @@ export const getNotificationTemplates = async (req, res) => {
     // Apply sorting and pagination
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const totalCount = filteredTemplates.length;
-    const paginatedTemplates = filteredTemplates.slice(offset, offset + parseInt(limit));
+    const paginatedTemplates = filteredTemplates.slice(
+      offset,
+      offset + parseInt(limit),
+    );
 
     // Calculate analytics
     const analytics = {
       totalTemplates: totalCount,
-      activeTemplates: filteredTemplates.filter(t => t.status === 'active').length,
-      draftTemplates: filteredTemplates.filter(t => t.status === 'draft').length,
-      inactiveTemplates: filteredTemplates.filter(t => t.status === 'inactive').length,
-      emailTemplates: filteredTemplates.filter(t => t.type === 'email').length,
-      smsTemplates: filteredTemplates.filter(t => t.type === 'sms').length,
-      totalUsage: filteredTemplates.reduce((sum, t) => sum + t.usageCount, 0)
+      activeTemplates: filteredTemplates.filter((t) => t.status === "active")
+        .length,
+      draftTemplates: filteredTemplates.filter((t) => t.status === "draft")
+        .length,
+      inactiveTemplates: filteredTemplates.filter(
+        (t) => t.status === "inactive",
+      ).length,
+      emailTemplates: filteredTemplates.filter((t) => t.type === "email")
+        .length,
+      smsTemplates: filteredTemplates.filter((t) => t.type === "sms").length,
+      totalUsage: filteredTemplates.reduce((sum, t) => sum + t.usageCount, 0),
     };
 
     res.status(200).json({
@@ -289,18 +305,17 @@ export const getNotificationTemplates = async (req, res) => {
           currentPage: parseInt(page),
           totalPages: Math.ceil(totalCount / parseInt(limit)),
           totalRecords: totalCount,
-          recordsPerPage: parseInt(limit)
+          recordsPerPage: parseInt(limit),
         },
-        analytics
-      }
+        analytics,
+      },
     });
-
   } catch (error) {
     console.error("Get notification templates error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve notification templates",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -318,7 +333,7 @@ export const createNotificationTemplate = async (req, res) => {
       content,
       variables,
       description,
-      status = 'draft'
+      status = "draft",
     } = req.body;
 
     const createdBy = req.user.userId;
@@ -330,7 +345,7 @@ export const createNotificationTemplate = async (req, res) => {
       validationErrors.push("Template name must be at least 3 characters long");
     }
 
-    if (!['email', 'sms', 'push'].includes(type)) {
+    if (!["email", "sms", "push"].includes(type)) {
       validationErrors.push("Type must be email, sms, or push");
     }
 
@@ -338,7 +353,7 @@ export const createNotificationTemplate = async (req, res) => {
       validationErrors.push("Category is required");
     }
 
-    if (type === 'email' && !subject) {
+    if (type === "email" && !subject) {
       validationErrors.push("Subject is required for email templates");
     }
 
@@ -350,7 +365,7 @@ export const createNotificationTemplate = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Validation failed",
-        errors: validationErrors
+        errors: validationErrors,
       });
     }
 
@@ -360,29 +375,28 @@ export const createNotificationTemplate = async (req, res) => {
       name: name.trim(),
       type,
       category,
-      subject: type === 'email' ? subject : null,
+      subject: type === "email" ? subject : null,
       content: content.trim(),
       variables: variables || [],
-      description: description || '',
+      description: description || "",
       status,
       createdAt: new Date(),
       updatedAt: new Date(),
       createdBy,
-      usageCount: 0
+      usageCount: 0,
     };
 
     res.status(201).json({
       success: true,
       message: "Notification template created successfully",
-      data: newTemplate
+      data: newTemplate,
     });
-
   } catch (error) {
     console.error("Create notification template error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to create notification template",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -396,73 +410,82 @@ export const getLegalPages = async (req, res) => {
       page = 1,
       limit = 20,
       status, // published, draft, archived
-      search
+      search,
     } = req.query;
 
     // Mock legal pages data
     const mockLegalPages = [
       {
         pageId: 1,
-        slug: 'terms-of-service',
-        title: 'Terms of Service',
-        content: '<h1>Terms of Service</h1><p>Last updated: June 2025</p><p>These terms govern your use of StartGoals...</p>',
-        status: 'published',
-        version: '2.1',
+        slug: "terms-of-service",
+        title: "Terms of Service",
+        content:
+          "<h1>Terms of Service</h1><p>Last updated: June 2025</p><p>These terms govern your use of StartGoals...</p>",
+        status: "published",
+        version: "2.1",
         publishedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
         wordCount: 2450,
-        viewCount: 15420
+        viewCount: 15420,
       },
       {
         pageId: 2,
-        slug: 'privacy-policy',
-        title: 'Privacy Policy',
-        content: '<h1>Privacy Policy</h1><p>Last updated: June 2025</p><p>This privacy policy describes how we collect...</p>',
-        status: 'published',
-        version: '1.8',
+        slug: "privacy-policy",
+        title: "Privacy Policy",
+        content:
+          "<h1>Privacy Policy</h1><p>Last updated: June 2025</p><p>This privacy policy describes how we collect...</p>",
+        status: "published",
+        version: "1.8",
         publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
         updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
         wordCount: 3200,
-        viewCount: 12800
+        viewCount: 12800,
       },
       {
         pageId: 3,
-        slug: 'cancellation-refund-policy',
-        title: 'Cancellation & Refund Policy',
-        content: '<h1>Cancellation & Refund Policy</h1><p>Last updated: May 2025</p><p>This policy outlines our cancellation...</p>',
-        status: 'published',
-        version: '1.3',
+        slug: "cancellation-refund-policy",
+        title: "Cancellation & Refund Policy",
+        content:
+          "<h1>Cancellation & Refund Policy</h1><p>Last updated: May 2025</p><p>This policy outlines our cancellation...</p>",
+        status: "published",
+        version: "1.3",
         publishedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
         createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
         updatedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
         wordCount: 1850,
-        viewCount: 8900
-      }
+        viewCount: 8900,
+      },
     ];
 
     // Apply filtering
-    let filteredPages = mockLegalPages.filter(page => {
+    let filteredPages = mockLegalPages.filter((page) => {
       if (status && page.status !== status) return false;
       if (search) {
         const searchLower = search.toLowerCase();
-        return page.title.toLowerCase().includes(searchLower) ||
-               page.slug.toLowerCase().includes(searchLower);
+        return (
+          page.title.toLowerCase().includes(searchLower) ||
+          page.slug.toLowerCase().includes(searchLower)
+        );
       }
       return true;
     });
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     const totalCount = filteredPages.length;
-    const paginatedPages = filteredPages.slice(offset, offset + parseInt(limit));
+    const paginatedPages = filteredPages.slice(
+      offset,
+      offset + parseInt(limit),
+    );
 
     // Calculate analytics
     const analytics = {
       totalPages: totalCount,
-      publishedPages: filteredPages.filter(p => p.status === 'published').length,
-      draftPages: filteredPages.filter(p => p.status === 'draft').length,
-      totalViews: filteredPages.reduce((sum, p) => sum + p.viewCount, 0)
+      publishedPages: filteredPages.filter((p) => p.status === "published")
+        .length,
+      draftPages: filteredPages.filter((p) => p.status === "draft").length,
+      totalViews: filteredPages.reduce((sum, p) => sum + p.viewCount, 0),
     };
 
     res.status(200).json({
@@ -474,18 +497,17 @@ export const getLegalPages = async (req, res) => {
           currentPage: parseInt(page),
           totalPages: Math.ceil(totalCount / parseInt(limit)),
           totalRecords: totalCount,
-          recordsPerPage: parseInt(limit)
+          recordsPerPage: parseInt(limit),
         },
-        analytics
-      }
+        analytics,
+      },
     });
-
   } catch (error) {
     console.error("Get legal pages error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve legal pages",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -500,35 +522,35 @@ export const getSystemConfig = async (req, res) => {
     // Mock system configuration
     const mockConfig = {
       general: {
-        siteName: 'StartGoals',
-        siteUrl: 'https://startgoals.com',
-        adminEmail: 'admin@startgoals.com',
-        timezone: 'UTC',
-        language: 'en',
+        siteName: "StartGoals",
+        siteUrl: "https://startgoals.com",
+        adminEmail: "admin@startgoals.com",
+        timezone: "UTC",
+        language: "en",
         maintenanceMode: false,
         registrationEnabled: true,
         maxFileUploadSize: 50, // MB
-        sessionTimeout: 30 // minutes
+        sessionTimeout: 30, // minutes
       },
       email: {
-        smtpHost: 'smtp.gmail.com',
+        smtpHost: "smtp.gmail.com",
         smtpPort: 587,
         smtpSecure: true,
-        smtpUser: 'noreply@startgoals.com',
-        fromName: 'StartGoals',
-        fromEmail: 'noreply@startgoals.com',
-        emailEnabled: true
+        smtpUser: "noreply@startgoals.com",
+        fromName: "StartGoals",
+        fromEmail: "noreply@startgoals.com",
+        emailEnabled: true,
       },
       sms: {
-        provider: 'twilio',
-        fromNumber: '+1234567890',
-        smsEnabled: true
+        provider: "twilio",
+        fromNumber: "+1234567890",
+        smsEnabled: true,
       },
       payment: {
-        currency: 'USD',
-        paymentMethodsEnabled: ['stripe', 'paypal'],
+        currency: "USD",
+        paymentMethodsEnabled: ["stripe", "paypal"],
         taxRate: 0.0, // percentage
-        platformFee: 5.0 // percentage
+        platformFee: 5.0, // percentage
       },
       security: {
         passwordMinLength: 8,
@@ -536,24 +558,25 @@ export const getSystemConfig = async (req, res) => {
         passwordRequireNumber: true,
         twoFactorEnabled: false,
         loginAttemptLimit: 5,
-        lockoutDuration: 30 // minutes
-      }
+        lockoutDuration: 30, // minutes
+      },
     };
 
-    const responseData = category ? { [category]: mockConfig[category] } : mockConfig;
+    const responseData = category
+      ? { [category]: mockConfig[category] }
+      : mockConfig;
 
     res.status(200).json({
       success: true,
       message: "System configuration retrieved successfully",
-      data: responseData
+      data: responseData,
     });
-
   } catch (error) {
     console.error("Get system config error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve system configuration",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -569,7 +592,7 @@ export const updateSystemConfig = async (req, res) => {
     if (!category || !settings) {
       return res.status(400).json({
         success: false,
-        message: "Category and settings are required"
+        message: "Category and settings are required",
       });
     }
 
@@ -578,20 +601,20 @@ export const updateSystemConfig = async (req, res) => {
       category,
       settings,
       updatedAt: new Date(),
-      updatedBy
+      updatedBy,
     };
 
     res.status(200).json({
       success: true,
       message: "System configuration updated successfully",
-      data: updatedConfig
+      data: updatedConfig,
     });
   } catch (error) {
     console.error("Update system config error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update system configuration",
-      error: error.message
+      error: error.message,
     });
   }
 };

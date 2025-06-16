@@ -21,9 +21,9 @@ const LiveSessionParticipant = sequelize.define(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM('instructor', 'student', 'moderator'),
+      type: DataTypes.ENUM("instructor", "student", "moderator"),
       allowNull: false,
-      defaultValue: 'student',
+      defaultValue: "student",
     },
     joinedAt: {
       type: DataTypes.DATE,
@@ -50,7 +50,7 @@ const LiveSessionParticipant = sequelize.define(
     tableName: "live_session_participants",
     ...commonOptions,
     timestamps: true, // Enabling Sequelize's default timestamps (createdAt, updatedAt)
-  }
+  },
 );
 
 // Define associations if necessary

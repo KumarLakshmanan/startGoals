@@ -57,19 +57,58 @@ configurePassport(passport);
 app.use(passport.initialize());
 app.use(passport.session());
 
-// 🔄 Sync DB
-app.get('/sync-db', (req, res) => {
-  autoSyncDatabase()
-    .then(() => {
+// 🔄 Manual DB Sync
+import { getModels, syncModels, serveSyncDbPage } from './config/manualSyncDb.js';
+import { syncDbMiddleware } from './middleware/syncDbMiddleware.js';
+
+// Serve the sync-db HTML page
+app.get('/sync-db', syncDbMiddleware, (req, res) => {
+  serveSyncDbPage(req, res);
+});
+
+// API to get all database models and their fields
+app.get('/db-models', syncDbMiddleware, async (req, res) => {
+  try {
+    const models = await getModels();
+    res.json(models);
+  } catch (error) {
+    console.error("Failed to fetch database models:", error);
+    res.status(500).json({ error: "Failed to fetch database models" });
+  }
+});
+
+// API to synchronize selected models and fields
+app.post('/sync-db', syncDbMiddleware, async (req, res) => {
+  try {
+    const { models, options } = req.body;
+    
+    if (!models || !Array.isArray(models) || models.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Please select at least one model to synchronize",
+        logs: ["Error: No models selected"]
+      });
+    }
+    
+    console.log(`Starting manual database sync with options:`, options);
+    const result = await syncModels(models, options);
+    
+    if (result.success) {
       console.log("✅ Database synced successfully");
-      res.status(200).json({ message: "Database synced successfully" });
-      return;
-    })
-    .catch((err) => {
-      console.error("💥 Failed to sync database:", err);
-      res.status(500).json({ error: "Failed to sync database" });
-      return;
+    } else {
+      console.error("💥 Failed to sync database:", result.error);
+    }
+    
+    return res.json(result);
+  } catch (error) {
+    console.error("💥 Failed to sync database:", error);
+    return res.status(500).json({ 
+      success: false,
+      message: "Failed to sync database",
+      error: error.message,
+      logs: [`Error: ${error.message}`]
     });
+  }
 });
 
 app.use("/api", router);

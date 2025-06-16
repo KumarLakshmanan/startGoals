@@ -33,7 +33,7 @@ const CourseGoal = sequelize.define(
   {
     tableName: "course_goals",
     ...commonOptions,
-  }
+  },
 );
 
 export default CourseGoal;

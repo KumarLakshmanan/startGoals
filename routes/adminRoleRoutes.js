@@ -8,7 +8,7 @@ import {
   deleteAdminUser,
   getActivityLogs,
   getPermissions,
-  exportAdminData
+  exportAdminData,
 } from "../controller/adminRoleController.js";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
 
@@ -21,12 +21,7 @@ const router = express.Router();
  * @desc Get all admin users with role filtering and analytics
  * @access Private (Super Admin)
  */
-router.get(
-  "/admins",
-  authenticateToken,
-  isAdmin,
-  getAdminUsers
-);
+router.get("/admins", authenticateToken, isAdmin, getAdminUsers);
 
 /**
  * @route GET /api/admin/roles/admins/:userId
@@ -37,7 +32,7 @@ router.get(
   "/admins/:userId",
   authenticateToken,
   isAdmin, // Additional check in controller for self-access
-  getAdminUser
+  getAdminUser,
 );
 
 /**
@@ -45,12 +40,7 @@ router.get(
  * @desc Create new admin user
  * @access Private (Super Admin)
  */
-router.post(
-  "/admins",
-  authenticateToken,
-  isAdmin,
-  createAdminUser
-);
+router.post("/admins", authenticateToken, isAdmin, createAdminUser);
 
 /**
  * @route PUT /api/admin/roles/admins/:userId
@@ -61,7 +51,7 @@ router.put(
   "/admins/:userId",
   authenticateToken,
   isAdmin, // Additional check in controller for self-access
-  updateAdminUser
+  updateAdminUser,
 );
 
 /**
@@ -73,7 +63,7 @@ router.put(
   "/admins/:userId/password",
   authenticateToken,
   isAdmin, // Self-access handled in controller
-  changeAdminPassword
+  changeAdminPassword,
 );
 
 /**
@@ -81,12 +71,7 @@ router.put(
  * @desc Delete admin user (with safety checks)
  * @access Private (Super Admin)
  */
-router.delete(
-  "/admins/:userId",
-  authenticateToken,
-  isAdmin,
-  deleteAdminUser
-);
+router.delete("/admins/:userId", authenticateToken, isAdmin, deleteAdminUser);
 
 // ===================== ACTIVITY LOGS AND TRACKING ROUTES =====================
 
@@ -95,12 +80,7 @@ router.delete(
  * @desc Get admin activity logs with advanced filtering
  * @access Private (Super Admin, Course Manager, Project Manager, Payment Manager)
  */
-router.get(
-  "/activity-logs",
-  authenticateToken,
-  isAdmin,
-  getActivityLogs
-);
+router.get("/activity-logs", authenticateToken, isAdmin, getActivityLogs);
 
 // ===================== PERMISSIONS AND ROLES ROUTES =====================
 
@@ -109,12 +89,7 @@ router.get(
  * @desc Get role permissions and hierarchy
  * @access Private (All Admin Roles)
  */
-router.get(
-  "/permissions",
-  authenticateToken,
-  isAdmin,
-  getPermissions
-);
+router.get("/permissions", authenticateToken, isAdmin, getPermissions);
 
 // ===================== DATA EXPORT ROUTES =====================
 
@@ -123,12 +98,7 @@ router.get(
  * @desc Export admin users and activity data
  * @access Private (Super Admin)
  */
-router.get(
-  "/export",
-  authenticateToken,
-  isAdmin,
-  exportAdminData
-);
+router.get("/export", authenticateToken, isAdmin, exportAdminData);
 
 export default router;
 
@@ -136,9 +106,9 @@ export default router;
 
 /**
  * ADMIN ROLE MANAGEMENT API ENDPOINTS
- * 
+ *
  * Base URL: /api/admin/roles
- * 
+ *
  * ADMIN USER MANAGEMENT:
  * - GET    /admins                           - List all admin users with analytics
  * - GET    /admins/:userId                   - Get admin user details
@@ -146,47 +116,47 @@ export default router;
  * - PUT    /admins/:userId                   - Update admin user
  * - PUT    /admins/:userId/password          - Change admin password
  * - DELETE /admins/:userId                   - Delete admin user
- * 
+ *
  * ACTIVITY TRACKING:
  * - GET    /activity-logs                    - Get activity logs with filtering
- * 
+ *
  * PERMISSIONS & ROLES:
  * - GET    /permissions                      - Get role permissions and hierarchy
- * 
+ *
  * DATA EXPORT:
  * - GET    /export                           - Export admin data
- * 
+ *
  * ADMIN ROLES & PERMISSIONS:
- * 
+ *
  * 🔴 SUPER ADMIN (Level 5):
  * - Full system access
  * - Manage all admin users
  * - System configuration
  * - All permissions
- * 
+ *
  * 🟡 COURSE MANAGER (Level 3):
  * - Manage courses and instructors
  * - Content moderation
  * - Course analytics
  * - Limited settings access
- * 
+ *
  * 🟡 PROJECT MANAGER (Level 3):
  * - Manage projects and downloads
  * - Content moderation
  * - Project analytics
  * - Limited settings access
- * 
+ *
  * 🟠 PAYMENT MANAGER (Level 4):
  * - Manage payments and refunds
  * - Financial reports
  * - Discount management
  * - View system config
- * 
+ *
  * 🟢 CERTIFICATE MANAGER (Level 2):
  * - Manage certificates
  * - Generate reports
  * - Limited access
- * 
+ *
  * SECURITY FEATURES:
  * ✅ Role-based access control (RBAC)
  * ✅ Permission hierarchy enforcement
@@ -198,7 +168,7 @@ export default router;
  * ✅ Account lockout protection
  * ✅ Self-deletion prevention
  * ✅ Super admin protection
- * 
+ *
  * ANALYTICS & MONITORING:
  * ✅ User activity scores
  * ✅ Login tracking
@@ -206,9 +176,9 @@ export default router;
  * ✅ Real-time monitoring
  * ✅ Export capabilities
  * ✅ Audit trails
- * 
+ *
  * SAMPLE REQUESTS:
- * 
+ *
  * Create Admin User:
  * POST /api/admin/roles/admins
  * {
@@ -220,10 +190,10 @@ export default router;
  *   "permissions": ["manage_courses", "view_analytics"],
  *   "sendWelcomeEmail": true
  * }
- * 
+ *
  * Get Activity Logs:
  * GET /api/admin/roles/activity-logs?userId=2&action=course&dateFrom=2025-06-01&limit=50
- * 
+ *
  * Change Password:
  * PUT /api/admin/roles/admins/2/password
  * {

@@ -15,7 +15,7 @@ const Project = sequelize.define(
       allowNull: false,
       validate: {
         notEmpty: { msg: "Project title is required" },
-        len: [3, 200]
+        len: [3, 200],
       },
     },
     description: {
@@ -168,16 +168,16 @@ const Project = sequelize.define(
     },
     totalRevenue: {
       type: DataTypes.DECIMAL(12, 2),
-      defaultValue: 0.00,
+      defaultValue: 0.0,
       comment: "Total revenue generated",
     },
     averageRating: {
       type: DataTypes.DECIMAL(3, 2),
       allowNull: true,
-      defaultValue: 0.00,
+      defaultValue: 0.0,
       validate: {
-        min: 0.00,
-        max: 5.00,
+        min: 0.0,
+        max: 5.0,
       },
     },
     totalRatings: {
@@ -237,7 +237,7 @@ const Project = sequelize.define(
         type: "BTREE",
       },
     ],
-  }
+  },
 );
 
 export default Project;

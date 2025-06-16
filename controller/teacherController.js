@@ -26,45 +26,51 @@ export const getAllTeachers = async (req, res) => {
       limit = 20,
       search,
       status,
-      sortBy = 'createdAt',
-      sortOrder = 'DESC',
-      includeStats = true
+      sortBy = "createdAt",
+      sortOrder = "DESC",
+      includeStats = true,
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Build where conditions
     const whereConditions = {
-      role: 'teacher'
+      role: "teacher",
     };
-    
+
     if (search) {
       whereConditions[Op.or] = [
         { firstName: { [Op.iLike]: `%${search}%` } },
         { lastName: { [Op.iLike]: `%${search}%` } },
         { username: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } }
+        { email: { [Op.iLike]: `%${search}%` } },
       ];
     }
-    
-    if (status) whereConditions.isVerified = status === 'active';
+
+    if (status) whereConditions.isVerified = status === "active";
 
     // Include course and rating statistics if requested
     const includeOptions = [];
-    
-    if (includeStats === 'true') {
+
+    if (includeStats === "true") {
       includeOptions.push({
         model: Course,
-        as: 'courses',
-        attributes: ['courseId', 'title', 'status', 'averageRating', 'totalRatings'],
-        required: false
+        as: "courses",
+        attributes: [
+          "courseId",
+          "title",
+          "status",
+          "averageRating",
+          "totalRatings",
+        ],
+        required: false,
       });
-      
+
       includeOptions.push({
         model: InstructorRating,
-        as: 'instructorRatings',
-        attributes: ['rating', 'review'],
-        required: false
+        as: "instructorRatings",
+        attributes: ["rating", "review"],
+        required: false,
       });
     }
 
@@ -72,56 +78,79 @@ export const getAllTeachers = async (req, res) => {
       where: whereConditions,
       include: includeOptions,
       attributes: [
-        'userId', 'firstName', 'lastName', 'username', 'email', 'mobile',
-        'profileImage', 'bio', 'isVerified', 'createdAt', 'updatedAt'
+        "userId",
+        "firstName",
+        "lastName",
+        "username",
+        "email",
+        "mobile",
+        "profileImage",
+        "bio",
+        "isVerified",
+        "createdAt",
+        "updatedAt",
       ],
       order: [[sortBy, sortOrder]],
       limit: parseInt(limit),
       offset: offset,
-      distinct: true
+      distinct: true,
     });
 
     // Calculate statistics for each teacher
-    const teachersWithStats = await Promise.all(teachers.rows.map(async (teacher) => {
-      const teacherData = teacher.toJSON();
-      
-      if (includeStats === 'true') {
-        // Calculate course statistics
-        const courseStats = {
-          totalCourses: teacher.courses?.length || 0,
-          activeCourses: teacher.courses?.filter(c => c.status === 'published').length || 0,
-          averageCourseRating: teacher.courses?.length > 0 
-            ? teacher.courses.reduce((sum, c) => sum + (c.averageRating || 0), 0) / teacher.courses.length 
-            : 0
-        };
+    const teachersWithStats = await Promise.all(
+      teachers.rows.map(async (teacher) => {
+        const teacherData = teacher.toJSON();
 
-        // Calculate instructor rating statistics
-        const instructorRatingStats = {
-          totalRatings: teacher.instructorRatings?.length || 0,
-          averageRating: teacher.instructorRatings?.length > 0
-            ? teacher.instructorRatings.reduce((sum, r) => sum + r.rating, 0) / teacher.instructorRatings.length
-            : 0
-        };
+        if (includeStats === "true") {
+          // Calculate course statistics
+          const courseStats = {
+            totalCourses: teacher.courses?.length || 0,
+            activeCourses:
+              teacher.courses?.filter((c) => c.status === "published").length ||
+              0,
+            averageCourseRating:
+              teacher.courses?.length > 0
+                ? teacher.courses.reduce(
+                    (sum, c) => sum + (c.averageRating || 0),
+                    0,
+                  ) / teacher.courses.length
+                : 0,
+          };
 
-        // Get student count
-        const studentCount = await BatchStudents.count({
-          where: { role: 'student' },
-          include: [{
-            model: Batch,
-            where: { createdBy: teacher.userId },
-            required: true
-          }]
-        });
+          // Calculate instructor rating statistics
+          const instructorRatingStats = {
+            totalRatings: teacher.instructorRatings?.length || 0,
+            averageRating:
+              teacher.instructorRatings?.length > 0
+                ? teacher.instructorRatings.reduce(
+                    (sum, r) => sum + r.rating,
+                    0,
+                  ) / teacher.instructorRatings.length
+                : 0,
+          };
 
-        teacherData.statistics = {
-          courses: courseStats,
-          ratings: instructorRatingStats,
-          students: studentCount
-        };
-      }
+          // Get student count
+          const studentCount = await BatchStudents.count({
+            where: { role: "student" },
+            include: [
+              {
+                model: Batch,
+                where: { createdBy: teacher.userId },
+                required: true,
+              },
+            ],
+          });
 
-      return teacherData;
-    }));
+          teacherData.statistics = {
+            courses: courseStats,
+            ratings: instructorRatingStats,
+            students: studentCount,
+          };
+        }
+
+        return teacherData;
+      }),
+    );
 
     res.json({
       status: true,
@@ -131,17 +160,16 @@ export const getAllTeachers = async (req, res) => {
           currentPage: parseInt(page),
           totalPages: Math.ceil(teachers.count / parseInt(limit)),
           totalItems: teachers.count,
-          itemsPerPage: parseInt(limit)
-        }
-      }
+          itemsPerPage: parseInt(limit),
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get all teachers error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to fetch teachers",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -155,64 +183,77 @@ export const getTeacherById = async (req, res) => {
     const { teacherId } = req.params;
 
     const teacher = await User.findOne({
-      where: { 
+      where: {
         userId: teacherId,
-        role: 'teacher'
+        role: "teacher",
       },
       include: [
         {
           model: Course,
-          as: 'courses',
+          as: "courses",
           include: [
             {
               model: CourseCategory,
-              as: 'category',
-              attributes: ['categoryId', 'categoryName']
+              as: "category",
+              attributes: ["categoryId", "categoryName"],
             },
             {
               model: Enrollment,
-              as: 'enrollments',
-              attributes: ['enrollmentId', 'status', 'progressPercentage']
-            }
-          ]
+              as: "enrollments",
+              attributes: ["enrollmentId", "status", "progressPercentage"],
+            },
+          ],
         },
         {
           model: Batch,
-          as: 'batches',
+          as: "batches",
           include: [
             {
               model: BatchStudents,
-              as: 'batchStudents',
-              where: { role: 'student' },
+              as: "batchStudents",
+              where: { role: "student" },
               required: false,
-              include: [{
-                model: User,
-                as: 'user',
-                attributes: ['userId', 'firstName', 'lastName', 'email']
-              }]
-            }
-          ]
+              include: [
+                {
+                  model: User,
+                  as: "user",
+                  attributes: ["userId", "firstName", "lastName", "email"],
+                },
+              ],
+            },
+          ],
         },
         {
           model: InstructorRating,
-          as: 'instructorRatings',
-          include: [{
-            model: User,
-            as: 'ratedBy',
-            attributes: ['userId', 'firstName', 'lastName']
-          }]
-        }
+          as: "instructorRatings",
+          include: [
+            {
+              model: User,
+              as: "ratedBy",
+              attributes: ["userId", "firstName", "lastName"],
+            },
+          ],
+        },
       ],
       attributes: [
-        'userId', 'firstName', 'lastName', 'username', 'email', 'mobile',
-        'profileImage', 'bio', 'isVerified', 'createdAt', 'updatedAt'
-      ]
+        "userId",
+        "firstName",
+        "lastName",
+        "username",
+        "email",
+        "mobile",
+        "profileImage",
+        "bio",
+        "isVerified",
+        "createdAt",
+        "updatedAt",
+      ],
     });
 
     if (!teacher) {
       return res.status(404).json({
         status: false,
-        message: "Teacher not found"
+        message: "Teacher not found",
       });
     }
 
@@ -224,56 +265,67 @@ export const getTeacherById = async (req, res) => {
     const statistics = {
       courses: {
         total: courses.length,
-        published: courses.filter(c => c.status === 'published').length,
-        draft: courses.filter(c => c.status === 'draft').length,
-        totalEnrollments: courses.reduce((sum, c) => sum + (c.enrollments?.length || 0), 0),
-        averageRating: courses.length > 0 
-          ? courses.reduce((sum, c) => sum + (c.averageRating || 0), 0) / courses.length 
-          : 0
+        published: courses.filter((c) => c.status === "published").length,
+        draft: courses.filter((c) => c.status === "draft").length,
+        totalEnrollments: courses.reduce(
+          (sum, c) => sum + (c.enrollments?.length || 0),
+          0,
+        ),
+        averageRating:
+          courses.length > 0
+            ? courses.reduce((sum, c) => sum + (c.averageRating || 0), 0) /
+              courses.length
+            : 0,
       },
       students: {
-        total: batches.reduce((sum, b) => sum + (b.batchStudents?.length || 0), 0),
-        activeBatches: batches.filter(b => b.status === 'active').length
+        total: batches.reduce(
+          (sum, b) => sum + (b.batchStudents?.length || 0),
+          0,
+        ),
+        activeBatches: batches.filter((b) => b.status === "active").length,
       },
       ratings: {
         total: ratings.length,
-        average: ratings.length > 0 
-          ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length 
-          : 0,
+        average:
+          ratings.length > 0
+            ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
+            : 0,
         distribution: ratings.reduce((dist, r) => {
           dist[`star${r.rating}`] = (dist[`star${r.rating}`] || 0) + 1;
           return dist;
-        }, {})
+        }, {}),
       },
       performance: {
-        coursesCreatedThisMonth: courses.filter(c => {
+        coursesCreatedThisMonth: courses.filter((c) => {
           const courseDate = new Date(c.createdAt);
           const now = new Date();
-          return courseDate.getMonth() === now.getMonth() && courseDate.getFullYear() === now.getFullYear();
+          return (
+            courseDate.getMonth() === now.getMonth() &&
+            courseDate.getFullYear() === now.getFullYear()
+          );
         }).length,
-        recentActivity: courses.filter(c => {
+        recentActivity: courses.filter((c) => {
           const courseDate = new Date(c.updatedAt);
           const thirtyDaysAgo = new Date();
           thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
           return courseDate >= thirtyDaysAgo;
-        }).length
-      }
+        }).length,
+      },
     };
 
     res.json({
       status: true,
       data: {
         teacher: teacher.toJSON(),
-        statistics
-      }
+        statistics,
+      },
     });
-
   } catch (error) {
     console.error("Get teacher by ID error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to fetch teacher details",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -284,7 +336,7 @@ export const getTeacherById = async (req, res) => {
  */
 export const createTeacher = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const {
       firstName,
@@ -295,32 +347,33 @@ export const createTeacher = async (req, res) => {
       password,
       bio,
       profileImage,
-      isVerified = true // Admin-created teachers are verified by default
+      isVerified = true, // Admin-created teachers are verified by default
     } = req.body;
 
     // Validate required fields
     if (!firstName || !lastName || !username || !email || !password) {
       return res.status(400).json({
         status: false,
-        message: "First name, last name, username, email, and password are required"
+        message:
+          "First name, last name, username, email, and password are required",
       });
     }
 
     // Check if username or email already exists
     const existingUser = await User.findOne({
       where: {
-        [Op.or]: [
-          { username },
-          { email }
-        ]
-      }
+        [Op.or]: [{ username }, { email }],
+      },
     });
 
     if (existingUser) {
       await transaction.rollback();
       return res.status(400).json({
         status: false,
-        message: existingUser.email === email ? "Email already exists" : "Username already exists"
+        message:
+          existingUser.email === email
+            ? "Email already exists"
+            : "Username already exists",
       });
     }
 
@@ -328,18 +381,21 @@ export const createTeacher = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 12);
 
     // Create teacher
-    const teacher = await User.create({
-      firstName,
-      lastName,
-      username,
-      email,
-      mobile,
-      password: hashedPassword,
-      role: 'teacher',
-      bio,
-      profileImage,
-      isVerified
-    }, { transaction });
+    const teacher = await User.create(
+      {
+        firstName,
+        lastName,
+        username,
+        email,
+        mobile,
+        password: hashedPassword,
+        role: "teacher",
+        bio,
+        profileImage,
+        isVerified,
+      },
+      { transaction },
+    );
 
     await transaction.commit();
 
@@ -350,16 +406,15 @@ export const createTeacher = async (req, res) => {
     res.status(201).json({
       status: true,
       message: "Teacher created successfully",
-      data: { teacher: teacherData }
+      data: { teacher: teacherData },
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Create teacher error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to create teacher",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -370,7 +425,7 @@ export const createTeacher = async (req, res) => {
  */
 export const updateTeacher = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { teacherId } = req.params;
     const {
@@ -382,47 +437,47 @@ export const updateTeacher = async (req, res) => {
       bio,
       profileImage,
       isVerified,
-      password // Optional - only if admin wants to reset password
+      password, // Optional - only if admin wants to reset password
     } = req.body;
 
     const teacher = await User.findOne({
-      where: { 
+      where: {
         userId: teacherId,
-        role: 'teacher'
-      }
+        role: "teacher",
+      },
     });
 
     if (!teacher) {
       await transaction.rollback();
       return res.status(404).json({
         status: false,
-        message: "Teacher not found"
+        message: "Teacher not found",
       });
     }
 
     // Check for unique constraints if username or email is being changed
     if (username && username !== teacher.username) {
       const existingUsername = await User.findOne({
-        where: { username, userId: { [Op.ne]: teacherId } }
+        where: { username, userId: { [Op.ne]: teacherId } },
       });
       if (existingUsername) {
         await transaction.rollback();
         return res.status(400).json({
           status: false,
-          message: "Username already exists"
+          message: "Username already exists",
         });
       }
     }
 
     if (email && email !== teacher.email) {
       const existingEmail = await User.findOne({
-        where: { email, userId: { [Op.ne]: teacherId } }
+        where: { email, userId: { [Op.ne]: teacherId } },
       });
       if (existingEmail) {
         await transaction.rollback();
         return res.status(400).json({
           status: false,
-          message: "Email already exists"
+          message: "Email already exists",
         });
       }
     }
@@ -454,16 +509,15 @@ export const updateTeacher = async (req, res) => {
     res.json({
       status: true,
       message: "Teacher updated successfully",
-      data: { teacher: updatedTeacher }
+      data: { teacher: updatedTeacher },
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Update teacher error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to update teacher",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -474,79 +528,80 @@ export const updateTeacher = async (req, res) => {
  */
 export const deleteTeacher = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { teacherId } = req.params;
     const { reassignToTeacherId, permanent = false } = req.body;
 
     const teacher = await User.findOne({
-      where: { 
+      where: {
         userId: teacherId,
-        role: 'teacher'
-      }
+        role: "teacher",
+      },
     });
 
     if (!teacher) {
       await transaction.rollback();
       return res.status(404).json({
         status: false,
-        message: "Teacher not found"
+        message: "Teacher not found",
       });
     }
 
     // Check if teacher has active courses or batches
     const activeCourses = await Course.count({
-      where: { 
+      where: {
         createdBy: teacherId,
-        status: { [Op.in]: ['active', 'published'] }
-      }
+        status: { [Op.in]: ["active", "published"] },
+      },
     });
 
     const activeBatches = await Batch.count({
-      where: { 
+      where: {
         createdBy: teacherId,
-        status: 'active'
-      }
+        status: "active",
+      },
     });
 
     if ((activeCourses > 0 || activeBatches > 0) && !reassignToTeacherId) {
       await transaction.rollback();
       return res.status(400).json({
         status: false,
-        message: "Teacher has active courses or batches. Please provide reassignToTeacherId or deactivate all content first",
+        message:
+          "Teacher has active courses or batches. Please provide reassignToTeacherId or deactivate all content first",
         data: {
           activeCourses,
-          activeBatches
-        }
+          activeBatches,
+        },
       });
     }
 
     // Reassign courses and batches if specified
     if (reassignToTeacherId) {
       const newTeacher = await User.findOne({
-        where: { userId: reassignToTeacherId, role: 'teacher' }
+        where: { userId: reassignToTeacherId, role: "teacher" },
       });
 
       if (!newTeacher) {
         await transaction.rollback();
         return res.status(400).json({
           status: false,
-          message: "Reassignment teacher not found"
+          message: "Reassignment teacher not found",
         });
       }
 
       await Course.update(
         { createdBy: reassignToTeacherId },
-        { where: { createdBy: teacherId }, transaction }
+        { where: { createdBy: teacherId }, transaction },
       );
 
       await Batch.update(
         { createdBy: reassignToTeacherId },
-        { where: { createdBy: teacherId }, transaction }
+        { where: { createdBy: teacherId }, transaction },
       );
     }
 
-    if (permanent === 'true') {
+    if (permanent === "true") {
       // Hard delete - be careful!
       await teacher.destroy({ force: true, transaction });
     } else {
@@ -558,20 +613,19 @@ export const deleteTeacher = async (req, res) => {
 
     res.json({
       status: true,
-      message: `Teacher ${permanent === 'true' ? 'permanently deleted' : 'deleted'} successfully`,
+      message: `Teacher ${permanent === "true" ? "permanently deleted" : "deleted"} successfully`,
       data: {
         reassignedCourses: reassignToTeacherId ? activeCourses : 0,
-        reassignedBatches: reassignToTeacherId ? activeBatches : 0
-      }
+        reassignedBatches: reassignToTeacherId ? activeBatches : 0,
+      },
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Delete teacher error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to delete teacher",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -586,20 +640,20 @@ export const deleteTeacher = async (req, res) => {
  */
 export const assignTeacherToCourse = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { teacherId, courseId } = req.body;
 
     // Validate teacher exists and is a teacher
     const teacher = await User.findOne({
-      where: { userId: teacherId, role: 'teacher' }
+      where: { userId: teacherId, role: "teacher" },
     });
 
     if (!teacher) {
       await transaction.rollback();
       return res.status(404).json({
         status: false,
-        message: "Teacher not found"
+        message: "Teacher not found",
       });
     }
 
@@ -609,7 +663,7 @@ export const assignTeacherToCourse = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({
         status: false,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
@@ -628,19 +682,18 @@ export const assignTeacherToCourse = async (req, res) => {
         newTeacher: {
           id: teacher.userId,
           name: `${teacher.firstName} ${teacher.lastName}`,
-          email: teacher.email
+          email: teacher.email,
         },
-        previousTeacherId
-      }
+        previousTeacherId,
+      },
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Assign teacher to course error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to assign teacher to course",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -651,20 +704,20 @@ export const assignTeacherToCourse = async (req, res) => {
  */
 export const assignTeacherToBatch = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { teacherId, batchId } = req.body;
 
     // Validate teacher exists and is a teacher
     const teacher = await User.findOne({
-      where: { userId: teacherId, role: 'teacher' }
+      where: { userId: teacherId, role: "teacher" },
     });
 
     if (!teacher) {
       await transaction.rollback();
       return res.status(404).json({
         status: false,
-        message: "Teacher not found"
+        message: "Teacher not found",
       });
     }
 
@@ -674,7 +727,7 @@ export const assignTeacherToBatch = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({
         status: false,
-        message: "Batch not found"
+        message: "Batch not found",
       });
     }
 
@@ -693,19 +746,18 @@ export const assignTeacherToBatch = async (req, res) => {
         newTeacher: {
           id: teacher.userId,
           name: `${teacher.firstName} ${teacher.lastName}`,
-          email: teacher.email
+          email: teacher.email,
         },
-        previousTeacherId
-      }
+        previousTeacherId,
+      },
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Assign teacher to batch error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to assign teacher to batch",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -721,22 +773,22 @@ export const assignTeacherToBatch = async (req, res) => {
 export const getTeacherPerformanceReport = async (req, res) => {
   try {
     const { teacherId } = req.params;
-    const { dateRange = '30d' } = req.query;
+    const { dateRange = "30d" } = req.query;
 
     // Calculate date range
     const endDate = new Date();
     const startDate = new Date();
     switch (dateRange) {
-      case '7d':
+      case "7d":
         startDate.setDate(endDate.getDate() - 7);
         break;
-      case '30d':
+      case "30d":
         startDate.setDate(endDate.getDate() - 30);
         break;
-      case '90d':
+      case "90d":
         startDate.setDate(endDate.getDate() - 90);
         break;
-      case '1y':
+      case "1y":
         startDate.setFullYear(endDate.getFullYear() - 1);
         break;
       default:
@@ -744,14 +796,14 @@ export const getTeacherPerformanceReport = async (req, res) => {
     }
 
     const teacher = await User.findOne({
-      where: { userId: teacherId, role: 'teacher' },
-      attributes: ['userId', 'firstName', 'lastName', 'email']
+      where: { userId: teacherId, role: "teacher" },
+      attributes: ["userId", "firstName", "lastName", "email"],
     });
 
     if (!teacher) {
       return res.status(404).json({
         status: false,
-        message: "Teacher not found"
+        message: "Teacher not found",
       });
     }
 
@@ -761,27 +813,27 @@ export const getTeacherPerformanceReport = async (req, res) => {
       include: [
         {
           model: Enrollment,
-          as: 'enrollments',
+          as: "enrollments",
           where: {
             createdAt: {
               [Op.gte]: startDate,
-              [Op.lte]: endDate
-            }
+              [Op.lte]: endDate,
+            },
           },
-          required: false
+          required: false,
         },
         {
           model: CourseRating,
-          as: 'courseRatings',
+          as: "courseRatings",
           where: {
             createdAt: {
               [Op.gte]: startDate,
-              [Op.lte]: endDate
-            }
+              [Op.lte]: endDate,
+            },
           },
-          required: false
-        }
-      ]
+          required: false,
+        },
+      ],
     });
 
     // Get instructor ratings in period
@@ -790,58 +842,75 @@ export const getTeacherPerformanceReport = async (req, res) => {
         instructorId: teacherId,
         createdAt: {
           [Op.gte]: startDate,
-          [Op.lte]: endDate
-        }
-      }
+          [Op.lte]: endDate,
+        },
+      },
     });
 
     // Calculate performance metrics
     const performance = {
       courses: {
         total: courses.length,
-        newEnrollments: courses.reduce((sum, c) => sum + (c.enrollments?.length || 0), 0),
-        averageRating: courses.length > 0
-          ? courses.reduce((sum, c) => {
-              const ratings = c.courseRatings || [];
-              const avg = ratings.length > 0 
-                ? ratings.reduce((s, r) => s + r.rating, 0) / ratings.length 
-                : 0;
-              return sum + avg;
-            }, 0) / courses.length
-          : 0,
-        totalRatings: courses.reduce((sum, c) => sum + (c.courseRatings?.length || 0), 0)
+        newEnrollments: courses.reduce(
+          (sum, c) => sum + (c.enrollments?.length || 0),
+          0,
+        ),
+        averageRating:
+          courses.length > 0
+            ? courses.reduce((sum, c) => {
+                const ratings = c.courseRatings || [];
+                const avg =
+                  ratings.length > 0
+                    ? ratings.reduce((s, r) => s + r.rating, 0) / ratings.length
+                    : 0;
+                return sum + avg;
+              }, 0) / courses.length
+            : 0,
+        totalRatings: courses.reduce(
+          (sum, c) => sum + (c.courseRatings?.length || 0),
+          0,
+        ),
       },
       instructor: {
-        averageRating: instructorRatings.length > 0
-          ? instructorRatings.reduce((sum, r) => sum + r.rating, 0) / instructorRatings.length
-          : 0,
+        averageRating:
+          instructorRatings.length > 0
+            ? instructorRatings.reduce((sum, r) => sum + r.rating, 0) /
+              instructorRatings.length
+            : 0,
         totalRatings: instructorRatings.length,
         ratingDistribution: instructorRatings.reduce((dist, r) => {
           dist[`star${r.rating}`] = (dist[`star${r.rating}`] || 0) + 1;
           return dist;
-        }, {})
+        }, {}),
       },
       revenue: {
-        totalRevenue: courses.reduce((sum, c) => 
-          sum + (c.price * (c.enrollments?.length || 0)), 0
+        totalRevenue: courses.reduce(
+          (sum, c) => sum + c.price * (c.enrollments?.length || 0),
+          0,
         ),
-        averageRevenuePerCourse: courses.length > 0
-          ? courses.reduce((sum, c) => sum + (c.price * (c.enrollments?.length || 0)), 0) / courses.length
-          : 0
-      }
+        averageRevenuePerCourse:
+          courses.length > 0
+            ? courses.reduce(
+                (sum, c) => sum + c.price * (c.enrollments?.length || 0),
+                0,
+              ) / courses.length
+            : 0,
+      },
     };
 
     // Get trending data
-    const enrollmentTrends = courses.flatMap(course => 
-      (course.enrollments || []).map(enrollment => ({
-        date: enrollment.createdAt.toISOString().split('T')[0],
-        courseId: course.courseId,
-        courseTitle: course.title
-      }))
-    ).reduce((acc, enrollment) => {
-      acc[enrollment.date] = (acc[enrollment.date] || 0) + 1;
-      return acc;
-    }, {});
+    const enrollmentTrends = courses
+      .flatMap((course) =>
+        (course.enrollments || []).map((enrollment) => ({
+          date: enrollment.createdAt.toISOString().split("T")[0],
+          courseId: course.courseId,
+          courseTitle: course.title,
+        })),
+      )
+      .reduce((acc, enrollment) => {
+        acc[enrollment.date] = (acc[enrollment.date] || 0) + 1;
+        return acc;
+      }, {});
 
     res.json({
       status: true,
@@ -849,29 +918,30 @@ export const getTeacherPerformanceReport = async (req, res) => {
         teacher: {
           id: teacher.userId,
           name: `${teacher.firstName} ${teacher.lastName}`,
-          email: teacher.email
+          email: teacher.email,
         },
         performance,
         trends: {
-          enrollmentsByDay: Object.entries(enrollmentTrends).map(([date, count]) => ({
-            date,
-            enrollments: count
-          }))
+          enrollmentsByDay: Object.entries(enrollmentTrends).map(
+            ([date, count]) => ({
+              date,
+              enrollments: count,
+            }),
+          ),
         },
         period: {
           startDate,
           endDate,
-          duration: dateRange
-        }
-      }
+          duration: dateRange,
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get teacher performance report error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to fetch teacher performance report",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -897,37 +967,45 @@ export const getTeacherStudentFeedback = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'ratedBy',
-          attributes: ['userId', 'firstName', 'lastName', 'profileImage']
+          as: "ratedBy",
+          attributes: ["userId", "firstName", "lastName", "profileImage"],
         },
         {
           model: Course,
-          attributes: ['courseId', 'title']
-        }
+          attributes: ["courseId", "title"],
+        },
       ],
-      order: [['createdAt', 'DESC']],
+      order: [["createdAt", "DESC"]],
       limit: parseInt(limit),
-      offset: offset
+      offset: offset,
     });
 
     // Calculate summary statistics
     const allRatings = await InstructorRating.findAll({
       where: { instructorId: teacherId },
-      attributes: ['rating']
+      attributes: ["rating"],
     });
 
     const summary = {
       totalRatings: allRatings.length,
-      averageRating: allRatings.length > 0
-        ? allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length
-        : 0,
-      ratingDistribution: allRatings.reduce((dist, r) => {
-        const key = `star${r.rating}`;
-        dist[key] = (dist[key] || 0) + 1;
-        return dist;
-      }, {
-        star1: 0, star2: 0, star3: 0, star4: 0, star5: 0
-      })
+      averageRating:
+        allRatings.length > 0
+          ? allRatings.reduce((sum, r) => sum + r.rating, 0) / allRatings.length
+          : 0,
+      ratingDistribution: allRatings.reduce(
+        (dist, r) => {
+          const key = `star${r.rating}`;
+          dist[key] = (dist[key] || 0) + 1;
+          return dist;
+        },
+        {
+          star1: 0,
+          star2: 0,
+          star3: 0,
+          star4: 0,
+          star5: 0,
+        },
+      ),
     };
 
     res.json({
@@ -939,17 +1017,16 @@ export const getTeacherStudentFeedback = async (req, res) => {
           currentPage: parseInt(page),
           totalPages: Math.ceil(ratings.count / parseInt(limit)),
           totalItems: ratings.count,
-          itemsPerPage: parseInt(limit)
-        }
-      }
+          itemsPerPage: parseInt(limit),
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get teacher student feedback error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to fetch teacher student feedback",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -974,32 +1051,35 @@ export const getTeacherAssignedCourses = async (req, res) => {
       include: [
         {
           model: CourseCategory,
-          as: 'category',
-          attributes: ['categoryId', 'categoryName']
+          as: "category",
+          attributes: ["categoryId", "categoryName"],
         },
         {
           model: Enrollment,
-          as: 'enrollments',
-          attributes: ['enrollmentId', 'status']
-        }
+          as: "enrollments",
+          attributes: ["enrollmentId", "status"],
+        },
       ],
-      order: [['createdAt', 'DESC']],
+      order: [["createdAt", "DESC"]],
       limit: parseInt(limit),
       offset: offset,
-      distinct: true
+      distinct: true,
     });
 
     // Add enrollment statistics to each course
-    const coursesWithStats = courses.rows.map(course => {
+    const coursesWithStats = courses.rows.map((course) => {
       const courseData = course.toJSON();
       const enrollments = course.enrollments || [];
-      
+
       courseData.statistics = {
         totalEnrollments: enrollments.length,
-        activeEnrollments: enrollments.filter(e => e.status === 'active').length,
-        completedEnrollments: enrollments.filter(e => e.status === 'completed').length
+        activeEnrollments: enrollments.filter((e) => e.status === "active")
+          .length,
+        completedEnrollments: enrollments.filter(
+          (e) => e.status === "completed",
+        ).length,
       };
-      
+
       delete courseData.enrollments; // Remove raw enrollment data
       return courseData;
     });
@@ -1012,17 +1092,16 @@ export const getTeacherAssignedCourses = async (req, res) => {
           currentPage: parseInt(page),
           totalPages: Math.ceil(courses.count / parseInt(limit)),
           totalItems: courses.count,
-          itemsPerPage: parseInt(limit)
-        }
-      }
+          itemsPerPage: parseInt(limit),
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get teacher assigned courses error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to fetch teacher assigned courses",
-      error: error.message
+      error: error.message,
     });
   }
 };

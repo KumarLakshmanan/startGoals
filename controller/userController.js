@@ -8,10 +8,7 @@ import Enrollment from "../model/enrollment.js";
 import CourseCategory from "../model/courseCategory.js";
 import { generateToken } from "../utils/jwtToken.js";
 import sequelize from "../config/db.js";
-import {
-  validateEmail,
-  validateMobile,
-} from "../utils/commonUtils.js";
+import { validateEmail, validateMobile } from "../utils/commonUtils.js";
 import bcrypt from "bcrypt";
 
 // ✅ OTP-related imports
@@ -62,7 +59,7 @@ export const userRegistration = async (req, res) => {
     if (email) {
       const existingEmail = await User.findOne({
         where: { email },
-        transaction: trans
+        transaction: trans,
       });
 
       if (existingEmail) {
@@ -77,7 +74,7 @@ export const userRegistration = async (req, res) => {
     if (username) {
       const existingUsername = await User.findOne({
         where: { username },
-        transaction: trans
+        transaction: trans,
       });
 
       if (existingUsername) {
@@ -92,14 +89,15 @@ export const userRegistration = async (req, res) => {
     if (mobile) {
       const existingMobile = await User.findOne({
         where: { mobile },
-        transaction: trans
+        transaction: trans,
       });
 
       if (existingMobile) {
         await trans.rollback();
-        return res
-          .status(409)
-          .json({ message: "This mobile number is already registered", status: false });
+        return res.status(409).json({
+          message: "This mobile number is already registered",
+          status: false,
+        });
       }
     }
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
@@ -114,7 +112,7 @@ export const userRegistration = async (req, res) => {
         isVerified: false,
         provider: "local",
       },
-      { transaction: trans }
+      { transaction: trans },
     );
 
     const identifier = email || mobile;
@@ -184,7 +182,8 @@ export const userLogin = async (req, res) => {
     // Check if user exists
     if (!user) {
       return res.status(401).json({
-        message: "Invalid credentials. Please check your email/mobile and password.",
+        message:
+          "Invalid credentials. Please check your email/mobile and password.",
         status: false,
         success: false,
         data: null,
@@ -194,7 +193,8 @@ export const userLogin = async (req, res) => {
     // ✅ Check if the user is verified
     if (!user.isVerified) {
       return res.status(403).json({
-        message: "Account not verified. Please verify your account before logging in.",
+        message:
+          "Account not verified. Please verify your account before logging in.",
         status: false,
         success: false,
         data: null,
@@ -243,7 +243,8 @@ export const userLogin = async (req, res) => {
       const isPasswordCorrect = await bcrypt.compare(password, user.password);
       if (!isPasswordCorrect) {
         return res.status(401).json({
-          message: "Invalid credentials. Please check your email/mobile and password.",
+          message:
+            "Invalid credentials. Please check your email/mobile and password.",
           status: false,
           success: false,
           data: null,
@@ -283,7 +284,10 @@ export const userLogin = async (req, res) => {
       status: false,
       success: false,
       data: null,
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error',
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal Server Error",
     });
   }
 };
@@ -329,7 +333,7 @@ export const googleCallback = async (req, res) => {
       const token = generateToken(user);
 
       return res.redirect(
-        `http://localhost:3000/google-login-success?token=${token}&status=true`
+        `http://localhost:3000/google-login-success?token=${token}&status=true`,
       );
     }
 
@@ -339,7 +343,7 @@ export const googleCallback = async (req, res) => {
     // Redirect or respond with token
     // For redirect:
     return res.redirect(
-      `http://localhost:3000/google-login-success?token=${token}&status=true`
+      `http://localhost:3000/google-login-success?token=${token}&status=true`,
     );
 
     // Or to send a direct response (if frontend expects JSON):
@@ -488,7 +492,6 @@ export const getUserDetails = async (req, res) => {
   }
 };
 
-
 export const getHomePage = async (req, res) => {
   try {
     let myClasses = [];
@@ -496,7 +499,8 @@ export const getHomePage = async (req, res) => {
     // Check if user is authenticated
     try {
       const { userId } = req.user; // Assuming userId is passed in the request body
-      user = await User.findByPk(userId); if (user) {
+      user = await User.findByPk(userId);
+      if (user) {
         // Get user's enrolled courses
         const enrollments = await Enrollment.findAll({
           where: { userId: userId },
@@ -506,12 +510,12 @@ export const getHomePage = async (req, res) => {
               include: [
                 {
                   model: Category,
-                  as: 'category',
-                  attributes: ['categoryId', 'categoryName']
-                }
-              ]
-            }
-          ]
+                  as: "category",
+                  attributes: ["categoryId", "categoryName"],
+                },
+              ],
+            },
+          ],
         });
 
         myClasses = enrollments.map((enrollment) => {
@@ -528,7 +532,7 @@ export const getHomePage = async (req, res) => {
             image: course.thumbnailUrl,
             reviews: 0, // You can implement review count later
             rating: 0, // You can implement rating later
-            purchase_status: true
+            purchase_status: true,
           };
         });
       }
@@ -539,33 +543,33 @@ export const getHomePage = async (req, res) => {
 
     // Get all banners
     const banners = await Banner.findAll({
-      attributes: ['id', 'title', 'image'],
-      order: [['createdAt', 'DESC']]
+      attributes: ["id", "title", "image"],
+      order: [["createdAt", "DESC"]],
     });
 
     // Get all categories
     const categories = await Category.findAll({
-      attributes: ['categoryId', 'categoryName'],
-      order: [['categoryName', 'ASC']]
-    });    // Get recommended courses (published courses that user hasn't enrolled in)
-    const enrolledCourseIds = myClasses.map(course => course.id);
+      attributes: ["categoryId", "categoryName"],
+      order: [["categoryName", "ASC"]],
+    }); // Get recommended courses (published courses that user hasn't enrolled in)
+    const enrolledCourseIds = myClasses.map((course) => course.id);
     const recommendedCourses = await Course.findAll({
       where: {
         isPublished: true,
-        status: 'active',
+        status: "active",
         ...(enrolledCourseIds.length > 0 && {
-          courseId: { [Op.notIn]: enrolledCourseIds }
-        })
+          courseId: { [Op.notIn]: enrolledCourseIds },
+        }),
       },
       include: [
         {
           model: Category,
-          as: 'category',
-          attributes: ['categoryId', 'categoryName']
-        }
+          as: "category",
+          attributes: ["categoryId", "categoryName"],
+        },
       ],
       limit: 10,
-      order: [['createdAt', 'DESC']]
+      order: [["createdAt", "DESC"]],
     });
 
     const recommendedList = recommendedCourses.map((course) => ({
@@ -580,27 +584,27 @@ export const getHomePage = async (req, res) => {
       image: course.thumbnailUrl,
       reviews: 0, // You can implement review count later
       rating: 0, // You can implement rating later
-      purchase_status: false
-    }));    // Get popular categories (first 2 categories for demo)
-    const popularCategories = categories.slice(0, 2).map(cat => ({
+      purchase_status: false,
+    })); // Get popular categories (first 2 categories for demo)
+    const popularCategories = categories.slice(0, 2).map((cat) => ({
       id: cat.categoryId,
-      category_name: cat.categoryName
+      category_name: cat.categoryName,
     }));
 
     // Get contact information from settings
     const contactSettings = await Settings.findAll({
       where: {
         key: {
-          [Op.in]: ['contact_phone', 'contact_email', 'company_name']
+          [Op.in]: ["contact_phone", "contact_email", "company_name"],
         },
-        isActive: true
+        isActive: true,
       },
-      attributes: ['key', 'value']
+      attributes: ["key", "value"],
     });
 
     // Convert settings array to object for easy access
     const settingsMap = {};
-    contactSettings.forEach(setting => {
+    contactSettings.forEach((setting) => {
       settingsMap[setting.key] = setting.value;
     });
 
@@ -608,31 +612,31 @@ export const getHomePage = async (req, res) => {
     const response = {
       success: true,
       message: "Success",
-      banners: banners.map(banner => ({
+      banners: banners.map((banner) => ({
         id: banner.id,
         title: banner.title,
-        image: banner.image
+        image: banner.image,
       })),
-      categories: categories.map(cat => ({
+      categories: categories.map((cat) => ({
         id: cat.categoryId,
-        category_name: cat.categoryName
+        category_name: cat.categoryName,
       })),
       courses: [
         {
           title: "My Classes",
-          list: myClasses
+          list: myClasses,
         },
         {
           title: "Recommended Classes",
-          list: recommendedList
-        }
+          list: recommendedList,
+        },
       ],
       popular: {
         categories: popularCategories,
       },
       contact: settingsMap.contact_phone || "1234567890",
       email: settingsMap.contact_email || "support@example.com",
-      company_name: settingsMap.company_name || "StartGoals"
+      company_name: settingsMap.company_name || "StartGoals",
     };
 
     res.json(response);
@@ -640,7 +644,7 @@ export const getHomePage = async (req, res) => {
     console.error("Homepage API Error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -658,17 +662,17 @@ export const getAllStudents = async (req, res) => {
       limit = 20,
       search,
       status,
-      sortBy = 'createdAt',
-      sortOrder = 'DESC',
+      sortBy = "createdAt",
+      sortOrder = "DESC",
       includeStats = true,
-      enrollmentStatus
+      enrollmentStatus,
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // Build where conditions
     const whereConditions = {
-      role: 'student'
+      role: "student",
     };
 
     if (search) {
@@ -677,29 +681,29 @@ export const getAllStudents = async (req, res) => {
         { lastName: { [Op.iLike]: `%${search}%` } },
         { username: { [Op.iLike]: `%${search}%` } },
         { email: { [Op.iLike]: `%${search}%` } },
-        { mobile: { [Op.iLike]: `%${search}%` } }
+        { mobile: { [Op.iLike]: `%${search}%` } },
       ];
     }
 
-    if (status) whereConditions.isVerified = status === 'active';
+    if (status) whereConditions.isVerified = status === "active";
 
     // Include associations based on query params
     const include = [];
 
-    if (includeStats === 'true') {
+    if (includeStats === "true") {
       include.push(
         {
           model: Enrollment,
-          as: 'enrollments',
-          include: [{ model: Course, attributes: ['title', 'thumbnail'] }],
-          required: false
+          as: "enrollments",
+          include: [{ model: Course, attributes: ["title", "thumbnail"] }],
+          required: false,
         },
         {
           model: BatchStudents,
-          as: 'batchEnrollments',
-          include: [{ model: Batch, attributes: ['batchName', 'status'] }],
-          required: false
-        }
+          as: "batchEnrollments",
+          include: [{ model: Batch, attributes: ["batchName", "status"] }],
+          required: false,
+        },
       );
     }
 
@@ -709,7 +713,7 @@ export const getAllStudents = async (req, res) => {
       limit: parseInt(limit),
       offset,
       order: [[sortBy, sortOrder]],
-      distinct: true
+      distinct: true,
     });
 
     // Calculate stats for each student if requested
@@ -717,33 +721,36 @@ export const getAllStudents = async (req, res) => {
       students.map(async (student) => {
         const studentData = student.toJSON();
 
-        if (includeStats === 'true') {
+        if (includeStats === "true") {
           // Calculate enrollment statistics
           const enrollmentCount = await Enrollment.count({
-            where: { userId: student.userId }
+            where: { userId: student.userId },
           });
 
           const completedCourses = await Enrollment.count({
             where: {
               userId: student.userId,
-              completionStatus: 'completed'
-            }
+              completionStatus: "completed",
+            },
           });
 
           const batchCount = await BatchStudents.count({
-            where: { userId: student.userId }
+            where: { userId: student.userId },
           });
 
           studentData.stats = {
             totalEnrollments: enrollmentCount,
             completedCourses,
             activeBatches: batchCount,
-            completionRate: enrollmentCount > 0 ? (completedCourses / enrollmentCount * 100).toFixed(1) : 0
+            completionRate:
+              enrollmentCount > 0
+                ? ((completedCourses / enrollmentCount) * 100).toFixed(1)
+                : 0,
           };
         }
 
         return studentData;
-      })
+      }),
     );
 
     const totalPages = Math.ceil(count / parseInt(limit));
@@ -759,22 +766,21 @@ export const getAllStudents = async (req, res) => {
           totalStudents: count,
           studentsPerPage: parseInt(limit),
           hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1
+          hasPrevPage: parseInt(page) > 1,
         },
         summary: {
           totalStudents: count,
-          activeStudents: students.filter(s => s.isVerified).length,
-          inactiveStudents: students.filter(s => !s.isVerified).length
-        }
-      }
+          activeStudents: students.filter((s) => s.isVerified).length,
+          inactiveStudents: students.filter((s) => !s.isVerified).length,
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get all students error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve students",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -790,86 +796,113 @@ export const getStudentById = async (req, res) => {
     const student = await User.findOne({
       where: {
         userId: studentId,
-        role: 'student'
+        role: "student",
       },
       include: [
         {
           model: Enrollment,
-          as: 'enrollments',
+          as: "enrollments",
           include: [
             {
               model: Course,
-              attributes: ['courseId', 'title', 'thumbnail', 'category', 'level', 'duration']
-            }
-          ]
+              attributes: [
+                "courseId",
+                "title",
+                "thumbnail",
+                "category",
+                "level",
+                "duration",
+              ],
+            },
+          ],
         },
         {
           model: BatchStudents,
-          as: 'batchEnrollments',
+          as: "batchEnrollments",
           include: [
             {
               model: Batch,
-              attributes: ['batchId', 'batchName', 'status', 'startDate', 'endDate']
-            }
-          ]
-        }
-      ]
+              attributes: [
+                "batchId",
+                "batchName",
+                "status",
+                "startDate",
+                "endDate",
+              ],
+            },
+          ],
+        },
+      ],
     });
 
     if (!student) {
       return res.status(404).json({
         success: false,
-        message: "Student not found"
+        message: "Student not found",
       });
     }
 
     const studentData = student.toJSON();
 
     // Add detailed statistics
-    if (includeProgress === 'true') {
+    if (includeProgress === "true") {
       const enrollments = studentData.enrollments || [];
       const totalEnrollments = enrollments.length;
-      const completedCourses = enrollments.filter(e => e.completionStatus === 'completed').length;
-      const inProgressCourses = enrollments.filter(e => e.completionStatus === 'in_progress').length;
+      const completedCourses = enrollments.filter(
+        (e) => e.completionStatus === "completed",
+      ).length;
+      const inProgressCourses = enrollments.filter(
+        (e) => e.completionStatus === "in_progress",
+      ).length;
 
       studentData.progress = {
         totalEnrollments,
         completedCourses,
         inProgressCourses,
-        notStartedCourses: totalEnrollments - completedCourses - inProgressCourses,
-        completionRate: totalEnrollments > 0 ? (completedCourses / totalEnrollments * 100).toFixed(1) : 0,
-        averageProgress: enrollments.length > 0 ?
-          (enrollments.reduce((sum, e) => sum + (e.progressPercentage || 0), 0) / enrollments.length).toFixed(1) : 0
+        notStartedCourses:
+          totalEnrollments - completedCourses - inProgressCourses,
+        completionRate:
+          totalEnrollments > 0
+            ? ((completedCourses / totalEnrollments) * 100).toFixed(1)
+            : 0,
+        averageProgress:
+          enrollments.length > 0
+            ? (
+                enrollments.reduce(
+                  (sum, e) => sum + (e.progressPercentage || 0),
+                  0,
+                ) / enrollments.length
+              ).toFixed(1)
+            : 0,
       };
 
       // Recent activity
       const recentEnrollments = await Enrollment.findAll({
         where: { userId: studentId },
-        include: [{ model: Course, attributes: ['title'] }],
-        order: [['updatedAt', 'DESC']],
-        limit: 5
+        include: [{ model: Course, attributes: ["title"] }],
+        order: [["updatedAt", "DESC"]],
+        limit: 5,
       });
 
-      studentData.recentActivity = recentEnrollments.map(enrollment => ({
+      studentData.recentActivity = recentEnrollments.map((enrollment) => ({
         courseTitle: enrollment.Course.title,
         status: enrollment.completionStatus,
         progress: enrollment.progressPercentage,
-        lastAccessed: enrollment.updatedAt
+        lastAccessed: enrollment.updatedAt,
       }));
     }
 
     res.status(200).json({
       success: true,
       message: "Student details retrieved successfully",
-      data: studentData
+      data: studentData,
     });
-
   } catch (error) {
     console.error("Get student by ID error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve student details",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -895,7 +928,7 @@ export const createStudent = async (req, res) => {
       country,
       pincode,
       emergencyContact,
-      isVerified = false
+      isVerified = false,
     } = req.body;
 
     // Validation
@@ -903,7 +936,7 @@ export const createStudent = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "First name, last name, and email are required"
+        message: "First name, last name, and email are required",
       });
     }
 
@@ -911,7 +944,7 @@ export const createStudent = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Invalid email format"
+        message: "Invalid email format",
       });
     }
 
@@ -919,7 +952,7 @@ export const createStudent = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Invalid mobile number format"
+        message: "Invalid mobile number format",
       });
     }
 
@@ -929,16 +962,16 @@ export const createStudent = async (req, res) => {
         [Op.or]: [
           { email },
           ...(mobile ? [{ mobile }] : []),
-          ...(username ? [{ username }] : [])
-        ]
-      }
+          ...(username ? [{ username }] : []),
+        ],
+      },
     });
 
     if (existingUser) {
       await transaction.rollback();
       return res.status(409).json({
         success: false,
-        message: "User with this email, mobile, or username already exists"
+        message: "User with this email, mobile, or username already exists",
       });
     }
 
@@ -949,24 +982,27 @@ export const createStudent = async (req, res) => {
     }
 
     // Create student
-    const student = await User.create({
-      firstName,
-      lastName,
-      username: username || `student_${Date.now()}`,
-      email,
-      mobile,
-      password: hashedPassword,
-      role: 'student',
-      dateOfBirth,
-      address,
-      city,
-      state,
-      country,
-      pincode,
-      emergencyContact,
-      isVerified,
-      isActive: true
-    }, { transaction });
+    const student = await User.create(
+      {
+        firstName,
+        lastName,
+        username: username || `student_${Date.now()}`,
+        email,
+        mobile,
+        password: hashedPassword,
+        role: "student",
+        dateOfBirth,
+        address,
+        city,
+        state,
+        country,
+        pincode,
+        emergencyContact,
+        isVerified,
+        isActive: true,
+      },
+      { transaction },
+    );
 
     await transaction.commit();
 
@@ -976,16 +1012,15 @@ export const createStudent = async (req, res) => {
     res.status(201).json({
       success: true,
       message: "Student created successfully",
-      data: studentData
+      data: studentData,
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Create student error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to create student",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1010,7 +1045,7 @@ export const updateStudent = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Invalid email format"
+        message: "Invalid email format",
       });
     }
 
@@ -1019,33 +1054,34 @@ export const updateStudent = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Invalid mobile number format"
+        message: "Invalid mobile number format",
       });
     }
 
     // Check if student exists
     const student = await User.findOne({
-      where: { userId: studentId, role: 'student' }
+      where: { userId: studentId, role: "student" },
     });
 
     if (!student) {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: "Student not found"
+        message: "Student not found",
       });
     }
 
     // Check for unique constraints if email/mobile/username are being updated
     if (updateData.email || updateData.mobile || updateData.username) {
       const whereConditions = {
-        userId: { [Op.ne]: studentId }
+        userId: { [Op.ne]: studentId },
       };
 
       const orConditions = [];
       if (updateData.email) orConditions.push({ email: updateData.email });
       if (updateData.mobile) orConditions.push({ mobile: updateData.mobile });
-      if (updateData.username) orConditions.push({ username: updateData.username });
+      if (updateData.username)
+        orConditions.push({ username: updateData.username });
 
       if (orConditions.length > 0) {
         whereConditions[Op.or] = orConditions;
@@ -1055,7 +1091,7 @@ export const updateStudent = async (req, res) => {
           await transaction.rollback();
           return res.status(409).json({
             success: false,
-            message: "Email, mobile, or username already exists"
+            message: "Email, mobile, or username already exists",
           });
         }
       }
@@ -1068,22 +1104,21 @@ export const updateStudent = async (req, res) => {
 
     // Return updated student data
     const updatedStudent = await User.findByPk(studentId, {
-      attributes: { exclude: ['password'] }
+      attributes: { exclude: ["password"] },
     });
 
     res.status(200).json({
       success: true,
       message: "Student updated successfully",
-      data: updatedStudent
+      data: updatedStudent,
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Update student error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update student",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1099,44 +1134,52 @@ export const deleteStudent = async (req, res) => {
     const { permanent = false } = req.query;
 
     const student = await User.findOne({
-      where: { userId: studentId, role: 'student' }
+      where: { userId: studentId, role: "student" },
     });
 
     if (!student) {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: "Student not found"
+        message: "Student not found",
       });
     }
 
-    if (permanent === 'true') {
+    if (permanent === "true") {
       // Hard delete - remove all related data
-      await BatchStudents.destroy({ where: { userId: studentId }, transaction });
+      await BatchStudents.destroy({
+        where: { userId: studentId },
+        transaction,
+      });
       await Enrollment.destroy({ where: { userId: studentId }, transaction });
       await student.destroy({ transaction });
     } else {
       // Soft delete - deactivate account
-      await student.update({
-        isActive: false,
-        deactivatedAt: new Date()
-      }, { transaction });
+      await student.update(
+        {
+          isActive: false,
+          deactivatedAt: new Date(),
+        },
+        { transaction },
+      );
     }
 
     await transaction.commit();
 
     res.status(200).json({
       success: true,
-      message: permanent === 'true' ? "Student permanently deleted" : "Student deactivated successfully"
+      message:
+        permanent === "true"
+          ? "Student permanently deleted"
+          : "Student deactivated successfully",
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Delete student error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to delete student",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1146,23 +1189,23 @@ export const deleteStudent = async (req, res) => {
  */
 export const getStudentAnalytics = async (req, res) => {
   try {
-    const { timeRange = '30d' } = req.query;
+    const { timeRange = "30d" } = req.query;
 
     // Calculate date range
     const now = new Date();
     let startDate = new Date();
 
     switch (timeRange) {
-      case '7d':
+      case "7d":
         startDate.setDate(now.getDate() - 7);
         break;
-      case '30d':
+      case "30d":
         startDate.setDate(now.getDate() - 30);
         break;
-      case '90d':
+      case "90d":
         startDate.setDate(now.getDate() - 90);
         break;
-      case '1y':
+      case "1y":
         startDate.setFullYear(now.getFullYear() - 1);
         break;
       default:
@@ -1170,68 +1213,103 @@ export const getStudentAnalytics = async (req, res) => {
     }
 
     // Basic student counts
-    const totalStudents = await User.count({ where: { role: 'student' } });
+    const totalStudents = await User.count({ where: { role: "student" } });
     const activeStudents = await User.count({
-      where: { role: 'student', isVerified: true, isActive: true }
+      where: { role: "student", isVerified: true, isActive: true },
     });
     const newStudents = await User.count({
       where: {
-        role: 'student',
-        createdAt: { [Op.gte]: startDate }
-      }
+        role: "student",
+        createdAt: { [Op.gte]: startDate },
+      },
     });
 
     // Enrollment statistics
     const totalEnrollments = await Enrollment.count();
     const activeEnrollments = await Enrollment.count({
-      where: { completionStatus: 'in_progress' }
+      where: { completionStatus: "in_progress" },
     });
     const completedEnrollments = await Enrollment.count({
-      where: { completionStatus: 'completed' }
+      where: { completionStatus: "completed" },
     });
 
     // Popular courses among students
     const popularCourses = await Course.findAll({
       attributes: [
-        'courseId',
-        'title',
-        [sequelize.fn('COUNT', sequelize.col('Enrollments.enrollmentId')), 'enrollmentCount']
+        "courseId",
+        "title",
+        [
+          sequelize.fn("COUNT", sequelize.col("Enrollments.enrollmentId")),
+          "enrollmentCount",
+        ],
       ],
       include: [
         {
           model: Enrollment,
           attributes: [],
-          required: true
-        }
+          required: true,
+        },
       ],
-      group: ['Course.courseId', 'Course.title'],
-      order: [[sequelize.fn('COUNT', sequelize.col('Enrollments.enrollmentId')), 'DESC']],
-      limit: 10
+      group: ["Course.courseId", "Course.title"],
+      order: [
+        [
+          sequelize.fn("COUNT", sequelize.col("Enrollments.enrollmentId")),
+          "DESC",
+        ],
+      ],
+      limit: 10,
     });
 
     // Student registration trends (last 12 months)
     const registrationTrends = await User.findAll({
       where: {
-        role: 'student',
-        createdAt: { [Op.gte]: new Date(now.getFullYear(), now.getMonth() - 11, 1) }
+        role: "student",
+        createdAt: {
+          [Op.gte]: new Date(now.getFullYear(), now.getMonth() - 11, 1),
+        },
       },
       attributes: [
-        [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('createdAt')), 'month'],
-        [sequelize.fn('COUNT', sequelize.col('userId')), 'count']
+        [
+          sequelize.fn("DATE_TRUNC", "month", sequelize.col("createdAt")),
+          "month",
+        ],
+        [sequelize.fn("COUNT", sequelize.col("userId")), "count"],
       ],
-      group: [sequelize.fn('DATE_TRUNC', 'month', sequelize.col('createdAt'))],
-      order: [[sequelize.fn('DATE_TRUNC', 'month', sequelize.col('createdAt')), 'ASC']]
+      group: [sequelize.fn("DATE_TRUNC", "month", sequelize.col("createdAt"))],
+      order: [
+        [
+          sequelize.fn("DATE_TRUNC", "month", sequelize.col("createdAt")),
+          "ASC",
+        ],
+      ],
     });
 
     // Completion rates by category
     const categoryStats = await CourseCategory.findAll({
       attributes: [
-        'categoryId',
-        'categoryName',
-        [sequelize.fn('COUNT', sequelize.col('Courses.Enrollments.enrollmentId')), 'totalEnrollments'],
-        [sequelize.fn('SUM', sequelize.case()
-          .when(sequelize.col('Courses.Enrollments.completionStatus'), 'completed', 1)
-          .else(0)), 'completedEnrollments']
+        "categoryId",
+        "categoryName",
+        [
+          sequelize.fn(
+            "COUNT",
+            sequelize.col("Courses.Enrollments.enrollmentId"),
+          ),
+          "totalEnrollments",
+        ],
+        [
+          sequelize.fn(
+            "SUM",
+            sequelize
+              .case()
+              .when(
+                sequelize.col("Courses.Enrollments.completionStatus"),
+                "completed",
+                1,
+              )
+              .else(0),
+          ),
+          "completedEnrollments",
+        ],
       ],
       include: [
         {
@@ -1239,14 +1317,21 @@ export const getStudentAnalytics = async (req, res) => {
           include: [
             {
               model: Enrollment,
-              attributes: []
-            }
+              attributes: [],
+            },
           ],
-          attributes: []
-        }
+          attributes: [],
+        },
       ],
-      group: ['CourseCategory.categoryId', 'CourseCategory.categoryName'],
-      having: sequelize.where(sequelize.fn('COUNT', sequelize.col('Courses.Enrollments.enrollmentId')), '>', 0)
+      group: ["CourseCategory.categoryId", "CourseCategory.categoryName"],
+      having: sequelize.where(
+        sequelize.fn(
+          "COUNT",
+          sequelize.col("Courses.Enrollments.enrollmentId"),
+        ),
+        ">",
+        0,
+      ),
     });
 
     const analytics = {
@@ -1255,43 +1340,54 @@ export const getStudentAnalytics = async (req, res) => {
         activeStudents,
         inactiveStudents: totalStudents - activeStudents,
         newStudents,
-        growthRate: totalStudents > 0 ? ((newStudents / totalStudents) * 100).toFixed(1) : 0
+        growthRate:
+          totalStudents > 0
+            ? ((newStudents / totalStudents) * 100).toFixed(1)
+            : 0,
       },
       enrollments: {
         total: totalEnrollments,
         active: activeEnrollments,
         completed: completedEnrollments,
-        completionRate: totalEnrollments > 0 ? ((completedEnrollments / totalEnrollments) * 100).toFixed(1) : 0
+        completionRate:
+          totalEnrollments > 0
+            ? ((completedEnrollments / totalEnrollments) * 100).toFixed(1)
+            : 0,
       },
-      popularCourses: popularCourses.map(course => ({
+      popularCourses: popularCourses.map((course) => ({
         courseId: course.courseId,
         title: course.title,
-        enrollments: parseInt(course.dataValues.enrollmentCount)
+        enrollments: parseInt(course.dataValues.enrollmentCount),
       })),
-      registrationTrends: registrationTrends.map(trend => ({
+      registrationTrends: registrationTrends.map((trend) => ({
         month: trend.dataValues.month,
-        count: parseInt(trend.dataValues.count)
+        count: parseInt(trend.dataValues.count),
       })),
-      categoryPerformance: categoryStats.map(cat => ({
+      categoryPerformance: categoryStats.map((cat) => ({
         category: cat.categoryName,
         totalEnrollments: parseInt(cat.dataValues.totalEnrollments),
         completedEnrollments: parseInt(cat.dataValues.completedEnrollments),
-        completionRate: cat.dataValues.totalEnrollments > 0 ?
-          ((cat.dataValues.completedEnrollments / cat.dataValues.totalEnrollments) * 100).toFixed(1) : 0
-      }))
+        completionRate:
+          cat.dataValues.totalEnrollments > 0
+            ? (
+                (cat.dataValues.completedEnrollments /
+                  cat.dataValues.totalEnrollments) *
+                100
+              ).toFixed(1)
+            : 0,
+      })),
     };
 
     res.status(200).json({
       success: true,
-      data: analytics
+      data: analytics,
     });
-
   } catch (error) {
     console.error("Get student analytics error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch student analytics",
-      error: error.message
+      error: error.message,
     });
   }
 };

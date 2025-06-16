@@ -16,7 +16,7 @@ const router = express.Router();
 /**
  * COMPREHENSIVE ADMIN MANAGEMENT SYSTEM
  * Base URL: /api/admin
- * 
+ *
  * This is the main router that integrates all admin management systems
  * for the StartGoals platform, providing a unified admin panel API.
  */
@@ -93,52 +93,51 @@ router.get("/dashboard", async (req, res) => {
         totalUsers: 15420,
         totalCourses: 340,
         totalProjects: 125,
-        totalRevenue: 245890.50,
+        totalRevenue: 245890.5,
         pendingApprovals: 23,
-        activeAdmins: 5
+        activeAdmins: 5,
       },
       recentActivity: {
         newRegistrations: 45,
         courseCompletions: 128,
         projectDownloads: 89,
         reviewsSubmitted: 67,
-        paymentsProcessed: 156
+        paymentsProcessed: 156,
       },
       systemHealth: {
         serverStatus: "healthy",
         databaseStatus: "healthy",
         storageUsage: "68%",
         cacheHitRate: "94%",
-        averageResponseTime: "120ms"
+        averageResponseTime: "120ms",
       },
       alerts: [
         {
           type: "warning",
           message: "High volume of pending course approvals",
           count: 15,
-          urgency: "medium"
+          urgency: "medium",
         },
         {
           type: "info",
           message: "Monthly revenue target achieved",
           percentage: 102,
-          urgency: "low"
-        }
-      ]
+          urgency: "low",
+        },
+      ],
     };
 
     res.status(200).json({
       success: true,
       message: "Admin dashboard data retrieved successfully",
-      data: dashboardData
+      data: dashboardData,
     });
-
   } catch (error) {
     console.error("Admin dashboard error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve dashboard data",
-      error: error.message
+      error: error.message,
     });
   }
 });

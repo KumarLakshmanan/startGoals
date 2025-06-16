@@ -11,7 +11,7 @@ const CourseLevel = sequelize.define(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    level: {
+    name: {
       type: DataTypes.STRING,
       allowNull: false,
       unique: true,
@@ -30,7 +30,7 @@ const CourseLevel = sequelize.define(
   {
     tableName: "course_levels",
     ...commonOptions,
-  }
+  },
 );
 
 export default CourseLevel;

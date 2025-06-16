@@ -9,10 +9,13 @@ import {
   verifyPaymentAndEnroll,
   getUserPurchases,
   getCoursePurchaseDetails,
-  handlePaymentFailure
+  handlePaymentFailure,
 } from "../controller/coursePurchaseController.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
-import { validateSchema, coursePurchaseValidation } from "../middleware/fieldValidation.js";
+import {
+  validateSchema,
+  coursePurchaseValidation,
+} from "../middleware/fieldValidation.js";
 
 const coursePurchaseRoutes = express.Router();
 
@@ -25,7 +28,7 @@ coursePurchaseRoutes.post(
   "/create-order",
   authenticateToken,
   validateSchema(coursePurchaseValidation.createOrder),
-  createCourseOrder
+  createCourseOrder,
 );
 
 /**
@@ -37,7 +40,7 @@ coursePurchaseRoutes.post(
   "/verify-payment",
   authenticateToken,
   validateSchema(coursePurchaseValidation.verifyPayment),
-  verifyPaymentAndEnroll
+  verifyPaymentAndEnroll,
 );
 
 /**
@@ -48,8 +51,8 @@ coursePurchaseRoutes.post(
 coursePurchaseRoutes.get(
   "/my-purchases",
   authenticateToken,
-  validateSchema(coursePurchaseValidation.purchaseHistory, 'query'),
-  getUserPurchases
+  validateSchema(coursePurchaseValidation.purchaseHistory, "query"),
+  getUserPurchases,
 );
 
 /**
@@ -60,7 +63,7 @@ coursePurchaseRoutes.get(
 coursePurchaseRoutes.get(
   "/course/:courseId",
   authenticateToken,
-  getCoursePurchaseDetails
+  getCoursePurchaseDetails,
 );
 
 /**
@@ -72,7 +75,7 @@ coursePurchaseRoutes.post(
   "/payment-failure",
   authenticateToken,
   validateSchema(coursePurchaseValidation.paymentFailure),
-  handlePaymentFailure
+  handlePaymentFailure,
 );
 
 export default coursePurchaseRoutes;

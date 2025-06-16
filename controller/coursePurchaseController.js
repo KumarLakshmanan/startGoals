@@ -3,13 +3,13 @@
  * Handles both live and recorded course purchases
  */
 
-import Razorpay from 'razorpay';
-import crypto from 'crypto';
-import Course from '../model/course.js';
-import User from '../model/user.js';
-import Enrollment from '../model/enrollment.js';
-import sequelize from '../config/db.js';
-import { Op } from 'sequelize';
+import Razorpay from "razorpay";
+import crypto from "crypto";
+import Course from "../model/course.js";
+import User from "../model/user.js";
+import Enrollment from "../model/enrollment.js";
+import sequelize from "../config/db.js";
+import { Op } from "sequelize";
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -22,7 +22,7 @@ const razorpay = new Razorpay({
  */
 export const createCourseOrder = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { courseId } = req.body;
     const userId = req.user?.userId;
@@ -31,7 +31,7 @@ export const createCourseOrder = async (req, res) => {
       await transaction.rollback();
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
@@ -39,40 +39,40 @@ export const createCourseOrder = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Course ID is required"
+        message: "Course ID is required",
       });
     }
 
     // Check if course exists and is published
     const course = await Course.findOne({
-      where: { 
+      where: {
         courseId: courseId,
         isPublished: true,
-        status: 'active'
-      }
+        status: "active",
+      },
     });
 
     if (!course) {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: "Course not found or not available for purchase"
+        message: "Course not found or not available for purchase",
       });
     }
 
     // Check if user already enrolled
     const existingEnrollment = await Enrollment.findOne({
-      where: { 
+      where: {
         userId: userId,
-        courseId: courseId 
-      }
+        courseId: courseId,
+      },
     });
 
     if (existingEnrollment) {
       await transaction.rollback();
       return res.status(409).json({
         success: false,
-        message: "You are already enrolled in this course"
+        message: "You are already enrolled in this course",
       });
     }
 
@@ -82,7 +82,7 @@ export const createCourseOrder = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: "User not found"
+        message: "User not found",
       });
     }
 
@@ -94,22 +94,22 @@ export const createCourseOrder = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Invalid course price"
+        message: "Invalid course price",
       });
     }
 
     // Create Razorpay order
     const orderOptions = {
       amount: amountInPaise,
-      currency: 'INR',
+      currency: "INR",
       receipt: `course_${courseId}_user_${userId}_${Date.now()}`,
       notes: {
         courseId: courseId,
         userId: userId,
         courseTitle: course.title,
         userEmail: user.email,
-        courseType: course.type
-      }
+        courseType: course.type,
+      },
     };
 
     const razorpayOrder = await razorpay.orders.create(orderOptions);
@@ -131,24 +131,28 @@ export const createCourseOrder = async (req, res) => {
           thumbnail: course.thumbnailUrl,
           originalPrice: course.price,
           salePrice: course.salePrice,
-          finalPrice: finalPrice
+          finalPrice: finalPrice,
         },
         userDetails: {
-          name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username,
+          name: user.firstName
+            ? `${user.firstName} ${user.lastName || ""}`.trim()
+            : user.username,
           email: user.email,
-          mobile: user.mobile
+          mobile: user.mobile,
         },
-        razorpayKeyId: process.env.RAZORPAY_KEY_ID
-      }
+        razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+      },
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Create course order error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to create order",
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error'
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal Server Error",
     });
   }
 };
@@ -158,13 +162,13 @@ export const createCourseOrder = async (req, res) => {
  */
 export const verifyPaymentAndEnroll = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
-      courseId
+      courseId,
     } = req.body;
 
     const userId = req.user?.userId;
@@ -173,16 +177,21 @@ export const verifyPaymentAndEnroll = async (req, res) => {
       await transaction.rollback();
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
     // Validate required fields
-    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !courseId) {
+    if (
+      !razorpay_order_id ||
+      !razorpay_payment_id ||
+      !razorpay_signature ||
+      !courseId
+    ) {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Missing required payment verification data"
+        message: "Missing required payment verification data",
       });
     }
 
@@ -197,75 +206,78 @@ export const verifyPaymentAndEnroll = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Payment verification failed - invalid signature"
+        message: "Payment verification failed - invalid signature",
       });
     }
 
     // Fetch payment details from Razorpay
     const payment = await razorpay.payments.fetch(razorpay_payment_id);
-    
-    if (payment.status !== 'captured' && payment.status !== 'authorized') {
+
+    if (payment.status !== "captured" && payment.status !== "authorized") {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Payment not successful"
+        message: "Payment not successful",
       });
     }
 
     // Verify course exists and matches order
     const course = await Course.findOne({
-      where: { 
+      where: {
         courseId: courseId,
         isPublished: true,
-        status: 'active'
-      }
+        status: "active",
+      },
     });
 
     if (!course) {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
     // Check if user already enrolled (double check)
     const existingEnrollment = await Enrollment.findOne({
-      where: { 
+      where: {
         userId: userId,
-        courseId: courseId 
-      }
+        courseId: courseId,
+      },
     });
 
     if (existingEnrollment) {
       await transaction.rollback();
       return res.status(409).json({
         success: false,
-        message: "Already enrolled in this course"
+        message: "Already enrolled in this course",
       });
     }
 
     // Create enrollment record
-    const enrollment = await Enrollment.create({
-      userId: userId,
-      courseId: courseId,
-      enrollmentDate: new Date(),
-      completionStatus: 'not_started',
-      progressPercentage: 0,
-      paymentStatus: 'completed',
-      paymentId: razorpay_payment_id,
-      orderId: razorpay_order_id,
-      amountPaid: payment.amount / 100, // Convert back from paise
-      paymentMethod: 'razorpay',
-      enrollmentType: course.type, // 'live' or 'recorded'
-      isActive: true
-    }, { transaction });
+    const enrollment = await Enrollment.create(
+      {
+        userId: userId,
+        courseId: courseId,
+        enrollmentDate: new Date(),
+        completionStatus: "not_started",
+        progressPercentage: 0,
+        paymentStatus: "completed",
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
+        amountPaid: payment.amount / 100, // Convert back from paise
+        paymentMethod: "razorpay",
+        enrollmentType: course.type, // 'live' or 'recorded'
+        isActive: true,
+      },
+      { transaction },
+    );
 
     await transaction.commit();
 
     // Get user details for response
     const user = await User.findByPk(userId, {
-      attributes: ['userId', 'firstName', 'lastName', 'username', 'email']
+      attributes: ["userId", "firstName", "lastName", "username", "email"],
     });
 
     res.status(200).json({
@@ -281,19 +293,23 @@ export const verifyPaymentAndEnroll = async (req, res) => {
         amountPaid: payment.amount / 100,
         user: {
           userId: user.userId,
-          name: user.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user.username,
-          email: user.email
-        }
-      }
+          name: user.firstName
+            ? `${user.firstName} ${user.lastName || ""}`.trim()
+            : user.username,
+          email: user.email,
+        },
+      },
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Verify payment and enroll error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to verify payment and enroll",
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error'
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal Server Error",
     });
   }
 };
@@ -309,22 +325,22 @@ export const getUserPurchases = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Build where conditions
     const whereConditions = {
       userId: userId,
-      paymentStatus: 'completed'
+      paymentStatus: "completed",
     };
-    
+
     if (status) {
       whereConditions.completionStatus = status;
     }
-    
+
     if (type) {
       whereConditions.enrollmentType = type;
     }
@@ -335,14 +351,21 @@ export const getUserPurchases = async (req, res) => {
         {
           model: Course,
           attributes: [
-            'courseId', 'title', 'description', 'thumbnailUrl', 
-            'type', 'duration', 'level', 'price', 'salePrice'
-          ]
-        }
+            "courseId",
+            "title",
+            "description",
+            "thumbnailUrl",
+            "type",
+            "duration",
+            "level",
+            "price",
+            "salePrice",
+          ],
+        },
       ],
       limit: parseInt(limit),
       offset,
-      order: [['enrollmentDate', 'DESC']]
+      order: [["enrollmentDate", "DESC"]],
     });
 
     const totalPages = Math.ceil(count / parseInt(limit));
@@ -351,14 +374,14 @@ export const getUserPurchases = async (req, res) => {
       success: true,
       message: "User purchases retrieved successfully",
       data: {
-        purchases: enrollments.map(enrollment => ({
+        purchases: enrollments.map((enrollment) => ({
           enrollmentId: enrollment.enrollmentId,
           enrollmentDate: enrollment.enrollmentDate,
           completionStatus: enrollment.completionStatus,
           progressPercentage: enrollment.progressPercentage,
           amountPaid: enrollment.amountPaid,
           paymentId: enrollment.paymentId,
-          course: enrollment.Course
+          course: enrollment.Course,
         })),
         pagination: {
           currentPage: parseInt(page),
@@ -366,17 +389,19 @@ export const getUserPurchases = async (req, res) => {
           totalPurchases: count,
           purchasesPerPage: parseInt(limit),
           hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1
-        }
-      }
+          hasPrevPage: parseInt(page) > 1,
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get user purchases error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve purchases",
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error'
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal Server Error",
     });
   }
 };
@@ -392,41 +417,50 @@ export const getCoursePurchaseDetails = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
     // Get course details
     const course = await Course.findOne({
-      where: { 
+      where: {
         courseId: courseId,
         isPublished: true,
-        status: 'active'
+        status: "active",
       },
       attributes: [
-        'courseId', 'title', 'description', 'thumbnailUrl', 
-        'type', 'duration', 'level', 'price', 'salePrice',
-        'maxStudents', 'requirements', 'goals'
-      ]
+        "courseId",
+        "title",
+        "description",
+        "thumbnailUrl",
+        "type",
+        "duration",
+        "level",
+        "price",
+        "salePrice",
+        "maxStudents",
+        "requirements",
+        "goals",
+      ],
     });
 
     if (!course) {
       return res.status(404).json({
         success: false,
-        message: "Course not found or not available"
+        message: "Course not found or not available",
       });
     }
 
     // Check if user is already enrolled
     const enrollment = await Enrollment.findOne({
-      where: { 
+      where: {
         userId: userId,
-        courseId: courseId 
-      }
+        courseId: courseId,
+      },
     });
 
     const finalPrice = course.salePrice || course.price;
-    
+
     res.status(200).json({
       success: true,
       message: "Course purchase details retrieved successfully",
@@ -437,26 +471,33 @@ export const getCoursePurchaseDetails = async (req, res) => {
           salePrice: course.salePrice,
           finalPrice: finalPrice,
           discount: course.salePrice ? course.price - course.salePrice : 0,
-          discountPercentage: course.salePrice ? 
-            Math.round(((course.price - course.salePrice) / course.price) * 100) : 0
+          discountPercentage: course.salePrice
+            ? Math.round(
+                ((course.price - course.salePrice) / course.price) * 100,
+              )
+            : 0,
         },
-        enrollment: enrollment ? {
-          isEnrolled: true,
-          enrollmentDate: enrollment.enrollmentDate,
-          completionStatus: enrollment.completionStatus,
-          progressPercentage: enrollment.progressPercentage
-        } : {
-          isEnrolled: false
-        }
-      }
+        enrollment: enrollment
+          ? {
+              isEnrolled: true,
+              enrollmentDate: enrollment.enrollmentDate,
+              completionStatus: enrollment.completionStatus,
+              progressPercentage: enrollment.progressPercentage,
+            }
+          : {
+              isEnrolled: false,
+            },
+      },
     });
-
   } catch (error) {
     console.error("Get course purchase details error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to retrieve course details",
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error'
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal Server Error",
     });
   }
 };
@@ -469,31 +510,33 @@ export const handlePaymentFailure = async (req, res) => {
     const { razorpay_order_id, razorpay_payment_id, error } = req.body;
     const userId = req.user?.userId;
 
-    console.log('Payment failure:', {
+    console.log("Payment failure:", {
       userId,
       razorpay_order_id,
       razorpay_payment_id,
-      error: error?.description || 'Unknown error'
+      error: error?.description || "Unknown error",
     });
 
     // You can log this to a payment failures table if needed
-    
+
     res.status(200).json({
       success: false,
       message: "Payment failed",
       data: {
         orderId: razorpay_order_id,
         paymentId: razorpay_payment_id,
-        error: error?.description || 'Payment was not completed'
-      }
+        error: error?.description || "Payment was not completed",
+      },
     });
-
   } catch (error) {
     console.error("Handle payment failure error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to handle payment failure",
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Internal Server Error'
+      error:
+        process.env.NODE_ENV === "development"
+          ? error.message
+          : "Internal Server Error",
     });
   }
 };

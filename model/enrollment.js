@@ -49,34 +49,39 @@ const Enrollment = sequelize.define(
     },
     // Payment related fields
     paymentStatus: {
-      type: DataTypes.ENUM('pending', 'completed', 'failed', 'refunded'),
-      defaultValue: 'pending',
+      type: DataTypes.ENUM("pending", "completed", "failed", "refunded"),
+      defaultValue: "pending",
       allowNull: false,
     },
     paymentId: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Razorpay payment ID',
+      comment: "Razorpay payment ID",
     },
     orderId: {
       type: DataTypes.STRING,
       allowNull: true,
-      comment: 'Razorpay order ID',
+      comment: "Razorpay order ID",
     },
     amountPaid: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
-      comment: 'Amount paid for the course',
+      comment: "Amount paid for the course",
     },
     paymentMethod: {
       type: DataTypes.STRING,
       allowNull: true,
-      defaultValue: 'razorpay',
+      defaultValue: "razorpay",
     },
     // Course progress fields
     completionStatus: {
-      type: DataTypes.ENUM('not_started', 'in_progress', 'completed', 'dropped'),
-      defaultValue: 'not_started',
+      type: DataTypes.ENUM(
+        "not_started",
+        "in_progress",
+        "completed",
+        "dropped",
+      ),
+      defaultValue: "not_started",
       allowNull: false,
     },
     progressPercentage: {
@@ -89,9 +94,9 @@ const Enrollment = sequelize.define(
       },
     },
     enrollmentType: {
-      type: DataTypes.ENUM('live', 'recorded'),
+      type: DataTypes.ENUM("live", "recorded"),
       allowNull: true,
-      comment: 'Type of course enrolled in',
+      comment: "Type of course enrolled in",
     },
     isActive: {
       type: DataTypes.BOOLEAN,
@@ -111,7 +116,7 @@ const Enrollment = sequelize.define(
   {
     tableName: "enrollments",
     ...commonOptions, // Include shared options like timestamps, paranoid, and underscored
-  }
+  },
 );
 
 export default Enrollment;

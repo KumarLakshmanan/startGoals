@@ -41,7 +41,7 @@ const BatchStudents = sequelize.define(
   {
     tableName: "batch_students",
     ...commonOptions,
-  }
+  },
 );
 
 export default BatchStudents;

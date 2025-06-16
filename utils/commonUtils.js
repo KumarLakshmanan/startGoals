@@ -13,7 +13,9 @@ export const isValidSkill = (skill) => {
 };
 
 export const generateOtp = (digits = 6) => {
-  return Math.floor(Math.random() * Math.pow(10, digits)).toString().padStart(digits, '0');
+  return Math.floor(Math.random() * Math.pow(10, digits))
+    .toString()
+    .padStart(digits, "0");
 };
 
 export const validateCourseInput = (courseData) => {
@@ -44,7 +46,6 @@ export const validateCourseInput = (courseData) => {
     errors.push("Language IDs is required.");
   }
 
-
   // Validate type (must be 'live', 'recorded', or 'hybrid')
   if (
     !courseData.type ||
@@ -59,7 +60,7 @@ export const validateCourseInput = (courseData) => {
     (courseData.price === undefined || courseData.price <= 0)
   ) {
     errors.push(
-      "Price must be specified and greater than zero for paid courses."
+      "Price must be specified and greater than zero for paid courses.",
     );
   }
 
@@ -69,7 +70,7 @@ export const validateCourseInput = (courseData) => {
     (!courseData.liveStartDate || !courseData.liveEndDate)
   ) {
     errors.push(
-      "Live and Hybrid courses must have both liveStartDate and liveEndDate."
+      "Live and Hybrid courses must have both liveStartDate and liveEndDate.",
     );
   }
 
@@ -79,14 +80,107 @@ export const validateCourseInput = (courseData) => {
 export const validateCourseLevelInput = (levelData) => {
   const errors = [];
 
-  // Validate level field
-  if (!levelData.level || levelData.level.trim() === "") {
-    errors.push("Level is required.");
+  // Validate name field
+  if (!levelData.name || levelData.name.trim() === "") {
+    errors.push("Level name is required.");
   }
 
   // Validate order field (optional but ensure it's a number)
   if (levelData.order !== undefined && typeof levelData.order !== "number") {
     errors.push("Order must be a valid number.");
+  }
+
+  return errors;
+};
+
+export const validateSkillInput = (skillData) => {
+  const errors = [];
+
+  // Validate skillName field (required)
+  if (!skillData.skillName || skillData.skillName.trim() === "") {
+    errors.push("Skill name is required.");
+  } else if (
+    skillData.skillName.length < 2 ||
+    skillData.skillName.length > 100
+  ) {
+    errors.push("Skill name must be between 2 and 100 characters.");
+  }
+
+  // Validate category field (optional but must be valid string if provided)
+  if (skillData.category && typeof skillData.category !== "string") {
+    errors.push("Category must be a valid string.");
+  }
+
+  // Validate level field (optional but must be valid string if provided)
+  if (skillData.level && typeof skillData.level !== "string") {
+    errors.push("Level must be a valid string.");
+  }
+
+  // Validate goalId if provided (optional)
+  if (skillData.goalId && typeof skillData.goalId !== "string") {
+    errors.push("Goal ID must be a valid UUID string.");
+  }
+
+  return errors;
+};
+
+export const validateLanguageInput = (languageData) => {
+  const errors = [];
+
+  // Validate language name (required)
+  if (!languageData.language || languageData.language.trim() === "") {
+    errors.push("Language name is required.");
+  }
+
+  // Validate language code (required)
+  if (!languageData.languageCode || languageData.languageCode.trim() === "") {
+    errors.push("Language code is required.");
+  } else if (!/^[a-z]{2,5}(-[A-Z]{2,5})?$/i.test(languageData.languageCode)) {
+    errors.push("Language code should be in format like en, en-US, fr etc.");
+  }
+
+  // Validate native name (optional but must be valid if provided)
+  if (
+    languageData.nativeName &&
+    (languageData.nativeName.length < 1 || languageData.nativeName.length > 100)
+  ) {
+    errors.push("Native name must be between 1 and 100 characters.");
+  }
+
+  // Validate language type (optional)
+  if (
+    languageData.languageType &&
+    !["user_preference", "course_language", "both"].includes(
+      languageData.languageType,
+    )
+  ) {
+    errors.push(
+      "Language type must be one of: user_preference, course_language, both.",
+    );
+  }
+
+  return errors;
+};
+
+export const validateGoalInput = (goalData) => {
+  const errors = [];
+
+  // Validate title/goalName field (required)
+  const goalName = goalData.title || goalData.goalName;
+  if (!goalName || goalName.trim() === "") {
+    errors.push("Goal title is required.");
+  } else if (goalName.length < 3 || goalName.length > 100) {
+    errors.push("Goal title must be between 3 and 100 characters.");
+  }
+
+  // Validate level field (optional but must be valid string if provided)
+  if (goalData.level && typeof goalData.level !== "string") {
+    errors.push("Level must be a valid string.");
+  }
+
+  // Validate description (optional)
+  if (goalData.description && typeof goalData.description !== "string") {
+    errors.push("Description must be a valid string.");
   }
 
   return errors;

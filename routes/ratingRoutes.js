@@ -14,7 +14,7 @@ import {
   // Admin management functions
   getAllReviews,
   moderateReview,
-  getReviewAnalytics
+  getReviewAnalytics,
 } from "../controller/ratingController.js";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
 
@@ -38,12 +38,7 @@ router.post("/helpful/:ratingId", authenticateToken, markReviewHelpful); // Mark
  * @desc Get all reviews with comprehensive filtering and moderation tools
  * @access Private (Super Admin, Course Manager, Project Manager)
  */
-router.get(
-  "/admin/reviews",
-  authenticateToken,
-  isAdmin,
-  getAllReviews
-);
+router.get("/admin/reviews", authenticateToken, isAdmin, getAllReviews);
 
 /**
  * @route PUT /api/admin/reviews/:id/moderate
@@ -54,7 +49,7 @@ router.put(
   "/admin/reviews/:id/moderate",
   authenticateToken,
   isAdmin,
-  moderateReview
+  moderateReview,
 );
 
 /**
@@ -66,7 +61,7 @@ router.get(
   "/admin/reviews/analytics",
   authenticateToken,
   isAdmin,
-  getReviewAnalytics
+  getReviewAnalytics,
 );
 
 export default router;

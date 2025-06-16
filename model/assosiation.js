@@ -125,12 +125,35 @@ Skill.belongsTo(Goal, {
   onUpdate: "CASCADE",
 });
 
-// user to goal
-// User selects one goal (one-to-many relationship)
-User.belongsTo(Goal, {
-  foreignKey: "goal_id", // goalId is a foreign key in the User model
-  onDelete: "CASCADE",
+// Goal to CourseLevel
+Goal.belongsTo(CourseLevel, {
+  foreignKey: "level_id",
+  as: "level",
+  onDelete: "SET NULL",
   onUpdate: "CASCADE",
+});
+
+CourseLevel.hasMany(Goal, {
+  foreignKey: "level_id",
+  as: "goals",
+  onDelete: "SET NULL",
+  onUpdate: "CASCADE",
+});
+
+// user to goal
+// User can select multiple goals (many-to-many relationship)
+User.belongsToMany(Goal, {
+  through: "user_goals", // join table for user-goals relationship
+  foreignKey: "user_id",
+  otherKey: "goal_id",
+  onDelete: "CASCADE",
+});
+
+Goal.belongsToMany(User, {
+  through: "user_goals",
+  foreignKey: "goal_id",
+  otherKey: "user_id",
+  onDelete: "CASCADE",
 });
 
 ///user to skill
@@ -146,6 +169,36 @@ Skill.belongsToMany(User, {
   foreignKey: "skill_id",
   otherKey: "user_id",
   onDelete: "CASCADE",
+});
+
+// Skill to CourseCategory
+Skill.belongsTo(CourseCategory, {
+  foreignKey: "category_id",
+  as: "category",
+  onDelete: "SET NULL",
+  onUpdate: "CASCADE",
+});
+
+CourseCategory.hasMany(Skill, {
+  foreignKey: "category_id",
+  as: "skills",
+  onDelete: "SET NULL",
+  onUpdate: "CASCADE",
+});
+
+// Skill to CourseLevel
+Skill.belongsTo(CourseLevel, {
+  foreignKey: "level_id",
+  as: "level",
+  onDelete: "SET NULL",
+  onUpdate: "CASCADE",
+});
+
+CourseLevel.hasMany(Skill, {
+  foreignKey: "level_id",
+  as: "skills",
+  onDelete: "SET NULL",
+  onUpdate: "CASCADE",
 });
 
 // course to courseTag

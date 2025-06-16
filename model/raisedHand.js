@@ -26,8 +26,8 @@ const RaisedHand = sequelize.define(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM('pending', 'accepted', 'rejected', 'addressed'),
-      defaultValue: 'pending',
+      type: DataTypes.ENUM("pending", "accepted", "rejected", "addressed"),
+      defaultValue: "pending",
       allowNull: false,
     },
     respondedAt: {
@@ -40,14 +40,14 @@ const RaisedHand = sequelize.define(
     tableName: "raised_hands",
     ...commonOptions,
     timestamps: true, // createdAt, updatedAt
-  }
+  },
 );
 
 // Define associations
-RaisedHand.belongsTo(LiveSession, { foreignKey: 'sessionId' });
-RaisedHand.belongsTo(LiveSessionParticipant, { foreignKey: 'participantId' });
+RaisedHand.belongsTo(LiveSession, { foreignKey: "sessionId" });
+RaisedHand.belongsTo(LiveSessionParticipant, { foreignKey: "participantId" });
 
-LiveSession.hasMany(RaisedHand, { foreignKey: 'sessionId' });
-LiveSessionParticipant.hasMany(RaisedHand, { foreignKey: 'participantId' });
+LiveSession.hasMany(RaisedHand, { foreignKey: "sessionId" });
+LiveSessionParticipant.hasMany(RaisedHand, { foreignKey: "participantId" });
 
 export default RaisedHand;

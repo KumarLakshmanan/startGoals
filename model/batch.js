@@ -44,7 +44,7 @@ const Batch = sequelize.define(
   {
     tableName: "batches",
     ...commonOptions,
-  }
+  },
 );
 
 export default Batch;

@@ -28,39 +28,39 @@ import coursePurchaseRoutes from "./coursePurchaseRoutes.js";
 const router = express.Router();
 
 // Health check endpoint
-router.get('/health', (req, res) => {
+router.get("/health", (req, res) => {
   res.json({
     success: true,
-    message: 'Server is running',
+    message: "Server is running",
     timestamp: new Date().toISOString(),
-    status: 'healthy'
+    status: "healthy",
   });
 });
 
-router.use('/user', userRoutes);
-router.use('/otp', otpRoutes);
-router.use('/skill', skillRoutes);
-router.use('/category', categories);
-router.use('/language', LanguageRoutes);
-router.use('/onboarding', onboardingRoutes);
-router.use('/goal', goalRoutes);
-router.use('/course', courseRoutes);
-router.use('/course-levels', courseLevelRoutes);
-router.use('/section', sectionRoutes);
-router.use('/live-session', liveSessionRoutes);
-router.use('/batch', batchRoutes);
-router.use('/batch-students', batchStudentsRoutes);
-router.use('/web', webRoutes);
-router.use('/settings', settingsRoutes);
-router.use('/banners', bannerRoutes);
-router.use('/search', searchRoutes);
-router.use('/ratings', ratingRoutes);
-router.use('/projects', projectRoutes);
-router.use('/project-files', projectFileRoutes);
-router.use('/project-ratings', projectRatingRoutes);
-router.use('/discounts', discountRoutes);
-router.use('/upload', fileUploadRoutes);
-router.use('/admin/teachers', teacherRoutes);
-router.use('/course-purchase', coursePurchaseRoutes);
+router.use("/user", userRoutes);
+router.use("/otp", otpRoutes);
+router.use("/skill", skillRoutes);
+router.use("/category", categories);
+router.use("/language", LanguageRoutes);
+router.use("/onboarding", onboardingRoutes);
+router.use("/goal", goalRoutes);
+router.use("/course", courseRoutes);
+router.use("/course-levels", courseLevelRoutes);
+router.use("/section", sectionRoutes);
+router.use("/live-session", liveSessionRoutes);
+router.use("/batch", batchRoutes);
+router.use("/batch-students", batchStudentsRoutes);
+router.use("/web", webRoutes);
+router.use("/settings", settingsRoutes);
+router.use("/banners", bannerRoutes);
+router.use("/search", searchRoutes);
+router.use("/ratings", ratingRoutes);
+router.use("/projects", projectRoutes);
+router.use("/project-files", projectFileRoutes);
+router.use("/project-ratings", projectRatingRoutes);
+router.use("/discounts", discountRoutes);
+router.use("/upload", fileUploadRoutes);
+router.use("/admin/teachers", teacherRoutes);
+router.use("/course-purchase", coursePurchaseRoutes);
 
 export default router;

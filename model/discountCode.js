@@ -147,7 +147,7 @@ const DiscountCode = sequelize.define(
         type: "BTREE",
       },
     ],
-  }
+  },
 );
 
 export default DiscountCode;

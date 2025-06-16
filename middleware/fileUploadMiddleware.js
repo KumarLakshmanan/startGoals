@@ -30,10 +30,12 @@ class S3Storage {
   _handleFile(req, file, cb) {
     const folder = folderMap[file.fieldname] || "others/";
     const fileExtension = path.extname(file.originalname);
-    const fileName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${fileExtension}`;
+    const fileName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${fileExtension}`;
     const key = `${folder}${fileName}`;
 
-    const metadata = this.metadata ? this.metadata(req, file, (err, metadata) => metadata) : {};
+    const metadata = this.metadata
+      ? this.metadata(req, file, (err, metadata) => metadata)
+      : {};
 
     const uploadParams = {
       Bucket: this.bucket,
@@ -43,8 +45,8 @@ class S3Storage {
       // Removed ACL parameter as bucket doesn't allow ACLs
       Metadata: {
         fieldName: file.fieldname,
-        ...metadata
-      }
+        ...metadata,
+      },
     };
 
     const upload = new Upload({
@@ -52,19 +54,20 @@ class S3Storage {
       params: uploadParams,
     });
 
-    upload.done()
-      .then(result => {
+    upload
+      .done()
+      .then((result) => {
         // Generate public URL manually since we can't use ACL
-        const publicUrl = `https://${this.bucket}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
-        
+        const publicUrl = `https://${this.bucket}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${key}`;
+
         cb(null, {
           bucket: this.bucket,
           key: key,
           location: publicUrl, // Use constructed public URL
-          etag: result.ETag
+          etag: result.ETag,
         });
       })
-      .catch(err => {
+      .catch((err) => {
         cb(err);
       });
   }
@@ -86,9 +89,9 @@ const customS3Storage = new S3Storage({
   key: (req, file, cb) => {
     const folder = folderMap[file.fieldname] || "others/";
     const fileExtension = path.extname(file.originalname);
-    const fileName = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}${fileExtension}`;
+    const fileName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${fileExtension}`;
     cb(null, `${folder}${fileName}`);
-  }
+  },
 });
 
 const upload = multer({
@@ -110,7 +113,9 @@ const upload = multer({
     };
 
     const fieldType = allowedTypes[file.fieldname] || /jpeg|jpg|png|gif/;
-    const extname = fieldType.test(path.extname(file.originalname).toLowerCase());
+    const extname = fieldType.test(
+      path.extname(file.originalname).toLowerCase(),
+    );
     const mimetype = fieldType.test(file.mimetype);
 
     if (extname && mimetype) {
@@ -123,7 +128,8 @@ const upload = multer({
 
 // Export different upload configurations
 export const uploadSingle = (fieldName) => upload.single(fieldName);
-export const uploadMultiple = (fieldName, maxCount) => upload.array(fieldName, maxCount);
+export const uploadMultiple = (fieldName, maxCount) =>
+  upload.array(fieldName, maxCount);
 export const uploadFields = (fields) => upload.fields(fields);
 
 export const fileUploadMiddleware = upload;

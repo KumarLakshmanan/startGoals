@@ -70,7 +70,8 @@ const Course = sequelize.define(
     recordedFromId: {
       type: DataTypes.UUID,
       allowNull: true,
-    }, status: {
+    },
+    status: {
       type: DataTypes.ENUM("active", "inactive", "draft", "deleted"),
       defaultValue: "draft",
       allowNull: false,
@@ -78,10 +79,10 @@ const Course = sequelize.define(
     averageRating: {
       type: DataTypes.DECIMAL(3, 2),
       allowNull: true,
-      defaultValue: 0.00,
+      defaultValue: 0.0,
       validate: {
-        min: 0.00,
-        max: 5.00,
+        min: 0.0,
+        max: 5.0,
       },
       comment: "Average rating from 0.00 to 5.00",
     },
@@ -99,7 +100,7 @@ const Course = sequelize.define(
   {
     tableName: "courses",
     ...commonOptions, // includes timestamps, paranoid, underscored
-  }
+  },
 );
 
 export default Course;

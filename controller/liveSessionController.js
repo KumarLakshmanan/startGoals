@@ -14,7 +14,7 @@ import {
   formatDateTime,
   validateSessionInput,
   generateMeetingData,
-  handlePlatformErrors
+  handlePlatformErrors,
 } from "../utils/liveSessionUtils.js";
 
 const { RtcRole } = AgoraAccessToken;
@@ -49,26 +49,26 @@ export const createLiveSession = async (req, res) => {
       sessionDate,
       startTime,
       endTime,
-      platform
+      platform,
     });
 
     if (basicValidationErrors.length > 0) {
       return res.status(400).json({
         status: false,
         message: "Validation failed",
-        errors: basicValidationErrors
+        errors: basicValidationErrors,
       });
     }
 
     // Additional UUID validations
-    const courseIdError = validateSessionInput.uuid(courseId, 'Course ID');
-    const batchIdError = validateSessionInput.uuid(batchId, 'Batch ID');
+    const courseIdError = validateSessionInput.uuid(courseId, "Course ID");
+    const batchIdError = validateSessionInput.uuid(batchId, "Batch ID");
 
     if (courseIdError || batchIdError) {
       return res.status(400).json({
         status: false,
         message: "Invalid ID format",
-        errors: [courseIdError, batchIdError].filter(Boolean)
+        errors: [courseIdError, batchIdError].filter(Boolean),
       });
     }
 
@@ -77,7 +77,7 @@ export const createLiveSession = async (req, res) => {
     if (timeRangeError) {
       return res.status(400).json({
         status: false,
-        message: timeRangeError
+        message: timeRangeError,
       });
     }
 
@@ -90,7 +90,8 @@ export const createLiveSession = async (req, res) => {
     const batch = await Batch.count({
       where: { batchId },
       transaction: t,
-    }); if (!course) {
+    });
+    if (!course) {
       await safeRollback();
       return res.status(404).json({
         status: false,
@@ -112,14 +113,16 @@ export const createLiveSession = async (req, res) => {
       const start = new Date(`1970-01-01T${startTime}Z`);
       const end = new Date(`1970-01-01T${endTime}Z`);
       duration = Math.floor((end - start) / 60000); // in minutes
-    }    // ✅ Platform-specific session creation
+    } // ✅ Platform-specific session creation
     let platformSessionDetails;
     let generatedMeetingLink;
 
-    if (platform.toLowerCase() === 'agora') {
+    if (platform.toLowerCase() === "agora") {
       // For Agora, channelName is often the platformSessionId
       // Generate a unique and valid channel name
-      const channelName = agoraService.generateChannelName(`session_${title.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20)}`);
+      const channelName = agoraService.generateChannelName(
+        `session_${title.replace(/[^a-zA-Z0-9]/g, "_").substring(0, 20)}`,
+      );
 
       platformSessionDetails = await agoraService.createLiveSession({
         channelName: channelName,
@@ -127,14 +130,13 @@ export const createLiveSession = async (req, res) => {
         sessionDate,
         startTime,
         endTime,
-        duration
+        duration,
       });
 
       // Agora typically doesn't have a 'meetingLink' in the same way Zoom does; it uses channel names.
       // The client would use the channelName and a token to join.
       generatedMeetingLink = `agora:${platformSessionDetails.platformSessionId || channelName}`;
-
-    } else if (platform.toLowerCase() === 'zoom') {
+    } else if (platform.toLowerCase() === "zoom") {
       // Format the start time properly for Zoom API using utility function
       const formattedStartTime = formatDateTime.forZoom(sessionDate, startTime);
 
@@ -149,9 +151,9 @@ export const createLiveSession = async (req, res) => {
           participant_video: false,
           host_video: true,
           waiting_room: false,
-          audio: 'both',
-          auto_recording: 'none'
-        }
+          audio: "both",
+          auto_recording: "none",
+        },
       });
 
       generatedMeetingLink = platformSessionDetails.join_url;
@@ -167,7 +169,7 @@ export const createLiveSession = async (req, res) => {
       await safeRollback();
       return res.status(500).json({
         status: false,
-        message: `Failed to create session on ${platform}.`
+        message: `Failed to create session on ${platform}.`,
       });
     }
 
@@ -184,9 +186,12 @@ export const createLiveSession = async (req, res) => {
         durationMinutes: duration,
         createdBy: req.user?.id || null,
         platform,
-        platformSessionId: platform.toLowerCase() === 'agora' ? platformSessionDetails.platformSessionId : platformSessionDetails.id, // Agora channel or Zoom meeting ID
+        platformSessionId:
+          platform.toLowerCase() === "agora"
+            ? platformSessionDetails.platformSessionId
+            : platformSessionDetails.id, // Agora channel or Zoom meeting ID
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     await t.commit();
@@ -230,7 +235,8 @@ export const startLiveSession = async (req, res) => {
       });
     }
 
-    const session = await LiveSession.findByPk(sessionId, { transaction: t }); if (!session) {
+    const session = await LiveSession.findByPk(sessionId, { transaction: t });
+    if (!session) {
       await safeRollback();
       return res.status(404).json({
         status: false,
@@ -238,7 +244,7 @@ export const startLiveSession = async (req, res) => {
       });
     }
 
-    if (session.status === 'active') {
+    if (session.status === "active") {
       await safeRollback();
       return res.status(400).json({
         status: false,
@@ -246,18 +252,18 @@ export const startLiveSession = async (req, res) => {
       });
     }
 
-    if (session.status === 'ended') {
+    if (session.status === "ended") {
       await safeRollback();
       return res.status(400).json({
         status: false,
         message: "Cannot start an ended session",
       });
-    }// Platform-specific start logic
+    } // Platform-specific start logic
     try {
-      if (session.platform === 'agora') {
+      if (session.platform === "agora") {
         await agoraService.startLiveSession(session.platformSessionId);
         // Additional Agora-specific actions after starting, if any
-      } else if (session.platform === 'zoom') {
+      } else if (session.platform === "zoom") {
         // Zoom meetings are often started by the host via start_url.
         // This call could be to update status or ensure the meeting is ready.
         await zoomService.startLiveMeeting(session.platformSessionId);
@@ -266,24 +272,26 @@ export const startLiveSession = async (req, res) => {
         await t.rollback();
         return res.status(400).json({
           status: false,
-          message: "Unknown platform for this session."
+          message: "Unknown platform for this session.",
         });
-      }    } catch (platformError) {
+      }
+    } catch (platformError) {
       console.error(`${session.platform} session start error:`, platformError);
       await t.rollback();
 
-      const errorResponse = session.platform.toLowerCase() === 'agora' 
-        ? handlePlatformErrors.agora(platformError)
-        : handlePlatformErrors.zoom(platformError);
-        
+      const errorResponse =
+        session.platform.toLowerCase() === "agora"
+          ? handlePlatformErrors.agora(platformError)
+          : handlePlatformErrors.zoom(platformError);
+
       return res.status(500).json({
         status: false,
         message: `Failed to start ${session.platform} session: ${errorResponse.message}`,
-        code: errorResponse.code
+        code: errorResponse.code,
       });
     }
 
-    session.status = 'active';
+    session.status = "active";
     await session.save({ transaction: t });
 
     await t.commit();
@@ -328,42 +336,44 @@ export const endLiveSession = async (req, res) => {
       });
     }
 
-    if (session.status === 'ended') {
+    if (session.status === "ended") {
       await t.rollback();
       return res.status(400).json({
         status: false,
         message: "Session is already ended",
       });
-    }    // Platform-specific end logic
+    } // Platform-specific end logic
     try {
-      if (session.platform === 'agora') {
+      if (session.platform === "agora") {
         await agoraService.endLiveSession(session.platformSessionId);
         // Additional Agora-specific cleanup, if any
-      } else if (session.platform === 'zoom') {
+      } else if (session.platform === "zoom") {
         await zoomService.endLiveMeeting(session.platformSessionId);
         // Additional Zoom-specific cleanup, if any
       } else {
         await t.rollback();
         return res.status(400).json({
           status: false,
-          message: "Unknown platform for this session."
+          message: "Unknown platform for this session.",
         });
-      }    } catch (platformError) {
+      }
+    } catch (platformError) {
       console.error(`${session.platform} session end error:`, platformError);
       await t.rollback();
 
-      const errorResponse = session.platform.toLowerCase() === 'agora' 
-        ? handlePlatformErrors.agora(platformError)
-        : handlePlatformErrors.zoom(platformError);
-        
+      const errorResponse =
+        session.platform.toLowerCase() === "agora"
+          ? handlePlatformErrors.agora(platformError)
+          : handlePlatformErrors.zoom(platformError);
+
       return res.status(500).json({
         status: false,
         message: `Failed to end ${session.platform} session: ${errorResponse.message}`,
-        code: errorResponse.code
+        code: errorResponse.code,
       });
     }
 
-    session.status = 'ended';
+    session.status = "ended";
     await session.save({ transaction: t });
 
     await t.commit();
@@ -447,11 +457,13 @@ export const joinLiveSession = async (req, res) => {
       });
     }
 
-    if (session.status !== 'active') {
+    if (session.status !== "active") {
       await t.rollback();
       return res.status(400).json({
         status: false,
-        message: "Cannot join a session that is not active. Current status: " + session.status,
+        message:
+          "Cannot join a session that is not active. Current status: " +
+          session.status,
       });
     }
 
@@ -483,20 +495,26 @@ export const joinLiveSession = async (req, res) => {
         {
           sessionId,
           userId,
-          role: role || 'student', // Default role to 'student' if not provided
+          role: role || "student", // Default role to 'student' if not provided
           // joinedAt is handled by defaultValue in model
         },
-        { transaction: t }
+        { transaction: t },
       );
     }
     let joinData = {};
-    if (session.platform === 'agora') {
-      const rtcRole = (role && role.toLowerCase() === 'host') ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    if (session.platform === "agora") {
+      const rtcRole =
+        role && role.toLowerCase() === "host"
+          ? RtcRole.PUBLISHER
+          : RtcRole.SUBSCRIBER;
       // Ensure userId for Agora token is a number
       const numericUserId = parseInt(userId, 10);
       if (isNaN(numericUserId)) {
         await t.rollback();
-        return res.status(400).json({ status: false, message: "User ID must be a number for Agora sessions" });
+        return res.status(400).json({
+          status: false,
+          message: "User ID must be a number for Agora sessions",
+        });
       }
 
       try {
@@ -504,11 +522,11 @@ export const joinLiveSession = async (req, res) => {
           session.platformSessionId,
           numericUserId,
           rtcRole,
-          3600
+          3600,
         ); // 1 hour expiry
 
         joinData = {
-          platform: 'agora',
+          platform: "agora",
           token: agoraTokenData.token,
           appId: agoraTokenData.appId,
           channelName: agoraTokenData.channelName,
@@ -520,16 +538,18 @@ export const joinLiveSession = async (req, res) => {
         await t.rollback();
         return res.status(500).json({
           status: false,
-          message: `Failed to generate Agora token: ${tokenError.message}`
+          message: `Failed to generate Agora token: ${tokenError.message}`,
         });
       }
-    } else if (session.platform === 'zoom') {
+    } else if (session.platform === "zoom") {
       try {
         // For Zoom, we can provide additional meeting details if needed
-        const meetingDetails = await zoomService.getMeetingDetails(session.platformSessionId);
+        const meetingDetails = await zoomService.getMeetingDetails(
+          session.platformSessionId,
+        );
 
         joinData = {
-          platform: 'zoom',
+          platform: "zoom",
           joinUrl: session.meetingLink,
           meetingId: session.platformSessionId,
           password: meetingDetails.password || null,
@@ -537,10 +557,10 @@ export const joinLiveSession = async (req, res) => {
           participantDetails: participant,
         };
       } catch (zoomError) {
-        console.error('Failed to get Zoom meeting details:', zoomError);
+        console.error("Failed to get Zoom meeting details:", zoomError);
         // Fallback to basic join data
         joinData = {
-          platform: 'zoom',
+          platform: "zoom",
           joinUrl: session.meetingLink,
           meetingId: session.platformSessionId,
           participantDetails: participant,
@@ -550,7 +570,7 @@ export const joinLiveSession = async (req, res) => {
       await t.rollback();
       return res.status(400).json({
         status: false,
-        message: "Unknown platform for this session."
+        message: "Unknown platform for this session.",
       });
     }
 
@@ -564,7 +584,7 @@ export const joinLiveSession = async (req, res) => {
         role: participant.role,
         isMuted: participant.isMuted,
         isCameraOn: participant.isCameraOn,
-        joinedAt: participant.joinedAt
+        joinedAt: participant.joinedAt,
       });
     }
     return res.status(200).json({
@@ -587,7 +607,14 @@ export const listSessions = async (req, res) => {
   const io = req.app.get("io");
 
   try {
-    const { platform, courseId, instructorId, status, sortBy = 'sessionDate', sortOrder = 'ASC' } = req.query;
+    const {
+      platform,
+      courseId,
+      instructorId,
+      status,
+      sortBy = "sessionDate",
+      sortOrder = "ASC",
+    } = req.query;
     const whereClause = {};
 
     if (platform) {
@@ -601,22 +628,25 @@ export const listSessions = async (req, res) => {
     }
     if (status) {
       // Allow comma-separated status values or a single status
-      whereClause.status = status.includes(',') ? status.split(',') : status;
+      whereClause.status = status.includes(",") ? status.split(",") : status;
     } else {
       // Default to scheduled and active if no status is provided
-      whereClause.status = ['scheduled', 'active'];
+      whereClause.status = ["scheduled", "active"];
     }
 
     const orderClause = [];
     if (sortBy) {
-      orderClause.push([sortBy, sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC']);
+      orderClause.push([
+        sortBy,
+        sortOrder.toUpperCase() === "DESC" ? "DESC" : "ASC",
+      ]);
       // Add secondary sort for consistency if primary is not time based
-      if (sortBy !== 'startTime' && sortBy !== 'sessionDate') {
-        orderClause.push(['startTime', 'ASC']);
+      if (sortBy !== "startTime" && sortBy !== "sessionDate") {
+        orderClause.push(["startTime", "ASC"]);
       }
     } else {
       // Default sort order
-      orderClause.push(['sessionDate', 'ASC'], ['startTime', 'ASC']);
+      orderClause.push(["sessionDate", "ASC"], ["startTime", "ASC"]);
     }
 
     const sessions = await LiveSession.findAll({
@@ -652,18 +682,21 @@ export const toggleParticipantMic = async (req, res) => {
     const { sessionId, participantUserId } = req.params;
     const { allow } = req.body; // allow: true to unmute, false to mute
 
-    if (!sessionId || !participantUserId || typeof allow !== 'boolean') {
+    if (!sessionId || !participantUserId || typeof allow !== "boolean") {
       return res.status(400).json({
         status: false,
-        message: "Session ID, Participant User ID, and allow (boolean) are required",
+        message:
+          "Session ID, Participant User ID, and allow (boolean) are required",
       });
     }
 
     // Basic check: Ensure session exists and is active (optional, depends on requirements)
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
-    if (!session || session.status !== 'active') {
+    if (!session || session.status !== "active") {
       await t.rollback();
-      return res.status(404).json({ status: false, message: 'Active session not found.' });
+      return res
+        .status(404)
+        .json({ status: false, message: "Active session not found." });
     }
     // Authorization is handled by isSessionInstructor middleware
 
@@ -674,22 +707,34 @@ export const toggleParticipantMic = async (req, res) => {
 
     if (!participant) {
       await t.rollback();
-      return res.status(404).json({ status: false, message: "Active participant not found in this session." });
+      return res.status(404).json({
+        status: false,
+        message: "Active participant not found in this session.",
+      });
     }
 
-    if (session.platform === 'agora') {
+    if (session.platform === "agora") {
       try {
-        await agoraService.controlParticipantMic(session.platformSessionId, participantUserId, !allow); // allow=true means unmute (isMuted=false)
+        await agoraService.controlParticipantMic(
+          session.platformSessionId,
+          participantUserId,
+          !allow,
+        ); // allow=true means unmute (isMuted=false)
       } catch (agoraError) {
-        console.error(`Agora mic control error for user ${participantUserId} in session ${sessionId}:`, agoraError);
+        console.error(
+          `Agora mic control error for user ${participantUserId} in session ${sessionId}:`,
+          agoraError,
+        );
         // Decide if this should be a fatal error or just a warning
         // await t.rollback();
         // return res.status(500).json({ status: false, message: "Failed to control participant mic on Agora." });
       }
-    } else if (session.platform === 'zoom') {
+    } else if (session.platform === "zoom") {
       // Mic control for Zoom is typically handled client-side or via Zoom's interface by host/co-host.
       // Server-side API for individual participant mute is limited for basic integrations.
-      console.log(`Zoom session ${sessionId}: Mic control for ${participantUserId} requested. This is usually client-side for Zoom.`);
+      console.log(
+        `Zoom session ${sessionId}: Mic control for ${participantUserId} requested. This is usually client-side for Zoom.`,
+      );
     }
 
     participant.isMuted = !allow;
@@ -700,14 +745,14 @@ export const toggleParticipantMic = async (req, res) => {
       io.to(sessionId).emit("participantMediaUpdated", {
         participantId: participant.participantId,
         userId: participant.userId,
-        mediaType: 'mic',
+        mediaType: "mic",
         isMuted: participant.isMuted,
-        sessionId
+        sessionId,
       });
     }
     return res.status(200).json({
       status: true,
-      message: `Participant mic on ${session.platform} ${allow ? 'unmuted' : 'muted'} successfully (DB updated). Platform action: ${session.platform === 'agora' ? 'attempted' : 'manual/client-side'}`,
+      message: `Participant mic on ${session.platform} ${allow ? "unmuted" : "muted"} successfully (DB updated). Platform action: ${session.platform === "agora" ? "attempted" : "manual/client-side"}`,
       data: participant,
     });
   } catch (error) {
@@ -730,18 +775,21 @@ export const toggleParticipantCamera = async (req, res) => {
     const { sessionId, participantUserId } = req.params;
     const { enable } = req.body; // enable: true to turn on, false to turn off
 
-    if (!sessionId || !participantUserId || typeof enable !== 'boolean') {
+    if (!sessionId || !participantUserId || typeof enable !== "boolean") {
       return res.status(400).json({
         status: false,
-        message: "Session ID, Participant User ID, and enable (boolean) are required",
+        message:
+          "Session ID, Participant User ID, and enable (boolean) are required",
       });
     }
 
     // Basic check: Ensure session exists and is active
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
-    if (!session || session.status !== 'active') {
+    if (!session || session.status !== "active") {
       await t.rollback();
-      return res.status(404).json({ status: false, message: 'Active session not found.' });
+      return res
+        .status(404)
+        .json({ status: false, message: "Active session not found." });
     }
     // Authorization is handled by isSessionInstructor middleware
 
@@ -752,19 +800,31 @@ export const toggleParticipantCamera = async (req, res) => {
 
     if (!participant) {
       await t.rollback();
-      return res.status(404).json({ status: false, message: "Active participant not found in this session." });
+      return res.status(404).json({
+        status: false,
+        message: "Active participant not found in this session.",
+      });
     }
 
-    if (session.platform === 'agora') {
+    if (session.platform === "agora") {
       try {
-        await agoraService.controlParticipantCamera(session.platformSessionId, participantUserId, !enable); // enable=true means camera on (isCameraOff=false)
+        await agoraService.controlParticipantCamera(
+          session.platformSessionId,
+          participantUserId,
+          !enable,
+        ); // enable=true means camera on (isCameraOff=false)
       } catch (agoraError) {
-        console.error(`Agora camera control error for user ${participantUserId} in session ${sessionId}:`, agoraError);
+        console.error(
+          `Agora camera control error for user ${participantUserId} in session ${sessionId}:`,
+          agoraError,
+        );
         // Decide if fatal or warning
       }
-    } else if (session.platform === 'zoom') {
+    } else if (session.platform === "zoom") {
       // Camera control for Zoom is typically client-side or via Zoom's interface by host/co-host.
-      console.log(`Zoom session ${sessionId}: Camera control for ${participantUserId} requested. This is usually client-side for Zoom.`);
+      console.log(
+        `Zoom session ${sessionId}: Camera control for ${participantUserId} requested. This is usually client-side for Zoom.`,
+      );
     }
 
     participant.isCameraOn = enable;
@@ -775,14 +835,14 @@ export const toggleParticipantCamera = async (req, res) => {
       io.to(sessionId).emit("participantMediaUpdated", {
         participantId: participant.participantId,
         userId: participant.userId,
-        mediaType: 'camera',
+        mediaType: "camera",
         isCameraOn: participant.isCameraOn,
-        sessionId
+        sessionId,
       });
     }
     return res.status(200).json({
       status: true,
-      message: `Participant camera on ${session.platform} ${enable ? 'enabled' : 'disabled'} successfully (DB updated). Platform action: ${session.platform === 'agora' ? 'attempted' : 'manual/client-side'}`,
+      message: `Participant camera on ${session.platform} ${enable ? "enabled" : "disabled"} successfully (DB updated). Platform action: ${session.platform === "agora" ? "attempted" : "manual/client-side"}`,
       data: participant,
     });
   } catch (error) {
@@ -813,9 +873,11 @@ export const removeParticipantFromSession = async (req, res) => {
 
     // Basic check: Ensure session exists and is active
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
-    if (!session || session.status !== 'active') {
+    if (!session || session.status !== "active") {
       await t.rollback();
-      return res.status(404).json({ status: false, message: 'Active session not found.' });
+      return res
+        .status(404)
+        .json({ status: false, message: "Active session not found." });
     }
     // Authorization is handled by isSessionInstructor middleware
 
@@ -836,21 +898,29 @@ export const removeParticipantFromSession = async (req, res) => {
       await t.rollback();
       return res.status(400).json({
         status: false,
-        message: "Participant has already left the session."
+        message: "Participant has already left the session.",
       });
     }
 
-    if (session.platform === 'agora') {
+    if (session.platform === "agora") {
       try {
-        await agoraService.removeParticipant(session.platformSessionId, participantUserId);
+        await agoraService.removeParticipant(
+          session.platformSessionId,
+          participantUserId,
+        );
       } catch (agoraError) {
-        console.error(`Agora remove participant error for user ${participantUserId} in session ${sessionId}:`, agoraError);
+        console.error(
+          `Agora remove participant error for user ${participantUserId} in session ${sessionId}:`,
+          agoraError,
+        );
         // Decide if fatal or warning
       }
-    } else if (session.platform === 'zoom') {
+    } else if (session.platform === "zoom") {
       // Removing participants from Zoom via API can be complex and might require specific permissions/SDK features.
       // Often done via Zoom client by host.
-      console.log(`Zoom session ${sessionId}: Remove participant ${participantUserId} requested. This is usually client-side or via advanced Zoom API usage.`);
+      console.log(
+        `Zoom session ${sessionId}: Remove participant ${participantUserId} requested. This is usually client-side or via advanced Zoom API usage.`,
+      );
     }
 
     // Mark as left in our DB regardless of platform action success/failure for now
@@ -862,12 +932,12 @@ export const removeParticipantFromSession = async (req, res) => {
       io.to(sessionId).emit("participantWasRemoved", {
         participantId: participant.participantId,
         userId: participant.userId,
-        sessionId
+        sessionId,
       });
     }
     return res.status(200).json({
       status: true,
-      message: `Participant removed from ${session.platform} session (DB updated). Platform action: ${session.platform === 'agora' ? 'attempted' : 'manual/client-side'}`,
+      message: `Participant removed from ${session.platform} session (DB updated). Platform action: ${session.platform === "agora" ? "attempted" : "manual/client-side"}`,
       data: participant,
     });
   } catch (error) {
@@ -900,11 +970,12 @@ export const raiseHand = async (req, res) => {
     }
 
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
-    if (!session || session.status !== 'active') {
+    if (!session || session.status !== "active") {
       await t.rollback();
       return res.status(400).json({
         status: false,
-        message: "Cannot raise hand in a session that is not active or does not exist.",
+        message:
+          "Cannot raise hand in a session that is not active or does not exist.",
       });
     }
 
@@ -923,15 +994,15 @@ export const raiseHand = async (req, res) => {
 
     // Check if already has an active raised hand
     const existingRaisedHand = await RaisedHand.findOne({
-      where: { sessionId, participantId, status: 'pending' },
-      transaction: t
+      where: { sessionId, participantId, status: "pending" },
+      transaction: t,
     });
 
     if (existingRaisedHand) {
       await t.rollback();
       return res.status(400).json({
         status: false,
-        message: "Participant already has a pending raised hand request."
+        message: "Participant already has a pending raised hand request.",
       });
     }
 
@@ -941,7 +1012,7 @@ export const raiseHand = async (req, res) => {
         participantId,
         // raisedAt and status have default values
       },
-      { transaction: t }
+      { transaction: t },
     );
 
     await t.commit();
@@ -952,8 +1023,8 @@ export const raiseHand = async (req, res) => {
         userContext: {
           participantId: participant.participantId,
           userId: participant.userId,
-          role: participant.role
-        }
+          role: participant.role,
+        },
       };
       io.to(sessionId).emit("raiseHandReceived", eventData);
     }
@@ -989,20 +1060,22 @@ export const listRaisedHands = async (req, res) => {
 
     const session = await LiveSession.findByPk(sessionId);
     if (!session) {
-      return res.status(404).json({ status: false, message: 'Session not found.' });
+      return res
+        .status(404)
+        .json({ status: false, message: "Session not found." });
     }
     // Add authorization: ensure req.user is instructor for this session
 
     const raisedHands = await RaisedHand.findAll({
-      where: { sessionId, status: 'pending' }, // Or include 'accepted' if needed
+      where: { sessionId, status: "pending" }, // Or include 'accepted' if needed
       include: [
         {
           model: LiveSessionParticipant,
-          attributes: ['userId', 'role'], // Include any other participant details needed
+          attributes: ["userId", "role"], // Include any other participant details needed
           // TODO: include User model here to get user name if LiveSessionParticipant has userId linked to a User table
         },
       ],
-      order: [['raisedAt', 'ASC']],
+      order: [["raisedAt", "ASC"]],
     });
 
     return res.status(200).json({
@@ -1028,20 +1101,22 @@ export const respondToRaisedHand = async (req, res) => {
     const { sessionId, raisedHandId } = req.params;
     const { action } = req.body; // action: 'accept' or 'reject'
 
-    if (!sessionId || !raisedHandId || !['accept', 'reject'].includes(action)) {
+    if (!sessionId || !raisedHandId || !["accept", "reject"].includes(action)) {
       await t.rollback();
       return res.status(400).json({
         status: false,
-        message: "Session ID, Raised Hand ID, and a valid action ('accept' or 'reject') are required",
+        message:
+          "Session ID, Raised Hand ID, and a valid action ('accept' or 'reject') are required",
       });
     }
 
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
-    if (!session || session.status !== 'active') {
+    if (!session || session.status !== "active") {
       await t.rollback();
       return res.status(400).json({
         status: false,
-        message: "Cannot respond to raised hand in a session that is not active or does not exist.",
+        message:
+          "Cannot respond to raised hand in a session that is not active or does not exist.",
       });
     }
     // Add authorization: ensure req.user is instructor for this session (placeholder)
@@ -1060,7 +1135,7 @@ export const respondToRaisedHand = async (req, res) => {
       });
     }
 
-    if (raisedHand.status !== 'pending') {
+    if (raisedHand.status !== "pending") {
       await t.rollback();
       return res.status(400).json({
         status: false,
@@ -1068,16 +1143,17 @@ export const respondToRaisedHand = async (req, res) => {
       });
     }
 
-    raisedHand.status = action === 'accept' ? 'accepted' : 'rejected';
+    raisedHand.status = action === "accept" ? "accepted" : "rejected";
     raisedHand.respondedAt = new Date();
     await raisedHand.save({ transaction: t });
 
     const participant = raisedHand.liveSessionParticipant; // This is the accepted participant
     let updatedOtherStudentsInfo = []; // To store info for event emission
 
-    if (action === 'accept' && participant) {
+    if (action === "accept" && participant) {
       // 1. Unmute the accepted participant
-      if (participant.isMuted) { // Only update if currently muted
+      if (participant.isMuted) {
+        // Only update if currently muted
         participant.isMuted = false;
         await participant.save({ transaction: t });
       }
@@ -1086,14 +1162,15 @@ export const respondToRaisedHand = async (req, res) => {
       const otherStudentParticipants = await LiveSessionParticipant.findAll({
         where: {
           sessionId,
-          role: 'student',
-          participantId: { [Op.ne]: participant.participantId } // Op needs to be imported from sequelize
+          role: "student",
+          participantId: { [Op.ne]: participant.participantId }, // Op needs to be imported from sequelize
         },
-        transaction: t
+        transaction: t,
       });
 
       for (const student of otherStudentParticipants) {
-        if (!student.isMuted) { // Only mute if not already muted
+        if (!student.isMuted) {
+          // Only mute if not already muted
           student.isMuted = true;
           await student.save({ transaction: t });
           updatedOtherStudentsInfo.push({
@@ -1103,7 +1180,7 @@ export const respondToRaisedHand = async (req, res) => {
           });
         }
       }
-    } else if (action === 'reject') {
+    } else if (action === "reject") {
       // Optional: If rejected, and participant was unmuted, instructor might want to mute them.
       // Current logic doesn't auto-mute on reject, which seems fine.
     }
@@ -1111,25 +1188,26 @@ export const respondToRaisedHand = async (req, res) => {
     await t.commit(); // Commit transaction
 
     // Emit events AFTER commit
-    if (io && sessionId && raisedHand && participant) { // Ensure participant is not null
+    if (io && sessionId && raisedHand && participant) {
+      // Ensure participant is not null
       const responseEventData = {
         ...raisedHand.toJSON(),
         userContext: {
           participantId: participant.participantId,
           userId: participant.userId,
-          role: participant.role
-        }
+          role: participant.role,
+        },
       };
       io.to(sessionId).emit("raiseHandResponse", responseEventData);
 
-      if (action === 'accept') {
+      if (action === "accept") {
         // Event for the accepted participant (unmuted)
         io.to(sessionId).emit("participantMediaUpdated", {
           participantId: participant.participantId,
           userId: participant.userId,
-          mediaType: 'mic',
+          mediaType: "mic",
           isMuted: participant.isMuted, // This will be false
-          sessionId
+          sessionId,
         });
 
         // Events for other students who were muted
@@ -1137,9 +1215,9 @@ export const respondToRaisedHand = async (req, res) => {
           io.to(sessionId).emit("participantMediaUpdated", {
             participantId: studentInfo.participantId,
             userId: studentInfo.userId,
-            mediaType: 'mic',
+            mediaType: "mic",
             isMuted: studentInfo.isMuted, // This will be true
-            sessionId
+            sessionId,
           });
         }
       }
@@ -1147,7 +1225,7 @@ export const respondToRaisedHand = async (req, res) => {
 
     return res.status(200).json({
       status: true,
-      message: `Raised hand ${action === 'accept' ? 'accepted' : 'rejected'} successfully`,
+      message: `Raised hand ${action === "accept" ? "accepted" : "rejected"} successfully`,
       data: raisedHand,
     });
   } catch (error) {
@@ -1178,11 +1256,12 @@ export const endRaisedHandInteraction = async (req, res) => {
     }
 
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
-    if (!session || session.status !== 'active') {
+    if (!session || session.status !== "active") {
       await t.rollback();
       return res.status(400).json({
         status: false,
-        message: "Cannot end interaction in a session that is not active or does not exist.",
+        message:
+          "Cannot end interaction in a session that is not active or does not exist.",
       });
     }
     // Add authorization: ensure req.user is instructor for this session
@@ -1201,7 +1280,7 @@ export const endRaisedHandInteraction = async (req, res) => {
       });
     }
 
-    if (raisedHand.status !== 'accepted') {
+    if (raisedHand.status !== "accepted") {
       await t.rollback();
       return res.status(400).json({
         status: false,
@@ -1209,7 +1288,7 @@ export const endRaisedHandInteraction = async (req, res) => {
       });
     }
 
-    raisedHand.status = 'addressed'; // Or 'ended', 'completed'
+    raisedHand.status = "addressed"; // Or 'ended', 'completed'
     await raisedHand.save({ transaction: t });
 
     const participant = raisedHand.liveSessionParticipant;
@@ -1228,17 +1307,17 @@ export const endRaisedHandInteraction = async (req, res) => {
         userContext: {
           participantId: participant.participantId,
           userId: participant.userId,
-          role: participant.role
-        }
+          role: participant.role,
+        },
       };
       io.to(sessionId).emit("raiseHandInteractionEnded", endedEventData);
 
       io.to(sessionId).emit("participantMediaUpdated", {
         participantId: participant.participantId,
         userId: participant.userId,
-        mediaType: 'mic',
+        mediaType: "mic",
         isMuted: participant.isMuted,
-        sessionId
+        sessionId,
       });
     }
     return res.status(200).json({
@@ -1292,10 +1371,10 @@ export const leaveLiveSession = async (req, res) => {
 
     // Find the participant record for this user in this session
     const participant = await LiveSessionParticipant.findOne({
-      where: { 
-        sessionId, 
+      where: {
+        sessionId,
         userId,
-        leftAt: null // Only find participants who haven't left yet
+        leftAt: null, // Only find participants who haven't left yet
       },
       transaction: t,
     });
@@ -1314,18 +1393,25 @@ export const leaveLiveSession = async (req, res) => {
 
     // Platform-specific leave actions (optional)
     try {
-      if (session.platform === 'agora') {
+      if (session.platform === "agora") {
         // For Agora, participant leaving is typically handled client-side
         // Server-side actions are usually not required
-        console.log(`Agora session ${sessionId}: Participant ${userId} left. Client-side disconnect expected.`);
-      } else if (session.platform === 'zoom') {
+        console.log(
+          `Agora session ${sessionId}: Participant ${userId} left. Client-side disconnect expected.`,
+        );
+      } else if (session.platform === "zoom") {
         // For Zoom, participant leaving is handled client-side
         // No server-side API action typically required
-        console.log(`Zoom session ${sessionId}: Participant ${userId} left. Client-side disconnect expected.`);
+        console.log(
+          `Zoom session ${sessionId}: Participant ${userId} left. Client-side disconnect expected.`,
+        );
       }
     } catch (platformError) {
       // Log platform errors but don't fail the leave operation
-      console.error(`Platform-specific leave action error for ${session.platform}:`, platformError);
+      console.error(
+        `Platform-specific leave action error for ${session.platform}:`,
+        platformError,
+      );
     }
 
     await t.commit();
@@ -1337,7 +1423,7 @@ export const leaveLiveSession = async (req, res) => {
         userId: participant.userId,
         role: participant.role,
         leftAt: participant.leftAt,
-        sessionId
+        sessionId,
       });
     }
 
@@ -1349,7 +1435,7 @@ export const leaveLiveSession = async (req, res) => {
         participantId: participant.participantId,
         userId: participant.userId,
         leftAt: participant.leftAt,
-        platform: session.platform
+        platform: session.platform,
       },
     });
   } catch (error) {

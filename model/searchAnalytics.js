@@ -108,7 +108,7 @@ const SearchAnalytics = sequelize.define(
         type: "BTREE",
       },
     ],
-  }
+  },
 );
 
 export default SearchAnalytics;

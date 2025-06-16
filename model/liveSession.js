@@ -43,15 +43,16 @@ const LiveSession = sequelize.define(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM('scheduled', 'active', 'ended'),
-      defaultValue: 'scheduled',
+      type: DataTypes.ENUM("scheduled", "active", "ended"),
+      defaultValue: "scheduled",
       allowNull: false,
     },
     platform: {
-      type: DataTypes.ENUM('agora', 'zoom'),
+      type: DataTypes.ENUM("agora", "zoom"),
       allowNull: false,
     },
-    platformSessionId: { // Stores Agora channel name or Zoom meeting ID
+    platformSessionId: {
+      // Stores Agora channel name or Zoom meeting ID
       type: DataTypes.STRING,
       allowNull: true, // May not be available immediately upon creation for Zoom if using API to create then start
     },
@@ -60,7 +61,7 @@ const LiveSession = sequelize.define(
   {
     tableName: "live_sessions",
     ...commonOptions,
-  }
+  },
 );
 
 export default LiveSession;

@@ -21,13 +21,13 @@ export const getZoomAccessToken = async () => {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-      }
+      },
     );
     return response.data.access_token;
   } catch (error) {
     console.error(
       "Error fetching Zoom access token:",
-      error.response?.data || error.message
+      error.response?.data || error.message,
     );
     throw new Error("Unable to retrieve Zoom access token");
   }
@@ -41,7 +41,7 @@ export const generateSignature = (req, res) => {
 
     const timestamp = new Date().getTime() - 30000;
     const msg = Buffer.from(
-      `${process.env.ZOOM_API_KEY}${meetingNumber}${timestamp}${role}`
+      `${process.env.ZOOM_API_KEY}${meetingNumber}${timestamp}${role}`,
     ).toString("base64");
 
     const hash = crypto
@@ -50,7 +50,7 @@ export const generateSignature = (req, res) => {
       .digest("base64");
 
     const signature = Buffer.from(
-      `${process.env.ZOOM_API_KEY}.${meetingNumber}.${timestamp}.${role}.${hash}`
+      `${process.env.ZOOM_API_KEY}.${meetingNumber}.${timestamp}.${role}.${hash}`,
     ).toString("base64");
 
     res.status(200).json({ signature });

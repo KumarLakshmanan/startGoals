@@ -37,7 +37,8 @@ export async function sendEmailOtp(to, otp) {
       from: `"START GOALS" <${process.env.EMAIL_USER}>`,
       to,
       subject: "Verify your email - OTP Code",
-      text: `Your OTP code is: ${otp}. It expires in 5 minutes.`,      html: `
+      text: `Your OTP code is: ${otp}. It expires in 5 minutes.`,
+      html: `
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -155,7 +156,7 @@ export async function sendOtp(identifier) {
         identifier,
         status: "active",
       },
-    }
+    },
   );
 
   // 2️⃣ Soft delete expired or used OTPs

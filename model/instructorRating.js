@@ -54,7 +54,8 @@ const InstructorRating = sequelize.define(
     criteria: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: "Detailed rating criteria like teaching_quality, communication, etc.",
+      comment:
+        "Detailed rating criteria like teaching_quality, communication, etc.",
     },
     isVerified: {
       type: DataTypes.BOOLEAN,
@@ -117,7 +118,7 @@ const InstructorRating = sequelize.define(
         name: "unique_instructor_user_course_rating",
       },
     ],
-  }
+  },
 );
 
 export default InstructorRating;

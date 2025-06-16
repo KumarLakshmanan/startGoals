@@ -10,20 +10,22 @@ const handleValidationError = (res, err) => {
   return res.status(400).json({
     status: false,
     success: false,
-    message: 'Validation failed',
+    message: "Validation failed",
     data: null,
-    errors: err.details ? err.details.map(detail => ({
-      field: detail.path ? detail.path.join('.') : 'unknown',
-      message: detail.message,
-      value: detail.context?.value
-    })) : [{ message: err.message }]
+    errors: err.details
+      ? err.details.map((detail) => ({
+          field: detail.path ? detail.path.join(".") : "unknown",
+          message: detail.message,
+          value: detail.context?.value,
+        }))
+      : [{ message: err.message }],
   });
 };
 
 /**
  * Handle server errors
  */
-const handleServerError = (res, message = 'Internal server error') => {
+const handleServerError = (res, message = "Internal server error") => {
   return res.status(500).json({
     status: false,
     success: false,
@@ -38,13 +40,13 @@ const handleServerError = (res, message = 'Internal server error') => {
  */
 export const globalErrorHandler = (err, req, res, next) => {
   // Log the error for debugging
-  console.error('Global error handler caught:', {
+  console.error("Global error handler caught:", {
     error: err.message,
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
+    stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     url: req.url,
     method: req.method,
     body: req.body,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   });
 
   // If response was already sent, delegate to Express default error handler
@@ -53,58 +55,58 @@ export const globalErrorHandler = (err, req, res, next) => {
   }
 
   // Handle different types of errors
-  if (err.name === 'ValidationError' || err.isJoi) {
+  if (err.name === "ValidationError" || err.isJoi) {
     return handleValidationError(res, err);
   }
 
-  if (err.name === 'JsonWebTokenError') {
+  if (err.name === "JsonWebTokenError") {
     return res.status(401).json({
       status: false,
       success: false,
-      message: 'Invalid authentication token',
+      message: "Invalid authentication token",
       data: null,
     });
   }
 
-  if (err.name === 'TokenExpiredError') {
+  if (err.name === "TokenExpiredError") {
     return res.status(401).json({
       status: false,
       success: false,
-      message: 'Authentication token has expired',
+      message: "Authentication token has expired",
       data: null,
     });
   }
 
-  if (err.name === 'SequelizeValidationError') {
+  if (err.name === "SequelizeValidationError") {
     return res.status(400).json({
       status: false,
       success: false,
-      message: 'Database validation error',
+      message: "Database validation error",
       data: null,
-      errors: err.errors?.map(e => ({
+      errors: err.errors?.map((e) => ({
         field: e.path,
         message: e.message,
-        value: e.value
-      }))
+        value: e.value,
+      })),
     });
   }
 
-  if (err.name === 'SequelizeUniqueConstraintError') {
+  if (err.name === "SequelizeUniqueConstraintError") {
     return res.status(409).json({
       status: false,
       success: false,
-      message: 'Resource already exists',
+      message: "Resource already exists",
       data: null,
-      errors: err.errors?.map(e => ({
+      errors: err.errors?.map((e) => ({
         field: e.path,
         message: `${e.path} already exists`,
-        value: e.value
-      }))
+        value: e.value,
+      })),
     });
   }
 
   // Default server error
-  return handleServerError(res, err.message || 'Internal server error');
+  return handleServerError(res, err.message || "Internal server error");
 };
 
 /**

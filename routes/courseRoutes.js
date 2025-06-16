@@ -1,29 +1,33 @@
 import express from "express";
-import { authenticateToken, isTeacher, isAdmin } from "../middleware/authMiddleware.js";
 import {
-    createCourse,
-    getCourseById,
-    getAllCourses,
-    updateCourse,
-    deleteCourse,
-    searchCourses,
-    getCoursesByInstructor,
-    getCoursesByCategory,
-    toggleCourseStatus,
-    getCoursesStats,
-    // Admin course management functions
-    createLiveCourse,
-    createRecordedCourse,
-    updateCourseAdmin,
-    deleteCourseAdmin,
-    getCourseManagementData,
-    updateCourseSettings,
-    getAllCoursesAdmin,
-    // Analytics and reporting functions
-    getCourseAnalytics,
-    getAdminDashboardOverview,
-    exportCourseData,
-    getRevenueAnalytics
+  authenticateToken,
+  isTeacher,
+  isAdmin,
+} from "../middleware/authMiddleware.js";
+import {
+  createCourse,
+  getCourseById,
+  getAllCourses,
+  updateCourse,
+  deleteCourse,
+  searchCourses,
+  getCoursesByInstructor,
+  getCoursesByCategory,
+  toggleCourseStatus,
+  getCoursesStats,
+  // Admin course management functions
+  createLiveCourse,
+  createRecordedCourse,
+  updateCourseAdmin,
+  deleteCourseAdmin,
+  getCourseManagementData,
+  updateCourseSettings,
+  getAllCoursesAdmin,
+  // Analytics and reporting functions
+  getCourseAnalytics,
+  getAdminDashboardOverview,
+  exportCourseData,
+  getRevenueAnalytics,
 } from "../controller/courseController.js";
 
 const router = express.Router();

@@ -7,9 +7,15 @@ import Goal from "../model/goal.js";
 // Create a new category with skills
 export const createCategory = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
-    const { categoryName, categoryCode, description, parentCategoryId, skills } = req.body;
+    const {
+      categoryName,
+      categoryCode,
+      description,
+      parentCategoryId,
+      skills,
+    } = req.body;
 
     if (!categoryName || !categoryCode) {
       await transaction.rollback();
@@ -20,72 +26,81 @@ export const createCategory = async (req, res) => {
     }
 
     const existing = await Category.findOne({
-      where: { 
+      where: {
         [Op.or]: [
           { categoryCode: categoryCode },
-          { categoryName: categoryName }
-        ]
+          { categoryName: categoryName },
+        ],
       },
-      transaction
+      transaction,
     });
 
     if (existing) {
       await transaction.rollback();
       return res.status(409).json({
-        message: existing.categoryName === categoryName 
-          ? "Category with this name already exists." 
-          : "Category with this code already exists.",
+        message:
+          existing.categoryName === categoryName
+            ? "Category with this name already exists."
+            : "Category with this code already exists.",
         status: false,
       });
     }
 
     // Create the category
-    const newCategory = await Category.create({
-      categoryName,
-      categoryCode,
-      description,
-      parentCategoryId,
-    }, { transaction });
-    
+    const newCategory = await Category.create(
+      {
+        categoryName,
+        categoryCode,
+        description,
+        parentCategoryId,
+      },
+      { transaction },
+    );
+
     // Process skills if provided
     if (skills && Array.isArray(skills) && skills.length > 0) {
       // Get default goal for skills or create one if needed
-      let defaultGoal = await Goal.findOne({ 
-        where: { 
-          goalName: 'Default' 
+      let defaultGoal = await Goal.findOne({
+        where: {
+          goalName: "Default",
         },
-        transaction
+        transaction,
       });
-      
+
       if (!defaultGoal) {
-        defaultGoal = await Goal.create({
-          goalName: 'Default',
-          description: 'Default goal for system-created skills',
-          status: 'active',
-        }, { transaction });
+        defaultGoal = await Goal.create(
+          {
+            goalName: "Default",
+            description: "Default goal for system-created skills",
+            status: "active",
+          },
+          { transaction },
+        );
       }
-      
+
       // Check existing skills
       const existingSkills = await Skill.findAll({
         where: {
           skillName: {
-            [Op.in]: skills
-          }
+            [Op.in]: skills,
+          },
         },
-        transaction
+        transaction,
       });
-      
-      const existingSkillNames = existingSkills.map(skill => skill.skillName);
-        // Find skills that need to be created
-      const newSkills = skills.filter(skill => !existingSkillNames.includes(skill));
-      
+
+      const existingSkillNames = existingSkills.map((skill) => skill.skillName);
+      // Find skills that need to be created
+      const newSkills = skills.filter(
+        (skill) => !existingSkillNames.includes(skill),
+      );
+
       if (newSkills.length > 0) {
         // Don't create missing skills, show error message instead
         await transaction.rollback();
         return res.status(400).json({
           message: "Some skills are not available in the system.",
           status: false,
-          unavailableSkills: newSkills
+          unavailableSkills: newSkills,
         });
       }
     }
@@ -128,7 +143,7 @@ export const getAllCategories = async (req, res) => {
 // Bulk upload categories
 export const bulkCreateCategories = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { categories } = req.body; // Expecting an object with categories array
 
@@ -141,19 +156,22 @@ export const bulkCreateCategories = async (req, res) => {
     }
 
     // Get default goal for skills or create one if needed
-    let defaultGoal = await Goal.findOne({ 
-      where: { 
-        goalName: 'Default' 
+    let defaultGoal = await Goal.findOne({
+      where: {
+        goalName: "Default",
       },
-      transaction
+      transaction,
     });
-    
+
     if (!defaultGoal) {
-      defaultGoal = await Goal.create({
-        goalName: 'Default',
-        description: 'Default goal for system-created skills',
-        status: 'active',
-      }, { transaction });
+      defaultGoal = await Goal.create(
+        {
+          goalName: "Default",
+          description: "Default goal for system-created skills",
+          status: "active",
+        },
+        { transaction },
+      );
     }
 
     // Collect all skills from all categories
@@ -168,28 +186,30 @@ export const bulkCreateCategories = async (req, res) => {
     const existingSkills = await Skill.findAll({
       where: {
         skillName: {
-          [Op.in]: allSkills
-        }
+          [Op.in]: allSkills,
+        },
       },
-      transaction
+      transaction,
     });
-    
-    const existingSkillNames = existingSkills.map(skill => skill.skillName);
-      // Find skills that need to be created
-    const newSkills = allSkills.filter(skill => !existingSkillNames.includes(skill));
-    
+
+    const existingSkillNames = existingSkills.map((skill) => skill.skillName);
+    // Find skills that need to be created
+    const newSkills = allSkills.filter(
+      (skill) => !existingSkillNames.includes(skill),
+    );
+
     if (newSkills.length > 0) {
       // Don't create missing skills, show error message instead
       await transaction.rollback();
       return res.status(400).json({
         message: "Some skills are not available in the system.",
         status: false,
-        unavailableSkills: newSkills
+        unavailableSkills: newSkills,
       });
     }
 
     // Prepare category data
-    const categoriesToInsert = categories.map(cat => ({
+    const categoriesToInsert = categories.map((cat) => ({
       categoryName: cat.name,
       categoryCode: cat.code,
       description: cat.description,
@@ -199,7 +219,7 @@ export const bulkCreateCategories = async (req, res) => {
     // Insert categories
     const insertedCategories = await Category.bulkCreate(categoriesToInsert, {
       ignoreDuplicates: true,
-      transaction
+      transaction,
     });
 
     await transaction.commit();
@@ -210,7 +230,7 @@ export const bulkCreateCategories = async (req, res) => {
       data: {
         categories: insertedCategories,
         newSkillsCreated: newSkills.length,
-        totalSkillsProcessed: allSkills.length
+        totalSkillsProcessed: allSkills.length,
       },
     });
   } catch (error) {

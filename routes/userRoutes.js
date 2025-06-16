@@ -17,26 +17,33 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
-  getStudentAnalytics
+  getStudentAnalytics,
 } from "../controller/userController.js";
 import passport from "passport";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
-import { validateSchema, userValidation } from "../middleware/fieldValidation.js";
+import {
+  validateSchema,
+  userValidation,
+} from "../middleware/fieldValidation.js";
 
 const userRoutes = express.Router();
 
-userRoutes.post("/userRegistration", validateSchema(userValidation.register), userRegistration);
+userRoutes.post(
+  "/userRegistration",
+  validateSchema(userValidation.register),
+  userRegistration,
+);
 userRoutes.post("/userLogin", validateSchema(userValidation.login), userLogin);
 userRoutes.get(
   "/googleLogin",
-  passport.authenticate("google", { scope: ["profile", "email"] })
+  passport.authenticate("google", { scope: ["profile", "email"] }),
 );
 userRoutes.get(
   "/auth/google/callback",
   passport.authenticate("google", {
     successRedirect: "/api/auth/callback/success",
     failureRedirect: "/login",
-  })
+  }),
 );
 userRoutes.get("/auth/callback/success", authenticateToken, googleCallback);
 userRoutes.get("/usersDetailsById/:userId", authenticateToken, getUserDetails);

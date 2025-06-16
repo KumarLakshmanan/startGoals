@@ -2,17 +2,17 @@
 import crypto from "crypto";
 
 // Helper function to construct public S3 URL
-const constructS3PublicUrl = (bucketName, key, region = 'us-east-1') => {
+const constructS3PublicUrl = (bucketName, key, region = "us-east-1") => {
   return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
 };
 
 export const uploadFiles = async (req, res) => {
   try {
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         message: "No files uploaded",
-        data: null
+        data: null,
       });
     }
 
@@ -25,12 +25,14 @@ export const uploadFiles = async (req, res) => {
     for (const file of req.files) {
       try {
         // Generate unique file ID
-        const fileId = `file_${crypto.randomBytes(8).toString('hex')}`;
-        
+        const fileId = `file_${crypto.randomBytes(8).toString("hex")}`;
+
         // Extract file name without timestamp prefix
         const originalFileName = file.originalname;
-        const uploadedFileName = file.key ? file.key.split('/').pop() : file.filename || originalFileName;
-        
+        const uploadedFileName = file.key
+          ? file.key.split("/").pop()
+          : file.filename || originalFileName;
+
         // Determine category based on field name
         const categoryMap = {
           thumbnail: "thumbnail",
@@ -40,11 +42,11 @@ export const uploadFiles = async (req, res) => {
           artical: "article",
           banner: "banner",
           files: "project_file",
-          projectFiles: "project_file"
+          projectFiles: "project_file",
         };
-        
+
         const category = categoryMap[file.fieldname] || "other";
-        
+
         const fileData = {
           fileId: fileId,
           originalName: originalFileName,
@@ -54,7 +56,7 @@ export const uploadFiles = async (req, res) => {
           url: file.location,
           category: category,
           uploadedAt: new Date().toISOString(),
-          uploadedBy: req.user?.id || req.userId || null // Get user ID from auth middleware
+          uploadedBy: req.user?.id || req.userId || null, // Get user ID from auth middleware
         };
 
         uploadedFiles.push(fileData);
@@ -68,7 +70,10 @@ export const uploadFiles = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully",
+      message:
+        successful > 0
+          ? "Files uploaded successfully"
+          : "No files were uploaded successfully",
       data: {
         uploadedFiles: uploadedFiles,
         totalFiles: uploadedFiles.length,
@@ -76,17 +81,17 @@ export const uploadFiles = async (req, res) => {
         uploadStats: {
           successful: successful,
           failed: failed,
-          skipped: skipped
-        }
-      }
+          skipped: skipped,
+        },
+      },
     });
   } catch (error) {
     console.error("Upload error:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
       message: "Upload failed",
       data: null,
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -95,22 +100,24 @@ export const uploadFiles = async (req, res) => {
 export const uploadSingleFile = async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         message: "No file uploaded",
-        data: null
+        data: null,
       });
     }
 
     const file = req.file;
-    
+
     // Generate unique file ID
-    const fileId = `file_${crypto.randomBytes(8).toString('hex')}`;
-    
+    const fileId = `file_${crypto.randomBytes(8).toString("hex")}`;
+
     // Extract file name without timestamp prefix
     const originalFileName = file.originalname;
-    const uploadedFileName = file.key ? file.key.split('/').pop() : file.filename || originalFileName;
-    
+    const uploadedFileName = file.key
+      ? file.key.split("/").pop()
+      : file.filename || originalFileName;
+
     // Determine category based on field name
     const categoryMap = {
       thumbnail: "thumbnail",
@@ -120,11 +127,11 @@ export const uploadSingleFile = async (req, res) => {
       artical: "article",
       banner: "banner",
       files: "project_file",
-      projectFiles: "project_file"
+      projectFiles: "project_file",
     };
-    
+
     const category = categoryMap[file.fieldname] || "other";
-    
+
     const fileData = {
       fileId: fileId,
       originalName: originalFileName,
@@ -134,7 +141,7 @@ export const uploadSingleFile = async (req, res) => {
       url: file.location,
       category: category,
       uploadedAt: new Date().toISOString(),
-      uploadedBy: req.user?.id || req.userId || null
+      uploadedBy: req.user?.id || req.userId || null,
     };
 
     return res.status(200).json({
@@ -147,17 +154,17 @@ export const uploadSingleFile = async (req, res) => {
         uploadStats: {
           successful: 1,
           failed: 0,
-          skipped: 0
-        }
-      }
+          skipped: 0,
+        },
+      },
     });
   } catch (error) {
     console.error("Upload error:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
       message: "Upload failed",
       data: null,
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -166,10 +173,10 @@ export const uploadSingleFile = async (req, res) => {
 export const uploadFieldFiles = async (req, res) => {
   try {
     if (!req.files || Object.keys(req.files).length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
         message: "No files uploaded",
-        data: null
+        data: null,
       });
     }
 
@@ -181,17 +188,21 @@ export const uploadFieldFiles = async (req, res) => {
 
     // Process files from different fields
     for (const fieldName in req.files) {
-      const filesArray = Array.isArray(req.files[fieldName]) ? req.files[fieldName] : [req.files[fieldName]];
-      
+      const filesArray = Array.isArray(req.files[fieldName])
+        ? req.files[fieldName]
+        : [req.files[fieldName]];
+
       for (const file of filesArray) {
         try {
           // Generate unique file ID
-          const fileId = `file_${crypto.randomBytes(8).toString('hex')}`;
-          
+          const fileId = `file_${crypto.randomBytes(8).toString("hex")}`;
+
           // Extract file name without timestamp prefix
           const originalFileName = file.originalname;
-          const uploadedFileName = file.key ? file.key.split('/').pop() : file.filename || originalFileName;
-          
+          const uploadedFileName = file.key
+            ? file.key.split("/").pop()
+            : file.filename || originalFileName;
+
           // Determine category based on field name
           const categoryMap = {
             thumbnail: "thumbnail",
@@ -201,11 +212,11 @@ export const uploadFieldFiles = async (req, res) => {
             artical: "article",
             banner: "banner",
             files: "project_file",
-            projectFiles: "project_file"
+            projectFiles: "project_file",
           };
-          
+
           const category = categoryMap[fieldName] || "other";
-          
+
           const fileData = {
             fileId: fileId,
             originalName: originalFileName,
@@ -215,7 +226,7 @@ export const uploadFieldFiles = async (req, res) => {
             url: file.location,
             category: category,
             uploadedAt: new Date().toISOString(),
-            uploadedBy: req.user?.id || req.userId || null
+            uploadedBy: req.user?.id || req.userId || null,
           };
 
           uploadedFiles.push(fileData);
@@ -230,7 +241,10 @@ export const uploadFieldFiles = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully",
+      message:
+        successful > 0
+          ? "Files uploaded successfully"
+          : "No files were uploaded successfully",
       data: {
         uploadedFiles: uploadedFiles,
         totalFiles: uploadedFiles.length,
@@ -238,17 +252,17 @@ export const uploadFieldFiles = async (req, res) => {
         uploadStats: {
           successful: successful,
           failed: failed,
-          skipped: skipped
-        }
-      }
+          skipped: skipped,
+        },
+      },
     });
   } catch (error) {
     console.error("Upload error:", error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       success: false,
       message: "Upload failed",
       data: null,
-      error: error.message
+      error: error.message,
     });
   }
 };

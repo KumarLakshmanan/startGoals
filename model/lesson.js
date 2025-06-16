@@ -53,7 +53,7 @@ const Lesson = sequelize.define(
   {
     tableName: "lessons",
     ...commonOptions,
-  }
+  },
 );
 
 export default Lesson;

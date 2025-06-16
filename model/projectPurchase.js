@@ -31,7 +31,8 @@ const ProjectPurchase = sequelize.define(
       allowNull: false,
       unique: true,
       // comment: "Generated order ID for tracking", // Temporarily commented to avoid Sequelize SQL generation bug
-    },    originalPrice: {
+    },
+    originalPrice: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
       comment: "Original project price",
@@ -52,7 +53,7 @@ const ProjectPurchase = sequelize.define(
     },
     discountAmount: {
       type: DataTypes.DECIMAL(10, 2),
-      defaultValue: 0.00,
+      defaultValue: 0.0,
       comment: "Discount amount applied",
     },
     finalPrice: {
@@ -71,7 +72,13 @@ const ProjectPurchase = sequelize.define(
       comment: "Payment gateway transaction ID",
     },
     paymentStatus: {
-      type: DataTypes.ENUM("pending", "processing", "completed", "failed", "refunded"),
+      type: DataTypes.ENUM(
+        "pending",
+        "processing",
+        "completed",
+        "failed",
+        "refunded",
+      ),
       defaultValue: "pending",
       allowNull: false,
     },
@@ -158,7 +165,7 @@ const ProjectPurchase = sequelize.define(
         name: "unique_project_user_purchase",
       },
     ],
-  }
+  },
 );
 
 export default ProjectPurchase;

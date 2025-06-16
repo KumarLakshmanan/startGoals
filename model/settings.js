@@ -40,7 +40,7 @@ const Settings = sequelize.define(
   {
     tableName: "settings",
     ...commonOptions, // includes timestamps, paranoid, underscored
-  }
+  },
 );
 
 export default Settings;

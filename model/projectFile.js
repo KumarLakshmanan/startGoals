@@ -29,7 +29,13 @@ const ProjectFile = sequelize.define(
       comment: "Secure download URL",
     },
     fileType: {
-      type: DataTypes.ENUM("source_code", "documentation", "assets", "demo", "other"),
+      type: DataTypes.ENUM(
+        "source_code",
+        "documentation",
+        "assets",
+        "demo",
+        "other",
+      ),
       allowNull: false,
       defaultValue: "source_code",
     },
@@ -93,7 +99,7 @@ const ProjectFile = sequelize.define(
         type: "BTREE",
       },
     ],
-  }
+  },
 );
 
 export default ProjectFile;

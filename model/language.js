@@ -30,6 +30,16 @@ const Language = sequelize.define(
         },
       },
     },
+    nativeName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: {
+          args: [1, 100],
+          msg: "Native name must be between 1 and 100 characters",
+        },
+      },
+    },
     languageType: {
       type: DataTypes.ENUM("user_preference", "course_language", "both"),
       allowNull: false,
@@ -40,7 +50,7 @@ const Language = sequelize.define(
   {
     tableName: "languages",
     ...commonOptions,
-  }
+  },
 );
 
 export default Language;

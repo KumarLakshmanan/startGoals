@@ -10,7 +10,7 @@ import sequelize from "../config/db.js";
 // Add project rating (Purchased users only)
 export const addProjectRating = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { projectId, rating, review } = req.body;
     const userId = req.user.id;
@@ -20,7 +20,7 @@ export const addProjectRating = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Rating must be between 1 and 5"
+        message: "Rating must be between 1 and 5",
       });
     }
 
@@ -30,7 +30,7 @@ export const addProjectRating = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: "Project not found"
+        message: "Project not found",
       });
     }
 
@@ -39,40 +39,43 @@ export const addProjectRating = async (req, res) => {
       where: {
         userId,
         projectId,
-        paymentStatus: 'completed'
-      }
+        paymentStatus: "completed",
+      },
     });
 
     if (!purchase) {
       await transaction.rollback();
       return res.status(403).json({
         success: false,
-        message: "You can only rate projects you have purchased"
+        message: "You can only rate projects you have purchased",
       });
     }
 
     // Check if user has already rated this project
     const existingRating = await ProjectRating.findOne({
-      where: { userId, projectId }
+      where: { userId, projectId },
     });
 
     if (existingRating) {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "You have already rated this project"
+        message: "You have already rated this project",
       });
     }
 
     // Create rating
-    const projectRating = await ProjectRating.create({
-      userId,
-      projectId,
-      purchaseId: purchase.id,
-      rating: parseInt(rating),
-      review: review || null,
-      status: 'approved' // Auto-approve for now, can add moderation later
-    }, { transaction });
+    const projectRating = await ProjectRating.create(
+      {
+        userId,
+        projectId,
+        purchaseId: purchase.id,
+        rating: parseInt(rating),
+        review: review || null,
+        status: "approved", // Auto-approve for now, can add moderation later
+      },
+      { transaction },
+    );
 
     // Update project's average rating and rating count
     await updateProjectRatingStats(projectId, transaction);
@@ -85,29 +88,28 @@ export const addProjectRating = async (req, res) => {
         {
           model: User,
           as: "user",
-          attributes: ["id", "firstName", "lastName", "profilePicture"]
+          attributes: ["id", "firstName", "lastName", "profilePicture"],
         },
         {
           model: Project,
           as: "project",
-          attributes: ["id", "title"]
-        }
-      ]
+          attributes: ["id", "title"],
+        },
+      ],
     });
 
     res.status(201).json({
       success: true,
       message: "Rating added successfully",
-      data: completeRating
+      data: completeRating,
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Add project rating error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to add rating",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -116,12 +118,12 @@ export const addProjectRating = async (req, res) => {
 export const getProjectRatings = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { 
-      page = 1, 
-      limit = 10, 
-      rating, 
-      sortBy = 'createdAt', 
-      sortOrder = 'DESC' 
+    const {
+      page = 1,
+      limit = 10,
+      rating,
+      sortBy = "createdAt",
+      sortOrder = "DESC",
     } = req.query;
 
     // Check if project exists
@@ -129,14 +131,14 @@ export const getProjectRatings = async (req, res) => {
     if (!project) {
       return res.status(404).json({
         success: false,
-        message: "Project not found"
+        message: "Project not found",
       });
     }
 
     // Build where conditions
     const whereConditions = {
       projectId: parseInt(projectId),
-      status: 'approved'
+      status: "approved",
     };
 
     if (rating) {
@@ -151,26 +153,26 @@ export const getProjectRatings = async (req, res) => {
         {
           model: User,
           as: "user",
-          attributes: ["id", "firstName", "lastName", "profilePicture"]
-        }
+          attributes: ["id", "firstName", "lastName", "profilePicture"],
+        },
       ],
       limit: parseInt(limit),
       offset: offset,
-      order: [[sortBy, sortOrder.toUpperCase()]]
+      order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
     // Calculate rating distribution
     const ratingDistribution = await ProjectRating.findAll({
       attributes: [
-        'rating',
-        [sequelize.fn('COUNT', sequelize.col('rating')), 'count']
+        "rating",
+        [sequelize.fn("COUNT", sequelize.col("rating")), "count"],
       ],
       where: {
         projectId: parseInt(projectId),
-        status: 'approved'
+        status: "approved",
       },
-      group: ['rating'],
-      order: [['rating', 'DESC']]
+      group: ["rating"],
+      order: [["rating", "DESC"]],
     });
 
     const totalPages = Math.ceil(count / parseInt(limit));
@@ -184,17 +186,16 @@ export const getProjectRatings = async (req, res) => {
           currentPage: parseInt(page),
           totalPages,
           totalItems: count,
-          itemsPerPage: parseInt(limit)
-        }
-      }
+          itemsPerPage: parseInt(limit),
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get project ratings error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch ratings",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -202,7 +203,7 @@ export const getProjectRatings = async (req, res) => {
 // Update project rating (User can update their own rating)
 export const updateProjectRating = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { ratingId } = req.params;
     const { rating, review } = req.body;
@@ -214,7 +215,7 @@ export const updateProjectRating = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: "Rating not found"
+        message: "Rating not found",
       });
     }
 
@@ -223,7 +224,7 @@ export const updateProjectRating = async (req, res) => {
       await transaction.rollback();
       return res.status(403).json({
         success: false,
-        message: "You can only update your own ratings"
+        message: "You can only update your own ratings",
       });
     }
 
@@ -232,7 +233,7 @@ export const updateProjectRating = async (req, res) => {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Rating must be between 1 and 5"
+        message: "Rating must be between 1 and 5",
       });
     }
 
@@ -240,7 +241,7 @@ export const updateProjectRating = async (req, res) => {
     const updateData = {};
     if (rating !== undefined) updateData.rating = parseInt(rating);
     if (review !== undefined) updateData.review = review;
-    updateData.status = 'approved'; // Reset to approved after update
+    updateData.status = "approved"; // Reset to approved after update
 
     await projectRating.update(updateData, { transaction });
 
@@ -255,29 +256,28 @@ export const updateProjectRating = async (req, res) => {
         {
           model: User,
           as: "user",
-          attributes: ["id", "firstName", "lastName", "profilePicture"]
+          attributes: ["id", "firstName", "lastName", "profilePicture"],
         },
         {
           model: Project,
           as: "project",
-          attributes: ["id", "title"]
-        }
-      ]
+          attributes: ["id", "title"],
+        },
+      ],
     });
 
     res.json({
       success: true,
       message: "Rating updated successfully",
-      data: updatedRating
+      data: updatedRating,
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Update project rating error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to update rating",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -285,7 +285,7 @@ export const updateProjectRating = async (req, res) => {
 // Delete project rating (User can delete their own rating, Admin can delete any)
 export const deleteProjectRating = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { ratingId } = req.params;
     const userId = req.user.id;
@@ -297,16 +297,16 @@ export const deleteProjectRating = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: "Rating not found"
+        message: "Rating not found",
       });
     }
 
     // Check permissions
-    if (projectRating.userId !== userId && userRole !== 'admin') {
+    if (projectRating.userId !== userId && userRole !== "admin") {
       await transaction.rollback();
       return res.status(403).json({
         success: false,
-        message: "Not authorized to delete this rating"
+        message: "Not authorized to delete this rating",
       });
     }
 
@@ -322,16 +322,15 @@ export const deleteProjectRating = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Rating deleted successfully"
+      message: "Rating deleted successfully",
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Delete project rating error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to delete rating",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -350,12 +349,12 @@ export const getUserProjectRatings = async (req, res) => {
         {
           model: Project,
           as: "project",
-          attributes: ["id", "title", "previewImages"]
-        }
+          attributes: ["id", "title", "previewImages"],
+        },
       ],
       limit: parseInt(limit),
       offset: offset,
-      order: [['createdAt', 'DESC']]
+      order: [["createdAt", "DESC"]],
     });
 
     const totalPages = Math.ceil(count / parseInt(limit));
@@ -367,16 +366,15 @@ export const getUserProjectRatings = async (req, res) => {
         currentPage: parseInt(page),
         totalPages,
         totalItems: count,
-        itemsPerPage: parseInt(limit)
-      }
+        itemsPerPage: parseInt(limit),
+      },
     });
-
   } catch (error) {
     console.error("Get user project ratings error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch user ratings",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -386,22 +384,22 @@ export const getUserProjectRatings = async (req, res) => {
 // Get all ratings for moderation (Admin only)
 export const getAllRatingsForModeration = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 20, 
-      status = 'pending', 
+    const {
+      page = 1,
+      limit = 20,
+      status = "pending",
       projectId,
-      sortBy = 'createdAt', 
-      sortOrder = 'DESC' 
+      sortBy = "createdAt",
+      sortOrder = "DESC",
     } = req.query;
 
     // Build where conditions
     const whereConditions = {};
-    
-    if (status !== 'all') {
+
+    if (status !== "all") {
       whereConditions.status = status;
     }
-    
+
     if (projectId) {
       whereConditions.projectId = parseInt(projectId);
     }
@@ -414,23 +412,29 @@ export const getAllRatingsForModeration = async (req, res) => {
         {
           model: User,
           as: "user",
-          attributes: ["id", "firstName", "lastName", "email", "profilePicture"]
+          attributes: [
+            "id",
+            "firstName",
+            "lastName",
+            "email",
+            "profilePicture",
+          ],
         },
         {
           model: Project,
           as: "project",
-          attributes: ["id", "title"]
+          attributes: ["id", "title"],
         },
         {
           model: User,
           as: "moderator",
           attributes: ["id", "firstName", "lastName"],
-          required: false
-        }
+          required: false,
+        },
       ],
       limit: parseInt(limit),
       offset: offset,
-      order: [[sortBy, sortOrder.toUpperCase()]]
+      order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
     const totalPages = Math.ceil(count / parseInt(limit));
@@ -442,16 +446,15 @@ export const getAllRatingsForModeration = async (req, res) => {
         currentPage: parseInt(page),
         totalPages,
         totalItems: count,
-        itemsPerPage: parseInt(limit)
-      }
+        itemsPerPage: parseInt(limit),
+      },
     });
-
   } catch (error) {
     console.error("Get all ratings for moderation error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch ratings for moderation",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -459,18 +462,18 @@ export const getAllRatingsForModeration = async (req, res) => {
 // Moderate project rating (Admin only)
 export const moderateProjectRating = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { ratingId } = req.params;
     const { status, moderationNotes } = req.body;
     const moderatorId = req.user.id;
 
     // Validate status
-    if (!['approved', 'rejected', 'pending'].includes(status)) {
+    if (!["approved", "rejected", "pending"].includes(status)) {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
-        message: "Invalid status. Must be 'approved', 'rejected', or 'pending'"
+        message: "Invalid status. Must be 'approved', 'rejected', or 'pending'",
       });
     }
 
@@ -480,17 +483,20 @@ export const moderateProjectRating = async (req, res) => {
       await transaction.rollback();
       return res.status(404).json({
         success: false,
-        message: "Rating not found"
+        message: "Rating not found",
       });
     }
 
     // Update rating
-    await projectRating.update({
-      status,
-      moderationNotes,
-      moderatedBy: moderatorId,
-      moderatedAt: new Date()
-    }, { transaction });
+    await projectRating.update(
+      {
+        status,
+        moderationNotes,
+        moderatedBy: moderatorId,
+        moderatedAt: new Date(),
+      },
+      { transaction },
+    );
 
     // Update project's average rating and rating count
     await updateProjectRatingStats(projectRating.projectId, transaction);
@@ -503,34 +509,33 @@ export const moderateProjectRating = async (req, res) => {
         {
           model: User,
           as: "user",
-          attributes: ["id", "firstName", "lastName", "email"]
+          attributes: ["id", "firstName", "lastName", "email"],
         },
         {
           model: Project,
           as: "project",
-          attributes: ["id", "title"]
+          attributes: ["id", "title"],
         },
         {
           model: User,
           as: "moderator",
-          attributes: ["id", "firstName", "lastName"]
-        }
-      ]
+          attributes: ["id", "firstName", "lastName"],
+        },
+      ],
     });
 
     res.json({
       success: true,
       message: "Rating moderated successfully",
-      data: updatedRating
+      data: updatedRating,
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Moderate project rating error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to moderate rating",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -543,14 +548,14 @@ const updateProjectRatingStats = async (projectId, transaction) => {
     // Calculate average rating and count
     const ratingStats = await ProjectRating.findAll({
       attributes: [
-        [sequelize.fn('AVG', sequelize.col('rating')), 'avgRating'],
-        [sequelize.fn('COUNT', sequelize.col('rating')), 'ratingCount']
+        [sequelize.fn("AVG", sequelize.col("rating")), "avgRating"],
+        [sequelize.fn("COUNT", sequelize.col("rating")), "ratingCount"],
       ],
       where: {
         projectId,
-        status: 'approved'
+        status: "approved",
       },
-      raw: true
+      raw: true,
     });
 
     const stats = ratingStats[0] || {};
@@ -558,14 +563,16 @@ const updateProjectRatingStats = async (projectId, transaction) => {
     const totalRatings = parseInt(stats.ratingCount) || 0;
 
     // Update project
-    await Project.update({
-      averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
-      totalRatings
-    }, {
-      where: { id: projectId },
-      transaction
-    });
-
+    await Project.update(
+      {
+        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
+        totalRatings,
+      },
+      {
+        where: { id: projectId },
+        transaction,
+      },
+    );
   } catch (error) {
     console.error("Update project rating stats error:", error);
     throw error;
@@ -579,5 +586,5 @@ export default {
   deleteProjectRating,
   getUserProjectRatings,
   getAllRatingsForModeration,
-  moderateProjectRating
+  moderateProjectRating,
 };

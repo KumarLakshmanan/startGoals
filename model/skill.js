@@ -17,20 +17,46 @@ const Skill = sequelize.define(
       validate: {
         notEmpty: { msg: "Skill name is required" },
         len: {
-          args: [2, 100],
-          msg: "Skill name must be between 2 and 100 characters",
+          args: [1, 100],
+          msg: "Skill name must be between 1 and 100 characters",
         },
       },
     },
+    categoryId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: "category_id",
+      references: {
+        model: "course_categories",
+        key: "categoryId",
+      },
+      onDelete: "SET NULL",
+      onUpdate: "CASCADE",
+    },
+    levelId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      field: "level_id",
+      references: {
+        model: "course_levels",
+        key: "levelId",
+      },
+      onDelete: "SET NULL",
+      onUpdate: "CASCADE",
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     goalId: {
       type: DataTypes.UUID,
-      allowNull: false,
+      allowNull: true, // Made optional
       field: "goal_id",
       references: {
         model: "goals",
         key: "goalId",
       },
-      onDelete: "CASCADE",
+      onDelete: "SET NULL", // Changed from CASCADE to SET NULL
       onUpdate: "CASCADE",
     },
     ...commonFields,
@@ -38,7 +64,7 @@ const Skill = sequelize.define(
   {
     tableName: "skills",
     ...commonOptions,
-  }
+  },
 );
 
 export default Skill;

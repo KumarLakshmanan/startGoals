@@ -76,21 +76,13 @@ const User = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    goalId: {
-      type: DataTypes.UUID,
-      allowNull: true, // Allow null initially
-      references: {
-        model: "goals",
-        key: "goal_id",
-      },
-    },
     averageRating: {
       type: DataTypes.DECIMAL(3, 2),
       allowNull: true,
-      defaultValue: 0.00,
+      defaultValue: 0.0,
       validate: {
-        min: 0.00,
-        max: 5.00,
+        min: 0.0,
+        max: 5.0,
       },
       comment: "Average instructor rating from 0.00 to 5.00",
     },
@@ -108,7 +100,7 @@ const User = sequelize.define(
   {
     tableName: "users",
     ...commonOptions, // ✅ timestamps, paranoid, underscored
-  }
+  },
 );
 
 export default User;

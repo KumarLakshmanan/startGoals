@@ -21,7 +21,7 @@ export const configurePassport = (passport) => {
       },
       (accessToken, refreshToken, profile, done) => {
         return done(null, profile);
-      }
-    )
+      },
+    ),
   );
 };

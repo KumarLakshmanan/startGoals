@@ -12,7 +12,7 @@ import {
   createBatchSchedule,
   getBatchManagementData,
   getBatchAnalytics,
-  bulkBatchOperations
+  bulkBatchOperations,
 } from "../controller/batchController.js";
 import { isTeacher, isStudent, isAdmin } from "../middleware/authMiddleware.js";
 
@@ -21,7 +21,11 @@ const router = express.Router();
 // ===================== ADMIN/OWNER BATCH MANAGEMENT =====================
 
 // Admin batch management
-router.post("/admin/create-with-enrollment", isAdmin, createBatchWithAutoEnrollment);
+router.post(
+  "/admin/create-with-enrollment",
+  isAdmin,
+  createBatchWithAutoEnrollment,
+);
 router.get("/admin/manage/:batchId", isAdmin, getBatchManagementData);
 router.get("/admin/analytics/:batchId", isAdmin, getBatchAnalytics);
 

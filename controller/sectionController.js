@@ -39,7 +39,7 @@ export const createSection = async (req, res) => {
         description,
         order,
       },
-      { transaction }
+      { transaction },
     );
 
     // Create Lessons with Resources
@@ -76,7 +76,7 @@ export const createSection = async (req, res) => {
           order,
           isPreview,
         },
-        { transaction }
+        { transaction },
       );
 
       // Create resources if provided
@@ -87,7 +87,7 @@ export const createSection = async (req, res) => {
             !title ||
             !fileUrl ||
             !["pdf", "doc", "zip", "ppt", "xls", "csv", "jpg", "png"].includes(
-              type
+              type,
             )
           ) {
             await transaction.rollback();
@@ -105,7 +105,7 @@ export const createSection = async (req, res) => {
               fileUrl,
               type,
             },
-            { transaction }
+            { transaction },
           );
         }
       }
@@ -377,7 +377,7 @@ export const createSectionAdmin = async (req, res) => {
         isPublished,
         createdBy: req.user.userId,
       },
-      { transaction }
+      { transaction },
     );
 
     const createdLessons = [];
@@ -420,7 +420,7 @@ export const createSectionAdmin = async (req, res) => {
           isPublished: isPublished,
           createdBy: req.user.userId,
         },
-        { transaction }
+        { transaction },
       );
 
       // Create resources for lesson
@@ -444,7 +444,7 @@ export const createSectionAdmin = async (req, res) => {
               size,
               description: resourceDescription,
             },
-            { transaction }
+            { transaction },
           );
           createdResources.push(createdResource);
         }
@@ -587,7 +587,7 @@ export const deleteSectionAdmin = async (req, res) => {
     const lessonCount = section.lessons.length;
     const resourceCount = section.lessons.reduce(
       (sum, lesson) => sum + lesson.resources.length,
-      0
+      0,
     );
 
     // Delete section (cascading will handle lessons and resources)
@@ -745,31 +745,34 @@ export const getCourseContentManagement = async (req, res) => {
       publishedSections: course.sections.filter((s) => s.isPublished).length,
       totalLessons: course.sections.reduce(
         (sum, s) => sum + s.lessons.length,
-        0
+        0,
       ),
       publishedLessons: course.sections.reduce(
         (sum, s) => sum + s.lessons.filter((l) => l.isPublished).length,
-        0
+        0,
       ),
       totalResources: course.sections.reduce(
         (sum, s) =>
           sum +
           s.lessons.reduce((lessonSum, l) => lessonSum + l.resources.length, 0),
-        0
+        0,
       ),
       totalVideoDuration: course.sections.reduce(
         (sum, s) =>
           sum +
-          s.lessons.reduce((lessonSum, l) => lessonSum + (l.videoDuration || 0), 0),
-        0
+          s.lessons.reduce(
+            (lessonSum, l) => lessonSum + (l.videoDuration || 0),
+            0,
+          ),
+        0,
       ),
       previewLessons: course.sections.reduce(
         (sum, s) => sum + s.lessons.filter((l) => l.isPreview).length,
-        0
+        0,
       ),
       freeLessons: course.sections.reduce(
         (sum, s) => sum + s.lessons.filter((l) => l.isFree).length,
-        0
+        0,
       ),
     };
 
@@ -858,7 +861,7 @@ export const bulkPublishContent = async (req, res) => {
               courseId,
             },
             transaction,
-          }
+          },
         );
         results.sectionsUpdated = sectionsUpdated;
       } catch (error) {
@@ -884,7 +887,7 @@ export const bulkPublishContent = async (req, res) => {
               },
             ],
             transaction,
-          }
+          },
         );
         results.lessonsUpdated = lessonsUpdated;
       } catch (error) {

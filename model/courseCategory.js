@@ -21,7 +21,7 @@ const Category = sequelize.define(
       allowNull: false,
       unique: true,
       validate: {
-        notEmpty: true
+        notEmpty: true,
       },
     },
     description: {
@@ -32,9 +32,9 @@ const Category = sequelize.define(
       type: DataTypes.UUID,
       allowNull: true,
       references: {
-        model: 'course_categories',
-        key: 'category_id'
-      }
+        model: "course_categories",
+        key: "category_id",
+      },
     },
     icon: {
       type: DataTypes.STRING,
@@ -50,7 +50,7 @@ const Category = sequelize.define(
   {
     tableName: "course_categories",
     ...commonOptions, // ✅ shared options: timestamps, paranoid, underscored
-  }
+  },
 );
 
 export default Category;

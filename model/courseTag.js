@@ -28,7 +28,7 @@ const CourseTag = sequelize.define(
   {
     tableName: "course_tags",
     ...commonOptions, // ✅ timestamps, paranoid, underscored
-  }
+  },
 );
 
 export default CourseTag;

@@ -22,7 +22,7 @@ export const getCourseById = async (req, res) => {
   if (
     !courseId ||
     !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
-      courseId
+      courseId,
     )
   ) {
     return res.status(400).json({
@@ -122,7 +122,10 @@ export const getCourseById = async (req, res) => {
 };
 
 export const createCourse = async (req, res) => {
-  console.log('createCourse called with body:', JSON.stringify(req.body, null, 2));
+  console.log(
+    "createCourse called with body:",
+    JSON.stringify(req.body, null, 2),
+  );
 
   const {
     title,
@@ -143,14 +146,15 @@ export const createCourse = async (req, res) => {
   } = req.body;
   const createdBy = req.user?.userId; // Assuming userId is set in the request by auth middleware
   // Additional validation for UUID fields
-  const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+  const uuidRegex =
+    /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
 
   if (levelId && !uuidRegex.test(levelId)) {
     return res.status(400).json({
       status: false,
       message: "Invalid levelId format. Must be a valid UUID.",
       field: "levelId",
-      value: levelId
+      value: levelId,
     });
   }
 
@@ -159,7 +163,7 @@ export const createCourse = async (req, res) => {
       status: false,
       message: "Invalid categoryId format. Must be a valid UUID.",
       field: "categoryId",
-      value: categoryId
+      value: categoryId,
     });
   }
 
@@ -168,7 +172,7 @@ export const createCourse = async (req, res) => {
       status: false,
       message: "Invalid createdBy format. Must be a valid UUID.",
       field: "createdBy",
-      value: createdBy
+      value: createdBy,
     });
   }
 
@@ -193,11 +197,11 @@ export const createCourse = async (req, res) => {
         message:
           "Live and Hybrid courses must have both liveStartDate and liveEndDate.",
       });
-    }    // Step 1: Validate foreign key references exist
+    } // Step 1: Validate foreign key references exist
     const [levelExists, categoryExists, userExists] = await Promise.all([
       CourseLevel.findByPk(levelId, { transaction }),
       CourseCategory.findByPk(categoryId, { transaction }),
-      User.findByPk(createdBy, { transaction })
+      User.findByPk(createdBy, { transaction }),
     ]);
 
     if (!levelExists) {
@@ -206,7 +210,7 @@ export const createCourse = async (req, res) => {
         status: false,
         message: "Invalid levelId: Course level does not exist",
         field: "levelId",
-        value: levelId
+        value: levelId,
       });
     }
 
@@ -216,7 +220,7 @@ export const createCourse = async (req, res) => {
         status: false,
         message: "Invalid categoryId: Course category does not exist",
         field: "categoryId",
-        value: categoryId
+        value: categoryId,
       });
     }
 
@@ -226,14 +230,24 @@ export const createCourse = async (req, res) => {
         status: false,
         message: "Invalid createdBy: User does not exist",
         field: "createdBy",
-        value: createdBy
+        value: createdBy,
       });
     }
 
     // Step 2: Create course
-    console.log('Creating course with data:', {
-      title, description, levelId, categoryId, createdBy,
-      isPaid, price, type, liveStartDate, liveEndDate, thumbnailUrl, wasLive
+    console.log("Creating course with data:", {
+      title,
+      description,
+      levelId,
+      categoryId,
+      createdBy,
+      isPaid,
+      price,
+      type,
+      liveStartDate,
+      liveEndDate,
+      thumbnailUrl,
+      wasLive,
     });
 
     const newCourse = await Course.create(
@@ -251,7 +265,7 @@ export const createCourse = async (req, res) => {
         thumbnailUrl,
         wasLive,
       },
-      { transaction }
+      { transaction },
     );
 
     // Step 3: Validate languageIds exist
@@ -300,7 +314,7 @@ export const createCourse = async (req, res) => {
         order: index + 1,
       }));
       await CourseRequirement.bulkCreate(requirementRecords, { transaction });
-    }    // Step 8: Commit
+    } // Step 8: Commit
     await transaction.commit();
 
     return res.status(201).json({
@@ -314,7 +328,7 @@ export const createCourse = async (req, res) => {
     return res.status(500).json({
       status: false,
       message: "Error creating course",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -407,7 +421,7 @@ export const updateCourse = async (req, res) => {
         liveEndDate,
         thumbnailUrl,
       },
-      { transaction }
+      { transaction },
     );
 
     // Step 2: Update languages
@@ -461,7 +475,7 @@ export const updateCourse = async (req, res) => {
             requirementText,
             courseId,
             order: index + 1,
-          })
+          }),
         );
         await CourseRequirement.bulkCreate(requirementRecords, { transaction });
       }
@@ -496,7 +510,7 @@ export const getAllCourses = async (req, res) => {
       status = "active",
       sortBy = "createdAt",
       sortOrder = "DESC",
-      search = ''
+      search = "",
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -585,7 +599,7 @@ export const deleteCourse = async (req, res) => {
   if (
     !courseId ||
     !/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(
-      courseId
+      courseId,
     )
   ) {
     return res.status(400).json({
@@ -960,7 +974,7 @@ export const getCoursesStats = async (req, res) => {
  */
 export const createLiveCourse = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const {
       title,
@@ -975,12 +989,12 @@ export const createLiveCourse = async (req, res) => {
       thumbnailUrl,
       introVideoUrl,
       teacherIds = [],
-      visibility = 'public',
+      visibility = "public",
       batchSettings = {
         minStudentsToCreateBatch: 10,
         maxStudentsPerBatch: 50,
-        autoCreateBatch: true
-      }
+        autoCreateBatch: true,
+      },
     } = req.body;
 
     const createdBy = req.user.userId;
@@ -989,60 +1003,73 @@ export const createLiveCourse = async (req, res) => {
     if (!title || !description || !languageId || !skillLevel || !price) {
       return res.status(400).json({
         status: false,
-        message: "Missing required fields: title, description, languageId, skillLevel, price"
+        message:
+          "Missing required fields: title, description, languageId, skillLevel, price",
       });
     }
 
     // Create the course
-    const course = await Course.create({
-      title,
-      thumbnailUrl,
-      description,
-      levelId: skillLevel,
-      categoryId: req.body.categoryId,
-      createdBy,
-      type: 'live',
-      isPaid: price > 0,
-      price,
-      status: 'draft',
-      isPublished: false,
-      visibility,
-      batchSettings: JSON.stringify(batchSettings)
-    }, { transaction });
+    const course = await Course.create(
+      {
+        title,
+        thumbnailUrl,
+        description,
+        levelId: skillLevel,
+        categoryId: req.body.categoryId,
+        createdBy,
+        type: "live",
+        isPaid: price > 0,
+        price,
+        status: "draft",
+        isPublished: false,
+        visibility,
+        batchSettings: JSON.stringify(batchSettings),
+      },
+      { transaction },
+    );
 
     // Add course goals (What You'll Learn)
     if (whatYoullLearn.length > 0) {
-      const goalPromises = whatYoullLearn.map((goal, index) => 
-        CourseGoal.create({
-          courseId: course.courseId,
-          goalText: goal.title || goal,
-          description: goal.description || null,
-          order: index + 1
-        }, { transaction })
+      const goalPromises = whatYoullLearn.map((goal, index) =>
+        CourseGoal.create(
+          {
+            courseId: course.courseId,
+            goalText: goal.title || goal,
+            description: goal.description || null,
+            order: index + 1,
+          },
+          { transaction },
+        ),
       );
       await Promise.all(goalPromises);
     }
 
     // Add course requirements
     if (requirements.length > 0) {
-      const requirementPromises = requirements.map((req, index) => 
-        CourseRequirement.create({
-          courseId: course.courseId,
-          requirementText: req,
-          order: index + 1
-        }, { transaction })
+      const requirementPromises = requirements.map((req, index) =>
+        CourseRequirement.create(
+          {
+            courseId: course.courseId,
+            requirementText: req,
+            order: index + 1,
+          },
+          { transaction },
+        ),
       );
       await Promise.all(requirementPromises);
     }
 
     // Add course tags
     if (tags.length > 0) {
-      const tagPromises = tags.map((tag, index) => 
-        CourseTag.create({
-          courseId: course.courseId,
-          tagName: tag,
-          order: index + 1
-        }, { transaction })
+      const tagPromises = tags.map((tag, index) =>
+        CourseTag.create(
+          {
+            courseId: course.courseId,
+            tagName: tag,
+            order: index + 1,
+          },
+          { transaction },
+        ),
       );
       await Promise.all(tagPromises);
     }
@@ -1057,17 +1084,16 @@ export const createLiveCourse = async (req, res) => {
         title: course.title,
         type: course.type,
         price: course.price,
-        status: course.status
-      }
+        status: course.status,
+      },
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Create live course error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to create live course",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1078,7 +1104,7 @@ export const createLiveCourse = async (req, res) => {
  */
 export const createRecordedCourse = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const {
       title,
@@ -1093,31 +1119,34 @@ export const createRecordedCourse = async (req, res) => {
       thumbnailUrl,
       introVideoUrl,
       sections = [], // Video curriculum structure
-      visibility = 'public',
+      visibility = "public",
       enableReviews = true,
-      enableChat = false // Usually false for recorded courses
+      enableChat = false, // Usually false for recorded courses
     } = req.body;
 
     const createdBy = req.user.userId;
 
     // Create the course
-    const course = await Course.create({
-      title,
-      thumbnailUrl,
-      description,
-      levelId: skillLevel,
-      categoryId: req.body.categoryId,
-      createdBy,
-      type: 'recorded',
-      isPaid: price > 0,
-      price,
-      status: 'draft',
-      isPublished: false,
-      visibility,
-      enableReviews,
-      enableChat,
-      introVideoUrl
-    }, { transaction });
+    const course = await Course.create(
+      {
+        title,
+        thumbnailUrl,
+        description,
+        levelId: skillLevel,
+        categoryId: req.body.categoryId,
+        createdBy,
+        type: "recorded",
+        isPaid: price > 0,
+        price,
+        status: "draft",
+        isPublished: false,
+        visibility,
+        enableReviews,
+        enableChat,
+        introVideoUrl,
+      },
+      { transaction },
+    );
 
     // Add course goals, requirements, and tags (same as live course)
     // ... (duplicate the same logic as above)
@@ -1126,26 +1155,32 @@ export const createRecordedCourse = async (req, res) => {
     if (sections.length > 0) {
       for (let i = 0; i < sections.length; i++) {
         const sectionData = sections[i];
-        const section = await Section.create({
-          courseId: course.courseId,
-          title: sectionData.title,
-          description: sectionData.description || '',
-          order: i + 1
-        }, { transaction });
+        const section = await Section.create(
+          {
+            courseId: course.courseId,
+            title: sectionData.title,
+            description: sectionData.description || "",
+            order: i + 1,
+          },
+          { transaction },
+        );
 
         // Add lessons to section
         if (sectionData.lessons && sectionData.lessons.length > 0) {
           for (let j = 0; j < sectionData.lessons.length; j++) {
             const lessonData = sectionData.lessons[j];
-            await Lesson.create({
-              sectionId: section.sectionId,
-              title: lessonData.title,
-              description: lessonData.description || '',
-              videoUrl: lessonData.videoUrl,
-              duration: lessonData.duration || 0,
-              order: j + 1,
-              isPreview: lessonData.isPreview || false
-            }, { transaction });
+            await Lesson.create(
+              {
+                sectionId: section.sectionId,
+                title: lessonData.title,
+                description: lessonData.description || "",
+                videoUrl: lessonData.videoUrl,
+                duration: lessonData.duration || 0,
+                order: j + 1,
+                isPreview: lessonData.isPreview || false,
+              },
+              { transaction },
+            );
           }
         }
       }
@@ -1162,17 +1197,16 @@ export const createRecordedCourse = async (req, res) => {
         type: course.type,
         price: course.price,
         status: course.status,
-        sectionsCount: sections.length
-      }
+        sectionsCount: sections.length,
+      },
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Create recorded course error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to create recorded course",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1183,7 +1217,7 @@ export const createRecordedCourse = async (req, res) => {
  */
 export const updateCourseAdmin = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { courseId } = req.params;
     const updateData = req.body;
@@ -1192,19 +1226,28 @@ export const updateCourseAdmin = async (req, res) => {
     if (!course) {
       return res.status(404).json({
         status: false,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
     // Update course basic data
     const allowedUpdates = [
-      'title', 'description', 'thumbnailUrl', 'introVideoUrl', 'price',
-      'levelId', 'categoryId', 'visibility', 'enableReviews', 'enableChat',
-      'isPublished', 'status'
+      "title",
+      "description",
+      "thumbnailUrl",
+      "introVideoUrl",
+      "price",
+      "levelId",
+      "categoryId",
+      "visibility",
+      "enableReviews",
+      "enableChat",
+      "isPublished",
+      "status",
     ];
 
     const courseUpdates = {};
-    allowedUpdates.forEach(field => {
+    allowedUpdates.forEach((field) => {
       if (updateData[field] !== undefined) {
         courseUpdates[field] = updateData[field];
       }
@@ -1215,14 +1258,17 @@ export const updateCourseAdmin = async (req, res) => {
     // Update goals if provided
     if (updateData.whatYoullLearn) {
       await CourseGoal.destroy({ where: { courseId }, transaction });
-      
-      const goalPromises = updateData.whatYoullLearn.map((goal, index) => 
-        CourseGoal.create({
-          courseId: course.courseId,
-          goalText: goal.title || goal,
-          description: goal.description || null,
-          order: index + 1
-        }, { transaction })
+
+      const goalPromises = updateData.whatYoullLearn.map((goal, index) =>
+        CourseGoal.create(
+          {
+            courseId: course.courseId,
+            goalText: goal.title || goal,
+            description: goal.description || null,
+            order: index + 1,
+          },
+          { transaction },
+        ),
       );
       await Promise.all(goalPromises);
     }
@@ -1230,13 +1276,16 @@ export const updateCourseAdmin = async (req, res) => {
     // Update requirements if provided
     if (updateData.requirements) {
       await CourseRequirement.destroy({ where: { courseId }, transaction });
-      
-      const requirementPromises = updateData.requirements.map((req, index) => 
-        CourseRequirement.create({
-          courseId: course.courseId,
-          requirementText: req,
-          order: index + 1
-        }, { transaction })
+
+      const requirementPromises = updateData.requirements.map((req, index) =>
+        CourseRequirement.create(
+          {
+            courseId: course.courseId,
+            requirementText: req,
+            order: index + 1,
+          },
+          { transaction },
+        ),
       );
       await Promise.all(requirementPromises);
     }
@@ -1244,13 +1293,16 @@ export const updateCourseAdmin = async (req, res) => {
     // Update tags if provided
     if (updateData.tags) {
       await CourseTag.destroy({ where: { courseId }, transaction });
-      
-      const tagPromises = updateData.tags.map((tag, index) => 
-        CourseTag.create({
-          courseId: course.courseId,
-          tagName: tag,
-          order: index + 1
-        }, { transaction })
+
+      const tagPromises = updateData.tags.map((tag, index) =>
+        CourseTag.create(
+          {
+            courseId: course.courseId,
+            tagName: tag,
+            order: index + 1,
+          },
+          { transaction },
+        ),
       );
       await Promise.all(tagPromises);
     }
@@ -1264,17 +1316,16 @@ export const updateCourseAdmin = async (req, res) => {
         courseId: course.courseId,
         title: course.title,
         status: course.status,
-        isPublished: course.isPublished
-      }
+        isPublished: course.isPublished,
+      },
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Update course error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to update course",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1285,7 +1336,7 @@ export const updateCourseAdmin = async (req, res) => {
  */
 export const deleteCourseAdmin = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { courseId } = req.params;
     const { permanent = false } = req.query;
@@ -1294,11 +1345,11 @@ export const deleteCourseAdmin = async (req, res) => {
     if (!course) {
       return res.status(404).json({
         status: false,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
-    if (permanent === 'true') {
+    if (permanent === "true") {
       // Hard delete - be careful!
       await CourseGoal.destroy({ where: { courseId }, transaction });
       await CourseRequirement.destroy({ where: { courseId }, transaction });
@@ -1306,7 +1357,7 @@ export const deleteCourseAdmin = async (req, res) => {
       await course.destroy({ force: true, transaction });
     } else {
       // Soft delete
-      await course.update({ status: 'deleted' }, { transaction });
+      await course.update({ status: "deleted" }, { transaction });
       await course.destroy({ transaction }); // This is soft delete due to paranoid: true
     }
 
@@ -1314,16 +1365,15 @@ export const deleteCourseAdmin = async (req, res) => {
 
     res.json({
       status: true,
-      message: `Course ${permanent === 'true' ? 'permanently deleted' : 'deleted'} successfully`
+      message: `Course ${permanent === "true" ? "permanently deleted" : "deleted"} successfully`,
     });
-
   } catch (error) {
     await transaction.rollback();
     console.error("Delete course error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to delete course",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1341,60 +1391,69 @@ export const getCourseManagementData = async (req, res) => {
         {
           model: CourseLevel,
           as: "level",
-          attributes: ["level"]
+          attributes: ["level"],
         },
         {
           model: CourseCategory,
           as: "category",
-          attributes: ["categoryName"]
+          attributes: ["categoryName"],
         },
         {
           model: User,
           as: "instructor",
-          attributes: ["username", "email", "profileImage"]
+          attributes: ["username", "email", "profileImage"],
         },
         {
           model: CourseGoal,
           as: "goals",
           attributes: ["goalText", "order"],
-          order: [['order', 'ASC']]
+          order: [["order", "ASC"]],
         },
         {
           model: CourseRequirement,
           as: "requirements",
           attributes: ["requirementText", "order"],
-          order: [['order', 'ASC']]
+          order: [["order", "ASC"]],
         },
         {
           model: CourseTag,
           as: "tags",
           attributes: ["tagName", "order"],
-          order: [['order', 'ASC']]
+          order: [["order", "ASC"]],
         },
         {
           model: Section,
           as: "sections",
           attributes: ["title", "description", "order"],
-          include: [{
-            model: Lesson,
-            as: "lessons",
-            attributes: ["title", "description", "videoUrl", "duration", "order", "isPreview"]
-          }],
-          order: [['order', 'ASC']]
-        }
-      ]
+          include: [
+            {
+              model: Lesson,
+              as: "lessons",
+              attributes: [
+                "title",
+                "description",
+                "videoUrl",
+                "duration",
+                "order",
+                "isPreview",
+              ],
+            },
+          ],
+          order: [["order", "ASC"]],
+        },
+      ],
     });
 
     if (!course) {
       return res.status(404).json({
         status: false,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
     // Get enrollment statistics
     const enrollmentStats = await Enrollment.findAndCountAll({
-      where: { courseId }
+      where: { courseId },
     });
 
     res.json({
@@ -1404,17 +1463,16 @@ export const getCourseManagementData = async (req, res) => {
         statistics: {
           totalEnrollments: enrollmentStats.count,
           averageRating: course.averageRating,
-          totalRatings: course.totalRatings
-        }
-      }
+          totalRatings: course.totalRatings,
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get course management data error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to fetch course management data",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1432,24 +1490,25 @@ export const updateCourseSettings = async (req, res) => {
       enableChat,
       enableCertificates,
       discountSettings,
-      priceChanges
+      priceChanges,
     } = req.body;
 
     const course = await Course.findByPk(courseId);
     if (!course) {
       return res.status(404).json({
         status: false,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
     const updateData = {};
-    
+
     if (visibility !== undefined) updateData.visibility = visibility;
     if (enableReviews !== undefined) updateData.enableReviews = enableReviews;
     if (enableChat !== undefined) updateData.enableChat = enableChat;
-    if (enableCertificates !== undefined) updateData.enableCertificates = enableCertificates;
-    
+    if (enableCertificates !== undefined)
+      updateData.enableCertificates = enableCertificates;
+
     if (priceChanges && priceChanges.newPrice !== undefined) {
       updateData.price = priceChanges.newPrice;
     }
@@ -1461,16 +1520,15 @@ export const updateCourseSettings = async (req, res) => {
       message: "Course settings updated successfully",
       data: {
         courseId: course.courseId,
-        settings: updateData
-      }
+        settings: updateData,
+      },
     });
-
   } catch (error) {
     console.error("Update course settings error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to update course settings",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1489,22 +1547,22 @@ export const getAllCoursesAdmin = async (req, res) => {
       status,
       category,
       instructor,
-      sortBy = 'createdAt',
-      sortOrder = 'DESC'
+      sortBy = "createdAt",
+      sortOrder = "DESC",
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Build where conditions
     const whereConditions = {};
-    
+
     if (search) {
       whereConditions[Op.or] = [
         { title: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } }
+        { description: { [Op.iLike]: `%${search}%` } },
       ];
     }
-    
+
     if (type) whereConditions.type = type;
     if (status) whereConditions.status = status;
     if (category) whereConditions.categoryId = category;
@@ -1516,23 +1574,23 @@ export const getAllCoursesAdmin = async (req, res) => {
         {
           model: CourseCategory,
           as: "category",
-          attributes: ["categoryId", "categoryName"]
+          attributes: ["categoryId", "categoryName"],
         },
         {
           model: User,
           as: "instructor",
-          attributes: ["userId", "username", "email"]
+          attributes: ["userId", "username", "email"],
         },
         {
           model: CourseLevel,
           as: "level",
-          attributes: ["levelId", "level"]
-        }
+          attributes: ["levelId", "level"],
+        },
       ],
       order: [[sortBy, sortOrder]],
       limit: parseInt(limit),
       offset: offset,
-      distinct: true
+      distinct: true,
     });
 
     res.json({
@@ -1543,17 +1601,16 @@ export const getAllCoursesAdmin = async (req, res) => {
           currentPage: parseInt(page),
           totalPages: Math.ceil(courses.count / parseInt(limit)),
           totalItems: courses.count,
-          itemsPerPage: parseInt(limit)
-        }
-      }
+          itemsPerPage: parseInt(limit),
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get all courses admin error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to fetch courses",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1569,11 +1626,11 @@ export const getAllCoursesAdmin = async (req, res) => {
 export const getCourseAnalytics = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { 
-      dateRange = '30d', 
-      includeRevenue = true, 
+    const {
+      dateRange = "30d",
+      includeRevenue = true,
       includeEngagement = true,
-      includeCompletion = true 
+      includeCompletion = true,
     } = req.query;
 
     // Check if course exists
@@ -1582,20 +1639,20 @@ export const getCourseAnalytics = async (req, res) => {
         {
           model: CourseCategory,
           as: "category",
-          attributes: ["categoryId", "categoryName"]
+          attributes: ["categoryId", "categoryName"],
         },
         {
           model: User,
           as: "instructor",
-          attributes: ["userId", "username", "email"]
-        }
-      ]
+          attributes: ["userId", "username", "email"],
+        },
+      ],
     });
 
     if (!course) {
       return res.status(404).json({
         status: false,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
@@ -1603,16 +1660,16 @@ export const getCourseAnalytics = async (req, res) => {
     const endDate = new Date();
     const startDate = new Date();
     switch (dateRange) {
-      case '7d':
+      case "7d":
         startDate.setDate(endDate.getDate() - 7);
         break;
-      case '30d':
+      case "30d":
         startDate.setDate(endDate.getDate() - 30);
         break;
-      case '90d':
+      case "90d":
         startDate.setDate(endDate.getDate() - 90);
         break;
-      case '1y':
+      case "1y":
         startDate.setFullYear(endDate.getFullYear() - 1);
         break;
       default:
@@ -1625,55 +1682,79 @@ export const getCourseAnalytics = async (req, res) => {
         courseId,
         createdAt: {
           [Op.gte]: startDate,
-          [Op.lte]: endDate
-        }
+          [Op.lte]: endDate,
+        },
       },
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['userId', 'username', 'createdAt']
-      }],
-      order: [['createdAt', 'ASC']]
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["userId", "username", "createdAt"],
+        },
+      ],
+      order: [["createdAt", "ASC"]],
     });
 
     // Get all-time enrollment data
     const allTimeEnrollments = await Enrollment.findAll({
       where: { courseId },
-      attributes: ['userId', 'status', 'progressPercentage', 'createdAt', 'completedAt'],
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['userId', 'createdAt']
-      }]
+      attributes: [
+        "userId",
+        "status",
+        "progressPercentage",
+        "createdAt",
+        "completedAt",
+      ],
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["userId", "createdAt"],
+        },
+      ],
     });
 
     // Calculate enrollment analytics
     const enrollmentAnalytics = {
       total: allTimeEnrollments.length,
       newInPeriod: enrollments.length,
-      completed: allTimeEnrollments.filter(e => e.status === 'completed').length,
-      inProgress: allTimeEnrollments.filter(e => e.status === 'in_progress').length,
-      dropped: allTimeEnrollments.filter(e => e.status === 'dropped').length,
-      completionRate: allTimeEnrollments.length > 0 
-        ? (allTimeEnrollments.filter(e => e.status === 'completed').length / allTimeEnrollments.length) * 100 
-        : 0,
-      averageProgress: allTimeEnrollments.length > 0
-        ? allTimeEnrollments.reduce((sum, e) => sum + (e.progressPercentage || 0), 0) / allTimeEnrollments.length
-        : 0
+      completed: allTimeEnrollments.filter((e) => e.status === "completed")
+        .length,
+      inProgress: allTimeEnrollments.filter((e) => e.status === "in_progress")
+        .length,
+      dropped: allTimeEnrollments.filter((e) => e.status === "dropped").length,
+      completionRate:
+        allTimeEnrollments.length > 0
+          ? (allTimeEnrollments.filter((e) => e.status === "completed").length /
+              allTimeEnrollments.length) *
+            100
+          : 0,
+      averageProgress:
+        allTimeEnrollments.length > 0
+          ? allTimeEnrollments.reduce(
+              (sum, e) => sum + (e.progressPercentage || 0),
+              0,
+            ) / allTimeEnrollments.length
+          : 0,
     };
 
     // Calculate enrollment trends
     const enrollmentTrends = enrollments.reduce((acc, enrollment) => {
-      const date = enrollment.createdAt.toISOString().split('T')[0];
+      const date = enrollment.createdAt.toISOString().split("T")[0];
       acc[date] = (acc[date] || 0) + 1;
       return acc;
     }, {});
 
     // Calculate completion trends
     const completionTrends = allTimeEnrollments
-      .filter(e => e.completedAt && e.completedAt >= startDate && e.completedAt <= endDate)
+      .filter(
+        (e) =>
+          e.completedAt &&
+          e.completedAt >= startDate &&
+          e.completedAt <= endDate,
+      )
       .reduce((acc, enrollment) => {
-        const date = enrollment.completedAt.toISOString().split('T')[0];
+        const date = enrollment.completedAt.toISOString().split("T")[0];
         acc[date] = (acc[date] || 0) + 1;
         return acc;
       }, {});
@@ -1683,17 +1764,18 @@ export const getCourseAnalytics = async (req, res) => {
     if (includeRevenue && course.price > 0) {
       const revenue = enrollments.length * course.price;
       const allTimeRevenue = allTimeEnrollments.length * course.price;
-      
+
       revenueAnalytics = {
         periodRevenue: revenue,
         allTimeRevenue: allTimeRevenue,
         averageRevenuePerStudent: course.price,
-        projectedMonthlyRevenue: (revenue / parseInt(dateRange.replace('d', ''))) * 30,
+        projectedMonthlyRevenue:
+          (revenue / parseInt(dateRange.replace("d", ""))) * 30,
         revenueByDay: enrollments.reduce((acc, enrollment) => {
-          const date = enrollment.createdAt.toISOString().split('T')[0];
+          const date = enrollment.createdAt.toISOString().split("T")[0];
           acc[date] = (acc[date] || 0) + course.price;
           return acc;
-        }, {})
+        }, {}),
       };
     }
 
@@ -1706,24 +1788,26 @@ export const getCourseAnalytics = async (req, res) => {
         resourceDownloads: Math.floor(Math.random() * 500) + 100,
         forumPosts: Math.floor(Math.random() * 50) + 10,
         averageRating: course.averageRating || 0,
-        totalRatings: course.totalRatings || 0
+        totalRatings: course.totalRatings || 0,
       };
     }
 
     // Student demographics (simulated)
     const demographics = {
       newStudentsThisPeriod: enrollments.length,
-      returningStudents: allTimeEnrollments.filter(e => {
+      returningStudents: allTimeEnrollments.filter((e) => {
         const userCreated = new Date(e.user.createdAt);
         const enrollmentCreated = new Date(e.createdAt);
-        return (enrollmentCreated - userCreated) > (30 * 24 * 60 * 60 * 1000); // Enrolled 30+ days after signup
+        return enrollmentCreated - userCreated > 30 * 24 * 60 * 60 * 1000; // Enrolled 30+ days after signup
       }).length,
-      averageTimeToComplete: allTimeEnrollments
-        .filter(e => e.completedAt && e.createdAt)
-        .reduce((sum, e) => {
-          const timeDiff = new Date(e.completedAt) - new Date(e.createdAt);
-          return sum + (timeDiff / (1000 * 60 * 60 * 24)); // days
-        }, 0) / Math.max(allTimeEnrollments.filter(e => e.completedAt).length, 1)
+      averageTimeToComplete:
+        allTimeEnrollments
+          .filter((e) => e.completedAt && e.createdAt)
+          .reduce((sum, e) => {
+            const timeDiff = new Date(e.completedAt) - new Date(e.createdAt);
+            return sum + timeDiff / (1000 * 60 * 60 * 24); // days
+          }, 0) /
+        Math.max(allTimeEnrollments.filter((e) => e.completedAt).length, 1),
     };
 
     res.json({
@@ -1736,7 +1820,7 @@ export const getCourseAnalytics = async (req, res) => {
           price: course.price,
           category: course.category?.categoryName,
           instructor: course.instructor?.username,
-          createdAt: course.createdAt
+          createdAt: course.createdAt,
         },
         analytics: {
           enrollment: enrollmentAnalytics,
@@ -1745,23 +1829,22 @@ export const getCourseAnalytics = async (req, res) => {
           demographics,
           trends: {
             enrollmentByDay: enrollmentTrends,
-            completionByDay: completionTrends
-          }
+            completionByDay: completionTrends,
+          },
         },
         period: {
           startDate,
           endDate,
-          duration: dateRange
-        }
-      }
+          duration: dateRange,
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get course analytics error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to fetch course analytics",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1772,22 +1855,22 @@ export const getCourseAnalytics = async (req, res) => {
  */
 export const getAdminDashboardOverview = async (req, res) => {
   try {
-    const { dateRange = '30d' } = req.query;
+    const { dateRange = "30d" } = req.query;
 
     // Calculate date range
     const endDate = new Date();
     const startDate = new Date();
     switch (dateRange) {
-      case '7d':
+      case "7d":
         startDate.setDate(endDate.getDate() - 7);
         break;
-      case '30d':
+      case "30d":
         startDate.setDate(endDate.getDate() - 30);
         break;
-      case '90d':
+      case "90d":
         startDate.setDate(endDate.getDate() - 90);
         break;
-      case '1y':
+      case "1y":
         startDate.setFullYear(endDate.getFullYear() - 1);
         break;
       default:
@@ -1796,14 +1879,16 @@ export const getAdminDashboardOverview = async (req, res) => {
 
     // Get course statistics
     const totalCourses = await Course.count();
-    const activeCourses = await Course.count({ where: { status: 'published' } });
+    const activeCourses = await Course.count({
+      where: { status: "published" },
+    });
     const newCoursesInPeriod = await Course.count({
       where: {
         createdAt: {
           [Op.gte]: startDate,
-          [Op.lte]: endDate
-        }
-      }
+          [Op.lte]: endDate,
+        },
+      },
     });
 
     // Get enrollment statistics
@@ -1812,12 +1897,12 @@ export const getAdminDashboardOverview = async (req, res) => {
       where: {
         createdAt: {
           [Op.gte]: startDate,
-          [Op.lte]: endDate
-        }
-      }
+          [Op.lte]: endDate,
+        },
+      },
     });
     const completedEnrollments = await Enrollment.count({
-      where: { status: 'completed' }
+      where: { status: "completed" },
     });
 
     // Get user statistics
@@ -1826,82 +1911,92 @@ export const getAdminDashboardOverview = async (req, res) => {
       where: {
         createdAt: {
           [Op.gte]: startDate,
-          [Op.lte]: endDate
-        }
-      }
+          [Op.lte]: endDate,
+        },
+      },
     });
-    const instructors = await User.count({ where: { role: 'teacher' } });
-    const students = await User.count({ where: { role: 'student' } });
+    const instructors = await User.count({ where: { role: "teacher" } });
+    const students = await User.count({ where: { role: "student" } });
 
     // Get top performing courses
     const topCourses = await Course.findAll({
       attributes: [
-        'courseId',
-        'title',
-        'price',
-        'averageRating',
-        'totalRatings',
-        [sequelize.fn('COUNT', sequelize.col('enrollments.enrollmentId')), 'enrollmentCount']
+        "courseId",
+        "title",
+        "price",
+        "averageRating",
+        "totalRatings",
+        [
+          sequelize.fn("COUNT", sequelize.col("enrollments.enrollmentId")),
+          "enrollmentCount",
+        ],
       ],
-      include: [{
-        model: Enrollment,
-        as: 'enrollments',
-        attributes: []
-      }],
-      group: ['Course.courseId'],
-      order: [[sequelize.literal('enrollmentCount'), 'DESC']],
-      limit: 10
+      include: [
+        {
+          model: Enrollment,
+          as: "enrollments",
+          attributes: [],
+        },
+      ],
+      group: ["Course.courseId"],
+      order: [[sequelize.literal("enrollmentCount"), "DESC"]],
+      limit: 10,
     });
 
     // Calculate revenue (simulated)
     const courses = await Course.findAll({
-      attributes: ['courseId', 'price'],
-      include: [{
-        model: Enrollment,
-        as: 'enrollments',
-        where: {
-          createdAt: {
-            [Op.gte]: startDate,
-            [Op.lte]: endDate
-          }
+      attributes: ["courseId", "price"],
+      include: [
+        {
+          model: Enrollment,
+          as: "enrollments",
+          where: {
+            createdAt: {
+              [Op.gte]: startDate,
+              [Op.lte]: endDate,
+            },
+          },
+          required: false,
         },
-        required: false
-      }]
+      ],
     });
 
     const revenueAnalytics = {
-      totalRevenue: courses.reduce((sum, course) => 
-        sum + (course.price * (course.enrollments?.length || 0)), 0
+      totalRevenue: courses.reduce(
+        (sum, course) => sum + course.price * (course.enrollments?.length || 0),
+        0,
       ),
-      averageOrderValue: courses.length > 0 
-        ? courses.reduce((sum, course) => sum + course.price, 0) / courses.length 
-        : 0,
-      revenueGrowth: Math.floor(Math.random() * 20) + 5 // Simulated growth percentage
+      averageOrderValue:
+        courses.length > 0
+          ? courses.reduce((sum, course) => sum + course.price, 0) /
+            courses.length
+          : 0,
+      revenueGrowth: Math.floor(Math.random() * 20) + 5, // Simulated growth percentage
     };
 
     // Get enrollment trends
     const enrollmentTrends = await Enrollment.findAll({
       attributes: [
-        [sequelize.fn('DATE', sequelize.col('createdAt')), 'date'],
-        [sequelize.fn('COUNT', sequelize.col('enrollmentId')), 'count']
+        [sequelize.fn("DATE", sequelize.col("createdAt")), "date"],
+        [sequelize.fn("COUNT", sequelize.col("enrollmentId")), "count"],
       ],
       where: {
         createdAt: {
           [Op.gte]: startDate,
-          [Op.lte]: endDate
-        }
+          [Op.lte]: endDate,
+        },
       },
-      group: [sequelize.fn('DATE', sequelize.col('createdAt'))],
-      order: [[sequelize.fn('DATE', sequelize.col('createdAt')), 'ASC']]
+      group: [sequelize.fn("DATE", sequelize.col("createdAt"))],
+      order: [[sequelize.fn("DATE", sequelize.col("createdAt")), "ASC"]],
     });
 
     // System health metrics (simulated)
     const systemMetrics = {
-      serverUptime: '99.9%',
-      averageResponseTime: '245ms',
-      errorRate: '0.1%',
+      serverUptime: "99.9%",
+      averageResponseTime: "245ms",
+      errorRate: "0.1%",
       activeUsers: Math.floor(Math.random() * 1000) + 500,
-      peakConcurrentUsers: Math.floor(Math.random() * 200) + 100
+      peakConcurrentUsers: Math.floor(Math.random() * 200) + 100,
     };
 
     res.json({
@@ -1912,52 +2007,55 @@ export const getAdminDashboardOverview = async (req, res) => {
             total: totalCourses,
             active: activeCourses,
             newInPeriod: newCoursesInPeriod,
-            conversionRate: totalCourses > 0 ? (activeCourses / totalCourses) * 100 : 0
+            conversionRate:
+              totalCourses > 0 ? (activeCourses / totalCourses) * 100 : 0,
           },
           enrollments: {
             total: totalEnrollments,
             newInPeriod: newEnrollmentsInPeriod,
             completed: completedEnrollments,
-            completionRate: totalEnrollments > 0 ? (completedEnrollments / totalEnrollments) * 100 : 0
+            completionRate:
+              totalEnrollments > 0
+                ? (completedEnrollments / totalEnrollments) * 100
+                : 0,
           },
           users: {
             total: totalUsers,
             newInPeriod: newUsersInPeriod,
             instructors,
             students,
-            growthRate: Math.floor(Math.random() * 15) + 5 // Simulated growth
+            growthRate: Math.floor(Math.random() * 15) + 5, // Simulated growth
           },
-          revenue: revenueAnalytics
+          revenue: revenueAnalytics,
         },
-        topCourses: topCourses.map(course => ({
+        topCourses: topCourses.map((course) => ({
           courseId: course.courseId,
           title: course.title,
           price: course.price,
           enrollments: course.dataValues.enrollmentCount,
           rating: course.averageRating,
-          reviews: course.totalRatings
+          reviews: course.totalRatings,
         })),
         trends: {
-          enrollmentsByDay: enrollmentTrends.map(trend => ({
+          enrollmentsByDay: enrollmentTrends.map((trend) => ({
             date: trend.dataValues.date,
-            enrollments: parseInt(trend.dataValues.count)
-          }))
+            enrollments: parseInt(trend.dataValues.count),
+          })),
         },
         systemMetrics,
         period: {
           startDate,
           endDate,
-          duration: dateRange
-        }
-      }
+          duration: dateRange,
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get admin dashboard overview error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to fetch admin dashboard overview",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -1969,45 +2067,57 @@ export const getAdminDashboardOverview = async (req, res) => {
 export const exportCourseData = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { format = 'json', includeStudentData = false } = req.body;
+    const { format = "json", includeStudentData = false } = req.body;
 
     // Check if course exists
     const course = await Course.findByPk(courseId, {
       include: [
         {
           model: CourseCategory,
-          as: "category"
+          as: "category",
         },
         {
           model: User,
-          as: "instructor"
+          as: "instructor",
         },
         {
           model: Section,
           as: "sections",
-          include: [{
-            model: Lesson,
-            as: "lessons"
-          }]
-        }
-      ]
+          include: [
+            {
+              model: Lesson,
+              as: "lessons",
+            },
+          ],
+        },
+      ],
     });
 
     if (!course) {
       return res.status(404).json({
         status: false,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
     // Get enrollment data
     const enrollments = await Enrollment.findAll({
       where: { courseId },
-      include: includeStudentData ? [{
-        model: User,
-        as: 'user',
-        attributes: ['userId', 'username', 'email', 'firstName', 'lastName']
-      }] : []
+      include: includeStudentData
+        ? [
+            {
+              model: User,
+              as: "user",
+              attributes: [
+                "userId",
+                "username",
+                "email",
+                "firstName",
+                "lastName",
+              ],
+            },
+          ]
+        : [],
     });
 
     // Prepare export data
@@ -2023,20 +2133,25 @@ export const exportCourseData = async (req, res) => {
         category: course.category?.categoryName,
         instructor: {
           name: course.instructor?.username,
-          email: course.instructor?.email
+          email: course.instructor?.email,
         },
         createdAt: course.createdAt,
-        updatedAt: course.updatedAt
+        updatedAt: course.updatedAt,
       },
       content: {
         totalSections: course.sections?.length || 0,
-        totalLessons: course.sections?.reduce((sum, s) => sum + (s.lessons?.length || 0), 0) || 0,
-        sections: course.sections?.map(section => ({
-          sectionId: section.sectionId,
-          title: section.title,
-          order: section.order,
-          lessonsCount: section.lessons?.length || 0
-        })) || []
+        totalLessons:
+          course.sections?.reduce(
+            (sum, s) => sum + (s.lessons?.length || 0),
+            0,
+          ) || 0,
+        sections:
+          course.sections?.map((section) => ({
+            sectionId: section.sectionId,
+            title: section.title,
+            order: section.order,
+            lessonsCount: section.lessons?.length || 0,
+          })) || [],
       },
       enrollment: {
         total: enrollments.length,
@@ -2044,44 +2159,50 @@ export const exportCourseData = async (req, res) => {
           acc[e.status] = (acc[e.status] || 0) + 1;
           return acc;
         }, {}),
-        averageProgress: enrollments.length > 0
-          ? enrollments.reduce((sum, e) => sum + (e.progressPercentage || 0), 0) / enrollments.length
-          : 0
+        averageProgress:
+          enrollments.length > 0
+            ? enrollments.reduce(
+                (sum, e) => sum + (e.progressPercentage || 0),
+                0,
+              ) / enrollments.length
+            : 0,
       },
       ...(includeStudentData && {
-        students: enrollments.map(e => ({
+        students: enrollments.map((e) => ({
           userId: e.user?.userId,
           username: e.user?.username,
           email: e.user?.email,
           enrollmentDate: e.createdAt,
           status: e.status,
-          progress: e.progressPercentage
-        }))
+          progress: e.progressPercentage,
+        })),
       }),
       exportMetadata: {
         exportedAt: new Date(),
         exportedBy: req.user.userId,
         format,
-        includeStudentData
-      }
+        includeStudentData,
+      },
     };
 
     // Set appropriate headers for download
-    res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="course-${courseId}-export-${Date.now()}.json"`);
+    res.setHeader("Content-Type", "application/json");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="course-${courseId}-export-${Date.now()}.json"`,
+    );
 
     res.json({
       status: true,
       message: "Course data exported successfully",
-      data: exportData
+      data: exportData,
     });
-
   } catch (error) {
     console.error("Export course data error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to export course data",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -2092,27 +2213,22 @@ export const exportCourseData = async (req, res) => {
  */
 export const getRevenueAnalytics = async (req, res) => {
   try {
-    const { 
-      dateRange = '30d', 
-      courseId, 
-      categoryId,
-      instructorId 
-    } = req.query;
+    const { dateRange = "30d", courseId, categoryId, instructorId } = req.query;
 
     // Calculate date range
     const endDate = new Date();
     const startDate = new Date();
     switch (dateRange) {
-      case '7d':
+      case "7d":
         startDate.setDate(endDate.getDate() - 7);
         break;
-      case '30d':
+      case "30d":
         startDate.setDate(endDate.getDate() - 30);
         break;
-      case '90d':
+      case "90d":
         startDate.setDate(endDate.getDate() - 90);
         break;
-      case '1y':
+      case "1y":
         startDate.setFullYear(endDate.getFullYear() - 1);
         break;
       default:
@@ -2128,30 +2244,33 @@ export const getRevenueAnalytics = async (req, res) => {
     // Get revenue data
     const courses = await Course.findAll({
       where: courseWhere,
-      attributes: ['courseId', 'title', 'price', 'type'],
-      include: [{
-        model: Enrollment,
-        as: 'enrollments',
-        where: {
-          createdAt: {
-            [Op.gte]: startDate,
-            [Op.lte]: endDate
-          }
+      attributes: ["courseId", "title", "price", "type"],
+      include: [
+        {
+          model: Enrollment,
+          as: "enrollments",
+          where: {
+            createdAt: {
+              [Op.gte]: startDate,
+              [Op.lte]: endDate,
+            },
+          },
+          required: false,
+          attributes: ["enrollmentId", "createdAt", "status"],
         },
-        required: false,
-        attributes: ['enrollmentId', 'createdAt', 'status']
-      }, {
-        model: CourseCategory,
-        as: 'category',
-        attributes: ['categoryName']
-      }]
+        {
+          model: CourseCategory,
+          as: "category",
+          attributes: ["categoryName"],
+        },
+      ],
     });
 
     // Calculate revenue metrics
-    const revenueData = courses.map(course => {
+    const revenueData = courses.map((course) => {
       const enrollments = course.enrollments || [];
       const revenue = enrollments.length * course.price;
-      
+
       return {
         courseId: course.courseId,
         title: course.title,
@@ -2160,14 +2279,21 @@ export const getRevenueAnalytics = async (req, res) => {
         category: course.category?.categoryName,
         enrollments: enrollments.length,
         revenue,
-        conversionRate: Math.random() * 10 + 2 // Simulated conversion rate
+        conversionRate: Math.random() * 10 + 2, // Simulated conversion rate
       };
     });
 
     // Aggregate metrics
-    const totalRevenue = revenueData.reduce((sum, course) => sum + course.revenue, 0);
-    const totalEnrollments = revenueData.reduce((sum, course) => sum + course.enrollments, 0);
-    const averageOrderValue = totalEnrollments > 0 ? totalRevenue / totalEnrollments : 0;
+    const totalRevenue = revenueData.reduce(
+      (sum, course) => sum + course.revenue,
+      0,
+    );
+    const totalEnrollments = revenueData.reduce(
+      (sum, course) => sum + course.enrollments,
+      0,
+    );
+    const averageOrderValue =
+      totalEnrollments > 0 ? totalRevenue / totalEnrollments : 0;
 
     // Revenue by course type
     const revenueByType = revenueData.reduce((acc, course) => {
@@ -2187,27 +2313,26 @@ export const getRevenueAnalytics = async (req, res) => {
           totalRevenue,
           totalEnrollments,
           averageOrderValue: Math.round(averageOrderValue * 100) / 100,
-          coursesAnalyzed: courses.length
+          coursesAnalyzed: courses.length,
         },
         breakdown: {
           byType: revenueByType,
           topCourses,
-          allCourses: revenueData
+          allCourses: revenueData,
         },
         period: {
           startDate,
           endDate,
-          duration: dateRange
-        }
-      }
+          duration: dateRange,
+        },
+      },
     });
-
   } catch (error) {
     console.error("Get revenue analytics error:", error);
     res.status(500).json({
       status: false,
       message: "Failed to fetch revenue analytics",
-      error: error.message
+      error: error.message,
     });
   }
 };

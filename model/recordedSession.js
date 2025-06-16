@@ -48,7 +48,7 @@ const RecordedSession = sequelize.define(
   {
     tableName: "recorded_sessions",
     ...commonOptions,
-  }
+  },
 );
 
 export default RecordedSession;

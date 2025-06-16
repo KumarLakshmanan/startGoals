@@ -26,14 +26,14 @@ export const rateCourse = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
     if (!rating || rating < 1 || rating > 5) {
       return res.status(400).json({
         success: false,
-        message: "Rating must be between 1 and 5"
+        message: "Rating must be between 1 and 5",
       });
     }
 
@@ -42,49 +42,54 @@ export const rateCourse = async (req, res) => {
     if (!course) {
       return res.status(404).json({
         success: false,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
     // Check if user is enrolled (for verified rating)
     const enrollment = await Enrollment.findOne({
-      where: { userId, courseId }
+      where: { userId, courseId },
     });
 
     const isVerified = !!enrollment;
 
     // Create or update rating
-    const [courseRating, created] = await CourseRating.upsert({
-      courseId,
-      userId,
-      rating: parseFloat(rating),
-      review: review?.trim() || null,
-      isVerified,
-      moderationStatus: review ? 'pending' : 'approved' // Auto-approve ratings without reviews
-    }, {
-      returning: true
-    });
+    const [courseRating, created] = await CourseRating.upsert(
+      {
+        courseId,
+        userId,
+        rating: parseFloat(rating),
+        review: review?.trim() || null,
+        isVerified,
+        moderationStatus: review ? "pending" : "approved", // Auto-approve ratings without reviews
+      },
+      {
+        returning: true,
+      },
+    );
 
     // Recalculate course average rating
     await updateCourseAverageRating(courseId);
 
     return res.status(created ? 201 : 200).json({
       success: true,
-      message: created ? "Rating submitted successfully" : "Rating updated successfully",
+      message: created
+        ? "Rating submitted successfully"
+        : "Rating updated successfully",
       data: {
         ratingId: courseRating.ratingId,
         rating: courseRating.rating,
         review: courseRating.review,
         isVerified: courseRating.isVerified,
         moderationStatus: courseRating.moderationStatus,
-        createdAt: courseRating.createdAt
-      }
+        createdAt: courseRating.createdAt,
+      },
     });
   } catch (error) {
     console.error("Rate course error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -93,20 +98,20 @@ export const rateCourse = async (req, res) => {
 export const getCourseRatings = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { 
-      page = 1, 
-      limit = 10, 
+    const {
+      page = 1,
+      limit = 10,
       rating,
       verified = null,
-      sortBy = 'helpful' 
+      sortBy = "helpful",
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // Build where conditions
-    const whereClause = { 
+    const whereClause = {
       courseId,
-      moderationStatus: 'approved'
+      moderationStatus: "approved",
     };
 
     if (rating) {
@@ -114,26 +119,35 @@ export const getCourseRatings = async (req, res) => {
     }
 
     if (verified !== null) {
-      whereClause.isVerified = verified === 'true';
+      whereClause.isVerified = verified === "true";
     }
 
     // Build order clause
     let orderClause;
     switch (sortBy) {
-      case 'helpful':
-        orderClause = [['isHelpful', 'DESC'], ['createdAt', 'DESC']];
+      case "helpful":
+        orderClause = [
+          ["isHelpful", "DESC"],
+          ["createdAt", "DESC"],
+        ];
         break;
-      case 'recent':
-        orderClause = [['createdAt', 'DESC']];
+      case "recent":
+        orderClause = [["createdAt", "DESC"]];
         break;
-      case 'rating_high':
-        orderClause = [['rating', 'DESC'], ['createdAt', 'DESC']];
+      case "rating_high":
+        orderClause = [
+          ["rating", "DESC"],
+          ["createdAt", "DESC"],
+        ];
         break;
-      case 'rating_low':
-        orderClause = [['rating', 'ASC'], ['createdAt', 'DESC']];
+      case "rating_low":
+        orderClause = [
+          ["rating", "ASC"],
+          ["createdAt", "DESC"],
+        ];
         break;
       default:
-        orderClause = [['createdAt', 'DESC']];
+        orderClause = [["createdAt", "DESC"]];
     }
 
     const { count, rows: ratings } = await CourseRating.findAndCountAll({
@@ -141,33 +155,33 @@ export const getCourseRatings = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'user',
-          attributes: ['userId', 'username', 'profileImage']
-        }
+          as: "user",
+          attributes: ["userId", "username", "profileImage"],
+        },
       ],
       limit: parseInt(limit),
       offset,
-      order: orderClause
+      order: orderClause,
     });
 
     // Get rating summary
     const ratingSummary = await CourseRating.findAll({
-      where: { courseId, moderationStatus: 'approved' },
+      where: { courseId, moderationStatus: "approved" },
       attributes: [
-        'rating',
-        [sequelize.fn('COUNT', sequelize.col('rating')), 'count']
+        "rating",
+        [sequelize.fn("COUNT", sequelize.col("rating")), "count"],
       ],
-      group: ['rating'],
-      order: [['rating', 'DESC']]
+      group: ["rating"],
+      order: [["rating", "DESC"]],
     });
 
     const totalRatings = await CourseRating.count({
-      where: { courseId, moderationStatus: 'approved' }
+      where: { courseId, moderationStatus: "approved" },
     });
 
     const avgRating = await CourseRating.findOne({
-      where: { courseId, moderationStatus: 'approved' },
-      attributes: [[sequelize.fn('AVG', sequelize.col('rating')), 'avgRating']]
+      where: { courseId, moderationStatus: "approved" },
+      attributes: [[sequelize.fn("AVG", sequelize.col("rating")), "avgRating"]],
     });
 
     const totalPages = Math.ceil(count / parseInt(limit));
@@ -176,22 +190,22 @@ export const getCourseRatings = async (req, res) => {
       success: true,
       message: "Course ratings fetched successfully",
       data: {
-        ratings: ratings.map(rating => ({
+        ratings: ratings.map((rating) => ({
           ratingId: rating.ratingId,
           rating: rating.rating,
           review: rating.review,
           isVerified: rating.isVerified,
           isHelpful: rating.isHelpful,
           createdAt: rating.createdAt,
-          user: rating.user
+          user: rating.user,
         })),
         summary: {
           averageRating: parseFloat(avgRating?.dataValues?.avgRating || 0),
           totalRatings,
-          distribution: ratingSummary.map(item => ({
+          distribution: ratingSummary.map((item) => ({
             rating: item.rating,
-            count: parseInt(item.dataValues.count)
-          }))
+            count: parseInt(item.dataValues.count),
+          })),
         },
         pagination: {
           currentPage: parseInt(page),
@@ -199,15 +213,15 @@ export const getCourseRatings = async (req, res) => {
           totalItems: count,
           itemsPerPage: parseInt(limit),
           hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1
-        }
-      }
+          hasPrevPage: parseInt(page) > 1,
+        },
+      },
     });
   } catch (error) {
     console.error("Get course ratings error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -223,26 +237,26 @@ export const rateInstructor = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Authentication required"
+        message: "Authentication required",
       });
     }
 
     if (!rating || rating < 1 || rating > 5) {
       return res.status(400).json({
         success: false,
-        message: "Rating must be between 1 and 5"
+        message: "Rating must be between 1 and 5",
       });
     }
 
     // Check if instructor exists and is actually a teacher
     const instructor = await User.findOne({
-      where: { userId: instructorId, role: 'teacher' }
+      where: { userId: instructorId, role: "teacher" },
     });
 
     if (!instructor) {
       return res.status(404).json({
         success: false,
-        message: "Instructor not found"
+        message: "Instructor not found",
       });
     }
 
@@ -251,34 +265,41 @@ export const rateInstructor = async (req, res) => {
     if (courseId) {
       const enrollment = await Enrollment.findOne({
         where: { userId, courseId },
-        include: [{
-          model: Course,
-          where: { createdBy: instructorId }
-        }]
+        include: [
+          {
+            model: Course,
+            where: { createdBy: instructorId },
+          },
+        ],
       });
       isVerified = !!enrollment;
     }
 
     // Create or update rating
-    const [instructorRating, created] = await InstructorRating.upsert({
-      instructorId,
-      userId,
-      courseId: courseId || null,
-      rating: parseFloat(rating),
-      review: review?.trim() || null,
-      criteria: criteria || null,
-      isVerified,
-      moderationStatus: review ? 'pending' : 'approved'
-    }, {
-      returning: true
-    });
+    const [instructorRating, created] = await InstructorRating.upsert(
+      {
+        instructorId,
+        userId,
+        courseId: courseId || null,
+        rating: parseFloat(rating),
+        review: review?.trim() || null,
+        criteria: criteria || null,
+        isVerified,
+        moderationStatus: review ? "pending" : "approved",
+      },
+      {
+        returning: true,
+      },
+    );
 
     // Update instructor average rating
     await updateInstructorAverageRating(instructorId);
 
     return res.status(created ? 201 : 200).json({
       success: true,
-      message: created ? "Instructor rating submitted successfully" : "Instructor rating updated successfully",
+      message: created
+        ? "Instructor rating submitted successfully"
+        : "Instructor rating updated successfully",
       data: {
         ratingId: instructorRating.ratingId,
         rating: instructorRating.rating,
@@ -286,14 +307,14 @@ export const rateInstructor = async (req, res) => {
         criteria: instructorRating.criteria,
         isVerified: instructorRating.isVerified,
         moderationStatus: instructorRating.moderationStatus,
-        createdAt: instructorRating.createdAt
-      }
+        createdAt: instructorRating.createdAt,
+      },
     });
   } catch (error) {
     console.error("Rate instructor error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -302,19 +323,19 @@ export const rateInstructor = async (req, res) => {
 export const getInstructorRatings = async (req, res) => {
   try {
     const { instructorId } = req.params;
-    const { 
-      page = 1, 
-      limit = 10, 
+    const {
+      page = 1,
+      limit = 10,
       rating,
       courseId,
-      sortBy = 'recent' 
+      sortBy = "recent",
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    const whereClause = { 
+    const whereClause = {
       instructorId,
-      moderationStatus: 'approved'
+      moderationStatus: "approved",
     };
 
     if (rating) {
@@ -327,17 +348,23 @@ export const getInstructorRatings = async (req, res) => {
 
     let orderClause;
     switch (sortBy) {
-      case 'recent':
-        orderClause = [['createdAt', 'DESC']];
+      case "recent":
+        orderClause = [["createdAt", "DESC"]];
         break;
-      case 'rating_high':
-        orderClause = [['rating', 'DESC'], ['createdAt', 'DESC']];
+      case "rating_high":
+        orderClause = [
+          ["rating", "DESC"],
+          ["createdAt", "DESC"],
+        ];
         break;
-      case 'rating_low':
-        orderClause = [['rating', 'ASC'], ['createdAt', 'DESC']];
+      case "rating_low":
+        orderClause = [
+          ["rating", "ASC"],
+          ["createdAt", "DESC"],
+        ];
         break;
       default:
-        orderClause = [['createdAt', 'DESC']];
+        orderClause = [["createdAt", "DESC"]];
     }
 
     const { count, rows: ratings } = await InstructorRating.findAndCountAll({
@@ -345,29 +372,29 @@ export const getInstructorRatings = async (req, res) => {
       include: [
         {
           model: User,
-          as: 'user',
-          attributes: ['userId', 'username', 'profileImage']
+          as: "user",
+          attributes: ["userId", "username", "profileImage"],
         },
         {
           model: Course,
-          as: 'course',
-          attributes: ['courseId', 'title'],
-          required: false
-        }
+          as: "course",
+          attributes: ["courseId", "title"],
+          required: false,
+        },
       ],
       limit: parseInt(limit),
       offset,
-      order: orderClause
+      order: orderClause,
     });
 
     // Get rating summary
     const avgRating = await InstructorRating.findOne({
-      where: { instructorId, moderationStatus: 'approved' },
-      attributes: [[sequelize.fn('AVG', sequelize.col('rating')), 'avgRating']]
+      where: { instructorId, moderationStatus: "approved" },
+      attributes: [[sequelize.fn("AVG", sequelize.col("rating")), "avgRating"]],
     });
 
     const totalRatings = await InstructorRating.count({
-      where: { instructorId, moderationStatus: 'approved' }
+      where: { instructorId, moderationStatus: "approved" },
     });
 
     const totalPages = Math.ceil(count / parseInt(limit));
@@ -376,7 +403,7 @@ export const getInstructorRatings = async (req, res) => {
       success: true,
       message: "Instructor ratings fetched successfully",
       data: {
-        ratings: ratings.map(rating => ({
+        ratings: ratings.map((rating) => ({
           ratingId: rating.ratingId,
           rating: rating.rating,
           review: rating.review,
@@ -384,11 +411,11 @@ export const getInstructorRatings = async (req, res) => {
           isVerified: rating.isVerified,
           createdAt: rating.createdAt,
           user: rating.user,
-          course: rating.course
+          course: rating.course,
         })),
         summary: {
           averageRating: parseFloat(avgRating?.dataValues?.avgRating || 0),
-          totalRatings
+          totalRatings,
         },
         pagination: {
           currentPage: parseInt(page),
@@ -396,15 +423,15 @@ export const getInstructorRatings = async (req, res) => {
           totalItems: count,
           itemsPerPage: parseInt(limit),
           hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1
-        }
-      }
+          hasPrevPage: parseInt(page) > 1,
+        },
+      },
     });
   } catch (error) {
     console.error("Get instructor ratings error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
+      message: error.message || "Internal server error",
     });
   }
 };
@@ -413,10 +440,10 @@ export const getInstructorRatings = async (req, res) => {
 export const markReviewHelpful = async (req, res) => {
   try {
     const { ratingId } = req.params;
-    const { type = 'course' } = req.body; // course or instructor
+    const { type = "course" } = req.body; // course or instructor
 
     let rating;
-    if (type === 'course') {
+    if (type === "course") {
       rating = await CourseRating.findByPk(ratingId);
     } else {
       rating = await InstructorRating.findByPk(ratingId);
@@ -425,26 +452,27 @@ export const markReviewHelpful = async (req, res) => {
     if (!rating) {
       return res.status(404).json({
         success: false,
-        message: "Rating not found"
+        message: "Rating not found",
       });
     }
 
     // Increment helpful count
-    await rating.increment('isHelpful');
+    await rating.increment("isHelpful");
 
     return res.status(200).json({
       success: true,
       message: "Review marked as helpful",
       data: {
-        helpfulCount: rating.isHelpful + 1
-      }
+        helpfulCount: rating.isHelpful + 1,
+      },
     });
   } catch (error) {
     console.error("Mark review helpful error:", error);
     return res.status(500).json({
       success: false,
-      message: error.message || "Internal server error"
-    });  }
+      message: error.message || "Internal server error",
+    });
+  }
 };
 
 // ===================== COMPREHENSIVE REVIEW & RATING MANAGEMENT =====================
@@ -458,48 +486,48 @@ export const getAllReviews = async (req, res) => {
     const {
       page = 1,
       limit = 20,
-      type = 'all', // all, course, project, instructor
-      status = 'all', // all, pending, approved, rejected, hidden
+      type = "all", // all, course, project, instructor
+      status = "all", // all, pending, approved, rejected, hidden
       rating,
       search,
-      sortBy = 'createdAt',
-      sortOrder = 'DESC',
+      sortBy = "createdAt",
+      sortOrder = "DESC",
       dateRange,
-      flagged = false
+      flagged = false,
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
     let allReviews = [];
 
     // Course Reviews
-    if (type === 'all' || type === 'course') {
+    if (type === "all" || type === "course") {
       const courseWhereConditions = {};
-      
-      if (status !== 'all') {
+
+      if (status !== "all") {
         courseWhereConditions.status = status;
       }
-      
+
       if (rating) {
         courseWhereConditions.rating = parseInt(rating);
       }
 
-      if (flagged === 'true') {
+      if (flagged === "true") {
         courseWhereConditions.flaggedCount = { [Op.gt]: 0 };
       }
 
       if (search) {
         courseWhereConditions[Op.or] = [
           { review: { [Op.iLike]: `%${search}%` } },
-          { '$User.firstName$': { [Op.iLike]: `%${search}%` } },
-          { '$Course.title$': { [Op.iLike]: `%${search}%` } }
+          { "$User.firstName$": { [Op.iLike]: `%${search}%` } },
+          { "$Course.title$": { [Op.iLike]: `%${search}%` } },
         ];
       }
 
       if (dateRange) {
-        const dates = dateRange.split(',');
+        const dates = dateRange.split(",");
         if (dates.length === 2) {
           courseWhereConditions.createdAt = {
-            [Op.between]: [new Date(dates[0]), new Date(dates[1])]
+            [Op.between]: [new Date(dates[0]), new Date(dates[1])],
           };
         }
       }
@@ -509,57 +537,63 @@ export const getAllReviews = async (req, res) => {
         include: [
           {
             model: User,
-            attributes: ['userId', 'firstName', 'lastName', 'email', 'profileImage']
+            attributes: [
+              "userId",
+              "firstName",
+              "lastName",
+              "email",
+              "profileImage",
+            ],
           },
           {
             model: Course,
-            attributes: ['courseId', 'title', 'thumbnail']
-          }
+            attributes: ["courseId", "title", "thumbnail"],
+          },
         ],
         order: [[sortBy, sortOrder]],
-        raw: false
+        raw: false,
       });
 
       allReviews = allReviews.concat(
-        courseReviews.map(review => ({
+        courseReviews.map((review) => ({
           ...review.dataValues,
-          type: 'course',
+          type: "course",
           contentTitle: review.Course?.title,
-          userInfo: review.User
-        }))
+          userInfo: review.User,
+        })),
       );
     }
 
     // Project Reviews (if ProjectRating model exists)
-    if (type === 'all' || type === 'project') {
+    if (type === "all" || type === "project") {
       try {
         const projectWhereConditions = {};
-        
-        if (status !== 'all') {
+
+        if (status !== "all") {
           projectWhereConditions.status = status;
         }
-        
+
         if (rating) {
           projectWhereConditions.rating = parseInt(rating);
         }
 
-        if (flagged === 'true') {
+        if (flagged === "true") {
           projectWhereConditions.flaggedCount = { [Op.gt]: 0 };
         }
 
         if (search) {
           projectWhereConditions[Op.or] = [
             { review: { [Op.iLike]: `%${search}%` } },
-            { '$User.firstName$': { [Op.iLike]: `%${search}%` } },
-            { '$Project.title$': { [Op.iLike]: `%${search}%` } }
+            { "$User.firstName$": { [Op.iLike]: `%${search}%` } },
+            { "$Project.title$": { [Op.iLike]: `%${search}%` } },
           ];
         }
 
         if (dateRange) {
-          const dates = dateRange.split(',');
+          const dates = dateRange.split(",");
           if (dates.length === 2) {
             projectWhereConditions.createdAt = {
-              [Op.between]: [new Date(dates[0]), new Date(dates[1])]
+              [Op.between]: [new Date(dates[0]), new Date(dates[1])],
             };
           }
         }
@@ -569,24 +603,30 @@ export const getAllReviews = async (req, res) => {
           include: [
             {
               model: User,
-              attributes: ['userId', 'firstName', 'lastName', 'email', 'profileImage']
+              attributes: [
+                "userId",
+                "firstName",
+                "lastName",
+                "email",
+                "profileImage",
+              ],
             },
             {
               model: Project,
-              attributes: ['projectId', 'title', 'thumbnail']
-            }
+              attributes: ["projectId", "title", "thumbnail"],
+            },
           ],
           order: [[sortBy, sortOrder]],
-          raw: false
+          raw: false,
         });
 
         allReviews = allReviews.concat(
-          projectReviews.map(review => ({
+          projectReviews.map((review) => ({
             ...review.dataValues,
-            type: 'project',
+            type: "project",
             contentTitle: review.Project?.title,
-            userInfo: review.User
-          }))
+            userInfo: review.User,
+          })),
         );
       } catch (error) {
         // Project ratings might not exist, skip silently
@@ -595,34 +635,34 @@ export const getAllReviews = async (req, res) => {
     }
 
     // Instructor Reviews
-    if (type === 'all' || type === 'instructor') {
+    if (type === "all" || type === "instructor") {
       const instructorWhereConditions = {};
-      
-      if (status !== 'all') {
+
+      if (status !== "all") {
         instructorWhereConditions.moderationStatus = status;
       }
-      
+
       if (rating) {
         instructorWhereConditions.rating = parseInt(rating);
       }
 
-      if (flagged === 'true') {
+      if (flagged === "true") {
         instructorWhereConditions.flaggedCount = { [Op.gt]: 0 };
       }
 
       if (search) {
         instructorWhereConditions[Op.or] = [
           { review: { [Op.iLike]: `%${search}%` } },
-          { '$Reviewer.firstName$': { [Op.iLike]: `%${search}%` } },
-          { '$Instructor.firstName$': { [Op.iLike]: `%${search}%` } }
+          { "$Reviewer.firstName$": { [Op.iLike]: `%${search}%` } },
+          { "$Instructor.firstName$": { [Op.iLike]: `%${search}%` } },
         ];
       }
 
       if (dateRange) {
-        const dates = dateRange.split(',');
+        const dates = dateRange.split(",");
         if (dates.length === 2) {
           instructorWhereConditions.createdAt = {
-            [Op.between]: [new Date(dates[0]), new Date(dates[1])]
+            [Op.between]: [new Date(dates[0]), new Date(dates[1])],
           };
         }
       }
@@ -632,33 +672,45 @@ export const getAllReviews = async (req, res) => {
         include: [
           {
             model: User,
-            as: 'Reviewer',
-            attributes: ['userId', 'firstName', 'lastName', 'email', 'profileImage']
+            as: "Reviewer",
+            attributes: [
+              "userId",
+              "firstName",
+              "lastName",
+              "email",
+              "profileImage",
+            ],
           },
           {
             model: User,
-            as: 'Instructor',
-            attributes: ['userId', 'firstName', 'lastName', 'email', 'profileImage']
-          }
+            as: "Instructor",
+            attributes: [
+              "userId",
+              "firstName",
+              "lastName",
+              "email",
+              "profileImage",
+            ],
+          },
         ],
         order: [[sortBy, sortOrder]],
-        raw: false
+        raw: false,
       });
 
       allReviews = allReviews.concat(
-        instructorReviews.map(review => ({
+        instructorReviews.map((review) => ({
           ...review.dataValues,
-          type: 'instructor',
+          type: "instructor",
           contentTitle: `${review.Instructor?.firstName} ${review.Instructor?.lastName}`,
           userInfo: review.Reviewer,
-          review: review.review
-        }))
+          review: review.review,
+        })),
       );
     }
 
     // Sort all reviews together
     allReviews.sort((a, b) => {
-      if (sortOrder === 'ASC') {
+      if (sortOrder === "ASC") {
         return new Date(a[sortBy]) - new Date(b[sortBy]);
       }
       return new Date(b[sortBy]) - new Date(a[sortBy]);
@@ -671,11 +723,18 @@ export const getAllReviews = async (req, res) => {
     // Calculate statistics
     const stats = {
       total: totalReviews,
-      pending: allReviews.filter(r => r.status === 'pending' || r.moderationStatus === 'pending').length,
-      approved: allReviews.filter(r => r.status === 'approved' || r.moderationStatus === 'approved').length,
-      rejected: allReviews.filter(r => r.status === 'rejected' || r.moderationStatus === 'rejected').length,
-      flagged: allReviews.filter(r => (r.flaggedCount || 0) > 0).length,
-      averageRating: allReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews || 0
+      pending: allReviews.filter(
+        (r) => r.status === "pending" || r.moderationStatus === "pending",
+      ).length,
+      approved: allReviews.filter(
+        (r) => r.status === "approved" || r.moderationStatus === "approved",
+      ).length,
+      rejected: allReviews.filter(
+        (r) => r.status === "rejected" || r.moderationStatus === "rejected",
+      ).length,
+      flagged: allReviews.filter((r) => (r.flaggedCount || 0) > 0).length,
+      averageRating:
+        allReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews || 0,
     };
 
     res.status(200).json({
@@ -687,18 +746,17 @@ export const getAllReviews = async (req, res) => {
           totalPages: Math.ceil(totalReviews / parseInt(limit)),
           totalReviews,
           hasNext: offset + parseInt(limit) < totalReviews,
-          hasPrev: parseInt(page) > 1
+          hasPrev: parseInt(page) > 1,
         },
-        stats
-      }
+        stats,
+      },
     });
-
   } catch (error) {
     console.error("Get all reviews error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch reviews",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -713,10 +771,10 @@ export const moderateReview = async (req, res) => {
     const { action, reason, type } = req.body; // action: approve, reject, hide
     const adminId = req.user?.userId;
 
-    if (!['approve', 'reject', 'hide'].includes(action)) {
+    if (!["approve", "reject", "hide"].includes(action)) {
       return res.status(400).json({
         success: false,
-        message: "Invalid moderation action"
+        message: "Invalid moderation action",
       });
     }
 
@@ -724,65 +782,72 @@ export const moderateReview = async (req, res) => {
     let updateData = {
       moderatedBy: adminId,
       moderatedAt: new Date(),
-      moderationReason: reason
+      moderationReason: reason,
     };
 
     // Determine status based on action
     const statusMap = {
-      approve: 'approved',
-      reject: 'rejected',
-      hide: 'hidden'
+      approve: "approved",
+      reject: "rejected",
+      hide: "hidden",
     };
 
-    if (type === 'course') {
+    if (type === "course") {
       updateData.status = statusMap[action];
       const [updatedRows] = await CourseRating.update(updateData, {
         where: { ratingId: id },
-        returning: true
+        returning: true,
       });
 
       if (updatedRows === 0) {
         return res.status(404).json({
           success: false,
-          message: "Course review not found"
+          message: "Course review not found",
         });
       }
 
       review = await CourseRating.findByPk(id, {
         include: [
-          { model: User, attributes: ['firstName', 'lastName', 'email'] },
-          { model: Course, attributes: ['title'] }
-        ]
+          { model: User, attributes: ["firstName", "lastName", "email"] },
+          { model: Course, attributes: ["title"] },
+        ],
       });
 
       // Update course average rating if approved
-      if (action === 'approve') {
+      if (action === "approve") {
         await updateCourseAverageRating(review.courseId);
       }
-
-    } else if (type === 'instructor') {
+    } else if (type === "instructor") {
       updateData.moderationStatus = statusMap[action];
       const [updatedRows] = await InstructorRating.update(updateData, {
         where: { ratingId: id },
-        returning: true
+        returning: true,
       });
 
       if (updatedRows === 0) {
         return res.status(404).json({
           success: false,
-          message: "Instructor review not found"
+          message: "Instructor review not found",
         });
       }
 
       review = await InstructorRating.findByPk(id, {
         include: [
-          { model: User, as: 'Reviewer', attributes: ['firstName', 'lastName', 'email'] },
-          { model: User, as: 'Instructor', attributes: ['firstName', 'lastName', 'email'] }
-        ]
+          {
+            model: User,
+            as: "Reviewer",
+            attributes: ["firstName", "lastName", "email"],
+          },
+          {
+            model: User,
+            as: "Instructor",
+            attributes: ["firstName", "lastName", "email"],
+          },
+        ],
       });
 
       // Update instructor average rating if approved
-      if (action === 'approve') {
+      if (action === "approve") {
         await updateInstructorAverageRating(review.instructorId);
       }
     }
@@ -790,15 +855,14 @@ export const moderateReview = async (req, res) => {
     res.status(200).json({
       success: true,
       message: `Review ${action}d successfully`,
-      data: { review, action, moderatedBy: adminId }
+      data: { review, action, moderatedBy: adminId },
     });
-
   } catch (error) {
     console.error("Moderate review error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to moderate review",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -809,23 +873,23 @@ export const moderateReview = async (req, res) => {
  */
 export const getReviewAnalytics = async (req, res) => {
   try {
-    const { timeRange = '30d', type = 'all' } = req.query;
+    const { timeRange = "30d", type = "all" } = req.query;
 
     // Calculate date range
     const now = new Date();
     let startDate = new Date();
-    
+
     switch (timeRange) {
-      case '7d':
+      case "7d":
         startDate.setDate(now.getDate() - 7);
         break;
-      case '30d':
+      case "30d":
         startDate.setDate(now.getDate() - 30);
         break;
-      case '90d':
+      case "90d":
         startDate.setDate(now.getDate() - 90);
         break;
-      case '1y':
+      case "1y":
         startDate.setFullYear(now.getFullYear() - 1);
         break;
       default:
@@ -833,7 +897,7 @@ export const getReviewAnalytics = async (req, res) => {
     }
 
     const dateFilter = {
-      createdAt: { [Op.gte]: startDate }
+      createdAt: { [Op.gte]: startDate },
     };
 
     let analytics = {
@@ -844,58 +908,70 @@ export const getReviewAnalytics = async (req, res) => {
         pending: 0,
         approved: 0,
         rejected: 0,
-        hidden: 0
+        hidden: 0,
       },
       flaggedReviews: 0,
       reviewsByType: {
         course: 0,
-        instructor: 0
+        instructor: 0,
       },
       topRatedContent: [],
-      recentActivity: []
+      recentActivity: [],
     };
 
     // Course Reviews Analytics
-    if (type === 'all' || type === 'course') {
+    if (type === "all" || type === "course") {
       const courseReviews = await CourseRating.findAll({
         where: dateFilter,
-        include: [{ model: Course, attributes: ['title'] }]
+        include: [{ model: Course, attributes: ["title"] }],
       });
 
       analytics.reviewsByType.course = courseReviews.length;
       analytics.totalReviews += courseReviews.length;
 
-      courseReviews.forEach(review => {
+      courseReviews.forEach((review) => {
         analytics.averageRating += review.rating;
         analytics.ratingDistribution[review.rating]++;
-        
-        if (review.status === 'pending') analytics.moderationStats.pending++;
-        else if (review.status === 'approved') analytics.moderationStats.approved++;
-        else if (review.status === 'rejected') analytics.moderationStats.rejected++;
-        else if (review.status === 'hidden') analytics.moderationStats.hidden++;
+
+        if (review.status === "pending") analytics.moderationStats.pending++;
+        else if (review.status === "approved")
+          analytics.moderationStats.approved++;
+        else if (review.status === "rejected")
+          analytics.moderationStats.rejected++;
+        else if (review.status === "hidden") analytics.moderationStats.hidden++;
 
         if ((review.flaggedCount || 0) > 0) analytics.flaggedReviews++;
       });
     }
 
     // Instructor Reviews Analytics
-    if (type === 'all' || type === 'instructor') {
+    if (type === "all" || type === "instructor") {
       const instructorReviews = await InstructorRating.findAll({
         where: dateFilter,
-        include: [{ model: User, as: 'Instructor', attributes: ['firstName', 'lastName'] }]
+        include: [
+          {
+            model: User,
+            as: "Instructor",
+            attributes: ["firstName", "lastName"],
+          },
+        ],
       });
 
       analytics.reviewsByType.instructor = instructorReviews.length;
       analytics.totalReviews += instructorReviews.length;
 
-      instructorReviews.forEach(review => {
+      instructorReviews.forEach((review) => {
         analytics.averageRating += review.rating;
         analytics.ratingDistribution[review.rating]++;
-        
-        if (review.moderationStatus === 'pending') analytics.moderationStats.pending++;
-        else if (review.moderationStatus === 'approved') analytics.moderationStats.approved++;
-        else if (review.moderationStatus === 'rejected') analytics.moderationStats.rejected++;
-        else if (review.moderationStatus === 'hidden') analytics.moderationStats.hidden++;
+
+        if (review.moderationStatus === "pending")
+          analytics.moderationStats.pending++;
+        else if (review.moderationStatus === "approved")
+          analytics.moderationStats.approved++;
+        else if (review.moderationStatus === "rejected")
+          analytics.moderationStats.rejected++;
+        else if (review.moderationStatus === "hidden")
+          analytics.moderationStats.hidden++;
 
         if ((review.flaggedCount || 0) > 0) analytics.flaggedReviews++;
       });
@@ -903,58 +979,63 @@ export const getReviewAnalytics = async (req, res) => {
 
     // Calculate final average
     if (analytics.totalReviews > 0) {
-      analytics.averageRating = analytics.averageRating / analytics.totalReviews;
+      analytics.averageRating =
+        analytics.averageRating / analytics.totalReviews;
     }
 
     // Get top rated content
-    if (type === 'all' || type === 'course') {
+    if (type === "all" || type === "course") {
       const topCourses = await Course.findAll({
         where: { averageRating: { [Op.gte]: 4.0 } },
-        order: [['averageRating', 'DESC'], ['totalRatings', 'DESC']],
+        order: [
+          ["averageRating", "DESC"],
+          ["totalRatings", "DESC"],
+        ],
         limit: 5,
-        attributes: ['courseId', 'title', 'averageRating', 'totalRatings']
+        attributes: ["courseId", "title", "averageRating", "totalRatings"],
       });
-      
-      analytics.topRatedContent.push(...topCourses.map(course => ({
-        type: 'course',
-        id: course.courseId,
-        title: course.title,
-        rating: course.averageRating,
-        totalRatings: course.totalRatings
-      })));
+
+      analytics.topRatedContent.push(
+        ...topCourses.map((course) => ({
+          type: "course",
+          id: course.courseId,
+          title: course.title,
+          rating: course.averageRating,
+          totalRatings: course.totalRatings,
+        })),
+      );
     }
 
     // Get recent activity (last 10 reviews)
     const recentCourseReviews = await CourseRating.findAll({
-      order: [['createdAt', 'DESC']],
+      order: [["createdAt", "DESC"]],
       limit: 5,
       include: [
-        { model: User, attributes: ['firstName', 'lastName'] },
-        { model: Course, attributes: ['title'] }
-      ]
+        { model: User, attributes: ["firstName", "lastName"] },
+        { model: Course, attributes: ["title"] },
+      ],
     });
 
-    analytics.recentActivity = recentCourseReviews.map(review => ({
-      type: 'course',
+    analytics.recentActivity = recentCourseReviews.map((review) => ({
+      type: "course",
       reviewId: review.ratingId,
       rating: review.rating,
       userName: `${review.User.firstName} ${review.User.lastName}`,
       contentTitle: review.Course.title,
       createdAt: review.createdAt,
-      status: review.status
+      status: review.status,
     }));
 
     res.status(200).json({
       success: true,
-      data: analytics
+      data: analytics,
     });
-
   } catch (error) {
     console.error("Get review analytics error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch review analytics",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -963,23 +1044,26 @@ export const getReviewAnalytics = async (req, res) => {
 async function updateCourseAverageRating(courseId) {
   try {
     const avgData = await CourseRating.findOne({
-      where: { courseId, moderationStatus: 'approved' },
+      where: { courseId, moderationStatus: "approved" },
       attributes: [
-        [sequelize.fn('AVG', sequelize.col('rating')), 'avgRating'],
-        [sequelize.fn('COUNT', sequelize.col('rating')), 'totalRatings']
-      ]
+        [sequelize.fn("AVG", sequelize.col("rating")), "avgRating"],
+        [sequelize.fn("COUNT", sequelize.col("rating")), "totalRatings"],
+      ],
     });
 
     const avgRating = parseFloat(avgData?.dataValues?.avgRating || 0);
     const totalRatings = parseInt(avgData?.dataValues?.totalRatings || 0);
 
     // Update course with calculated rating
-    await Course.update({
-      averageRating: avgRating,
-      totalRatings: totalRatings
-    }, {
-      where: { courseId }
-    });
+    await Course.update(
+      {
+        averageRating: avgRating,
+        totalRatings: totalRatings,
+      },
+      {
+        where: { courseId },
+      },
+    );
   } catch (error) {
     console.error("Update course average rating error:", error);
   }
@@ -989,23 +1073,27 @@ async function updateCourseAverageRating(courseId) {
 async function updateInstructorAverageRating(instructorId) {
   try {
     const avgData = await InstructorRating.findOne({
-      where: { instructorId, moderationStatus: 'approved' },
+      where: { instructorId, moderationStatus: "approved" },
       attributes: [
-        [sequelize.fn('AVG', sequelize.col('rating')), 'avgRating'],
-        [sequelize.fn('COUNT', sequelize.col('rating')), 'totalRatings']
-      ]
+        [sequelize.fn("AVG", sequelize.col("rating")), "avgRating"],
+        [sequelize.fn("COUNT", sequelize.col("rating")), "totalRatings"],
+      ],
     });
 
     const avgRating = parseFloat(avgData?.dataValues?.avgRating || 0);
     const totalRatings = parseInt(avgData?.dataValues?.totalRatings || 0);
 
     // Update user profile with calculated rating
-    await User.update({
-      averageRating: avgRating,
-      totalRatings: totalRatings
-    }, {
-      where: { userId: instructorId, role: 'teacher' }
-    });  } catch (error) {
+    await User.update(
+      {
+        averageRating: avgRating,
+        totalRatings: totalRatings,
+      },
+      {
+        where: { userId: instructorId, role: "teacher" },
+      },
+    );
+  } catch (error) {
     console.error("Update instructor average rating error:", error);
   }
 }

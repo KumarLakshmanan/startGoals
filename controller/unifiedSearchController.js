@@ -16,13 +16,13 @@ import sequelize from "../config/db.js";
 // Global search with autocomplete suggestions (Enhanced to include projects)
 export const getUnifiedSearchSuggestions = async (req, res) => {
   try {
-    const { query, limit = 10, type = 'all' } = req.query;
+    const { query, limit = 10, type = "all" } = req.query;
 
     if (!query || query.length < 2) {
       return res.status(200).json({
         success: true,
         message: "Query too short",
-        data: { suggestions: [] }
+        data: { suggestions: [] },
       });
     }
 
@@ -30,82 +30,95 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
     const suggestions = [];
 
     // Courses
-    if (type === 'all' || type === 'courses') {
+    if (type === "all" || type === "courses") {
       const courseResults = await Course.findAll({
         where: {
           title: { [Op.iLike]: searchTerm },
-          status: 'active',
-          isPublished: true
+          status: "active",
+          isPublished: true,
         },
-        attributes: ['courseId', 'title', 'type', 'thumbnailImage'],
+        attributes: ["courseId", "title", "type", "thumbnailImage"],
         limit: Math.floor(parseInt(limit) / 3),
-        order: [['title', 'ASC']]
+        order: [["title", "ASC"]],
       });
 
-      courseResults.forEach(course => {
+      courseResults.forEach((course) => {
         suggestions.push({
           id: course.courseId,
           title: course.title,
-          type: 'course',
+          type: "course",
           subtype: course.type,
           thumbnail: course.thumbnailImage,
-          url: `/courses/${course.courseId}`
+          url: `/courses/${course.courseId}`,
         });
       });
     }
 
     // Projects
-    if (type === 'all' || type === 'projects') {
+    if (type === "all" || type === "projects") {
       const projectResults = await Project.findAll({
         where: {
           [Op.or]: [
             { title: { [Op.iLike]: searchTerm } },
-            { shortDescription: { [Op.iLike]: searchTerm } }
+            { shortDescription: { [Op.iLike]: searchTerm } },
           ],
-          status: 'published'
+          status: "published",
         },
-        attributes: ['id', 'title', 'shortDescription', 'previewImages', 'price', 'salePrice'],
+        attributes: [
+          "id",
+          "title",
+          "shortDescription",
+          "previewImages",
+          "price",
+          "salePrice",
+        ],
         limit: Math.floor(parseInt(limit) / 3),
-        order: [['title', 'ASC']]
+        order: [["title", "ASC"]],
       });
 
-      projectResults.forEach(project => {
+      projectResults.forEach((project) => {
         suggestions.push({
           id: project.id,
           title: project.title,
           description: project.shortDescription,
-          type: 'project',
+          type: "project",
           thumbnail: project.previewImages?.[0] || null,
           price: project.salePrice || project.price,
-          url: `/projects/${project.id}`
+          url: `/projects/${project.id}`,
         });
       });
     }
 
     // Instructors
-    if (type === 'all' || type === 'instructors') {
+    if (type === "all" || type === "instructors") {
       const instructorResults = await User.findAll({
         where: {
           [Op.or]: [
             { username: { [Op.iLike]: searchTerm } },
             { firstName: { [Op.iLike]: searchTerm } },
-            { lastName: { [Op.iLike]: searchTerm } }
+            { lastName: { [Op.iLike]: searchTerm } },
           ],
-          role: 'teacher'
+          role: "teacher",
         },
-        attributes: ['userId', 'username', 'firstName', 'lastName', 'profileImage'],
+        attributes: [
+          "userId",
+          "username",
+          "firstName",
+          "lastName",
+          "profileImage",
+        ],
         limit: Math.floor(parseInt(limit) / 3),
-        order: [['firstName', 'ASC']]
+        order: [["firstName", "ASC"]],
       });
 
-      instructorResults.forEach(instructor => {
+      instructorResults.forEach((instructor) => {
         suggestions.push({
           id: instructor.userId,
           title: `${instructor.firstName} ${instructor.lastName}`,
           username: instructor.username,
-          type: 'instructor',
+          type: "instructor",
           thumbnail: instructor.profileImage,
-          url: `/instructors/${instructor.userId}`
+          url: `/instructors/${instructor.userId}`,
         });
       });
     }
@@ -124,15 +137,14 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
 
     res.json({
       success: true,
-      data: { suggestions: sortedSuggestions }
+      data: { suggestions: sortedSuggestions },
     });
-
   } catch (error) {
     console.error("Unified search suggestions error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch search suggestions",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -142,7 +154,7 @@ export const searchCoursesAndProjects = async (req, res) => {
   try {
     const {
       query,
-      type = 'all', // 'courses', 'projects', 'all'
+      type = "all", // 'courses', 'projects', 'all'
       category,
       level,
       price_min,
@@ -154,9 +166,9 @@ export const searchCoursesAndProjects = async (req, res) => {
       tags,
       difficulty,
       programmingLanguages,
-      sort = 'relevance',
+      sort = "relevance",
       page = 1,
-      limit = 12
+      limit = 12,
     } = req.query;
 
     const userId = req.user?.id;
@@ -165,18 +177,18 @@ export const searchCoursesAndProjects = async (req, res) => {
     let results = { courses: [], projects: [], total: 0 };
 
     // Search Courses
-    if (type === 'all' || type === 'courses') {
+    if (type === "all" || type === "courses") {
       const courseWhere = {
-        status: 'active',
-        isPublished: true
+        status: "active",
+        isPublished: true,
       };
 
       if (query) {
         courseWhere[Op.or] = [
           { title: { [Op.iLike]: `%${query}%` } },
           { description: { [Op.iLike]: `%${query}%` } },
-          { '$instructor.firstName$': { [Op.iLike]: `%${query}%` } },
-          { '$instructor.lastName$': { [Op.iLike]: `%${query}%` } }
+          { "$instructor.firstName$": { [Op.iLike]: `%${query}%` } },
+          { "$instructor.lastName$": { [Op.iLike]: `%${query}%` } },
         ];
       }
 
@@ -200,18 +212,18 @@ export const searchCoursesAndProjects = async (req, res) => {
         {
           model: User,
           as: "instructor",
-          attributes: ["userId", "firstName", "lastName", "profileImage"]
+          attributes: ["userId", "firstName", "lastName", "profileImage"],
         },
         {
           model: Category,
           as: "category",
-          attributes: ["id", "title"]
+          attributes: ["id", "title"],
         },
         {
           model: CourseLevel,
           as: "level",
-          attributes: ["id", "title"]
-        }
+          attributes: ["id", "title"],
+        },
       ];
 
       if (language) {
@@ -219,7 +231,7 @@ export const searchCoursesAndProjects = async (req, res) => {
           model: Language,
           as: "languages",
           where: { id: language },
-          through: { attributes: [] }
+          through: { attributes: [] },
         });
       }
 
@@ -229,50 +241,53 @@ export const searchCoursesAndProjects = async (req, res) => {
           model: CourseTag,
           as: "tags",
           where: { id: { [Op.in]: tagIds } },
-          through: { attributes: [] }
+          through: { attributes: [] },
         });
       }
 
       let courseOrder = [];
       switch (sort) {
-        case 'price_low':
-          courseOrder = [['price', 'ASC']];
+        case "price_low":
+          courseOrder = [["price", "ASC"]];
           break;
-        case 'price_high':
-          courseOrder = [['price', 'DESC']];
+        case "price_high":
+          courseOrder = [["price", "DESC"]];
           break;
-        case 'newest':
-          courseOrder = [['createdAt', 'DESC']];
+        case "newest":
+          courseOrder = [["createdAt", "DESC"]];
           break;
-        case 'rating':
-          courseOrder = [['averageRating', 'DESC']];
+        case "rating":
+          courseOrder = [["averageRating", "DESC"]];
           break;
-        case 'popular':
-          courseOrder = [['totalEnrollments', 'DESC']];
+        case "popular":
+          courseOrder = [["totalEnrollments", "DESC"]];
           break;
         default:
-          courseOrder = [['createdAt', 'DESC']];
+          courseOrder = [["createdAt", "DESC"]];
       }
 
       const courseResults = await Course.findAll({
         where: courseWhere,
         include: courseInclude,
         order: courseOrder,
-        limit: type === 'courses' ? parseInt(limit) : Math.floor(parseInt(limit) / 2),
-        offset: type === 'courses' ? offset : 0,
-        distinct: true
+        limit:
+          type === "courses"
+            ? parseInt(limit)
+            : Math.floor(parseInt(limit) / 2),
+        offset: type === "courses" ? offset : 0,
+        distinct: true,
       });
 
-      results.courses = courseResults.map(course => ({
+      results.courses = courseResults.map((course) => ({
         ...course.toJSON(),
-        itemType: 'course'
+        itemType: "course",
       }));
     }
 
     // Search Projects
-    if (type === 'all' || type === 'projects') {
+    if (type === "all" || type === "projects") {
       const projectWhere = {
-        status: 'published'
+        status: "published",
       };
 
       if (query) {
@@ -280,8 +295,8 @@ export const searchCoursesAndProjects = async (req, res) => {
           { title: { [Op.iLike]: `%${query}%` } },
           { description: { [Op.iLike]: `%${query}%` } },
           { shortDescription: { [Op.iLike]: `%${query}%` } },
-          { '$creator.firstName$': { [Op.iLike]: `%${query}%` } },
-          { '$creator.lastName$': { [Op.iLike]: `%${query}%` } }
+          { "$creator.firstName$": { [Op.iLike]: `%${query}%` } },
+          { "$creator.lastName$": { [Op.iLike]: `%${query}%` } },
         ];
       }
 
@@ -295,9 +310,11 @@ export const searchCoursesAndProjects = async (req, res) => {
       }
 
       if (programmingLanguages) {
-        const languages = Array.isArray(programmingLanguages) ? programmingLanguages : [programmingLanguages];
+        const languages = Array.isArray(programmingLanguages)
+          ? programmingLanguages
+          : [programmingLanguages];
         projectWhere.programmingLanguages = {
-          [Op.overlap]: languages
+          [Op.overlap]: languages,
         };
       }
 
@@ -305,13 +322,13 @@ export const searchCoursesAndProjects = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["id", "firstName", "lastName", "profileImage"]
+          attributes: ["id", "firstName", "lastName", "profileImage"],
         },
         {
           model: Category,
           as: "category",
-          attributes: ["id", "title"]
-        }
+          attributes: ["id", "title"],
+        },
       ];
 
       if (tags) {
@@ -320,43 +337,46 @@ export const searchCoursesAndProjects = async (req, res) => {
           model: CourseTag,
           as: "tags",
           where: { id: { [Op.in]: tagIds } },
-          through: { attributes: [] }
+          through: { attributes: [] },
         });
       }
 
       let projectOrder = [];
       switch (sort) {
-        case 'price_low':
-          projectOrder = [['price', 'ASC']];
+        case "price_low":
+          projectOrder = [["price", "ASC"]];
           break;
-        case 'price_high':
-          projectOrder = [['price', 'DESC']];
+        case "price_high":
+          projectOrder = [["price", "DESC"]];
           break;
-        case 'newest':
-          projectOrder = [['createdAt', 'DESC']];
+        case "newest":
+          projectOrder = [["createdAt", "DESC"]];
           break;
-        case 'rating':
-          projectOrder = [['averageRating', 'DESC']];
+        case "rating":
+          projectOrder = [["averageRating", "DESC"]];
           break;
-        case 'popular':
-          projectOrder = [['totalSales', 'DESC']];
+        case "popular":
+          projectOrder = [["totalSales", "DESC"]];
           break;
         default:
-          projectOrder = [['createdAt', 'DESC']];
+          projectOrder = [["createdAt", "DESC"]];
       }
 
       const projectResults = await Project.findAll({
         where: projectWhere,
         include: projectInclude,
         order: projectOrder,
-        limit: type === 'projects' ? parseInt(limit) : Math.floor(parseInt(limit) / 2),
-        offset: type === 'projects' ? offset : 0,
-        distinct: true
+        limit:
+          type === "projects"
+            ? parseInt(limit)
+            : Math.floor(parseInt(limit) / 2),
+        offset: type === "projects" ? offset : 0,
+        distinct: true,
       });
 
-      results.projects = projectResults.map(project => ({
+      results.projects = projectResults.map((project) => ({
         ...project.toJSON(),
-        itemType: 'project'
+        itemType: "project",
       }));
     }
 
@@ -377,31 +397,31 @@ export const searchCoursesAndProjects = async (req, res) => {
           instructor,
           tags,
           difficulty,
-          programmingLanguages
+          programmingLanguages,
         }),
         resultsCount: results.courses.length + results.projects.length,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     }
 
     // Combine and sort results if searching all
     let finalResults = [];
-    if (type === 'all') {
+    if (type === "all") {
       finalResults = [...results.courses, ...results.projects];
-      
+
       // Sort combined results
-      if (sort === 'relevance' && query) {
+      if (sort === "relevance" && query) {
         finalResults.sort((a, b) => {
           const aScore = calculateRelevanceScore(a, query);
           const bScore = calculateRelevanceScore(b, query);
           return bScore - aScore;
         });
       }
-      
+
       // Apply pagination to combined results
       finalResults = finalResults.slice(offset, offset + parseInt(limit));
     } else {
-      finalResults = type === 'courses' ? results.courses : results.projects;
+      finalResults = type === "courses" ? results.courses : results.projects;
     }
 
     const totalResults = results.courses.length + results.projects.length;
@@ -418,7 +438,7 @@ export const searchCoursesAndProjects = async (req, res) => {
           currentPage: parseInt(page),
           totalPages,
           totalItems: totalResults,
-          itemsPerPage: parseInt(limit)
+          itemsPerPage: parseInt(limit),
         },
         searchQuery: query,
         searchType: type,
@@ -434,17 +454,16 @@ export const searchCoursesAndProjects = async (req, res) => {
           tags,
           difficulty,
           programmingLanguages,
-          sort
-        }
-      }
+          sort,
+        },
+      },
     });
-
   } catch (error) {
     console.error("Search courses and projects error:", error);
     res.status(500).json({
       success: false,
       message: "Search failed",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -454,7 +473,11 @@ const calculateRelevanceScore = (item, query) => {
   let score = 0;
   const queryLower = query.toLowerCase();
   const title = item.title.toLowerCase();
-  const description = (item.description || item.shortDescription || '').toLowerCase();
+  const description = (
+    item.description ||
+    item.shortDescription ||
+    ""
+  ).toLowerCase();
 
   // Title exact match
   if (title.includes(queryLower)) {
@@ -472,11 +495,11 @@ const calculateRelevanceScore = (item, query) => {
   }
 
   // Boost popular items
-  if (item.itemType === 'course' && item.totalEnrollments > 100) {
+  if (item.itemType === "course" && item.totalEnrollments > 100) {
     score += 2;
   }
 
-  if (item.itemType === 'project' && item.totalSales > 50) {
+  if (item.itemType === "project" && item.totalSales > 50) {
     score += 2;
   }
 
@@ -491,81 +514,88 @@ const calculateRelevanceScore = (item, query) => {
 // Get search filters for unified search
 export const getUnifiedSearchFilters = async (req, res) => {
   try {
-    const { type = 'all' } = req.query;
+    const { type = "all" } = req.query;
 
     // Categories (same for both courses and projects)
     const categories = await Category.findAll({
-      attributes: ['id', 'title'],
-      order: [['title', 'ASC']]
+      attributes: ["id", "title"],
+      order: [["title", "ASC"]],
     });
 
     // Languages
     const languages = await Language.findAll({
-      attributes: ['id', 'title'],
-      order: [['title', 'ASC']]
+      attributes: ["id", "title"],
+      order: [["title", "ASC"]],
     });
 
     // Tags
     const tags = await CourseTag.findAll({
-      attributes: ['id', 'title'],
-      order: [['title', 'ASC']]
+      attributes: ["id", "title"],
+      order: [["title", "ASC"]],
     });
 
     // Instructors/Creators
     const instructors = await User.findAll({
-      where: { role: 'teacher' },
-      attributes: ['userId', 'firstName', 'lastName', 'profileImage'],
-      order: [['firstName', 'ASC']]
+      where: { role: "teacher" },
+      attributes: ["userId", "firstName", "lastName", "profileImage"],
+      order: [["firstName", "ASC"]],
     });
 
     let filters = {
       categories,
       languages,
       tags,
-      instructors
+      instructors,
     };
 
     // Course-specific filters
-    if (type === 'all' || type === 'courses') {
+    if (type === "all" || type === "courses") {
       const levels = await CourseLevel.findAll({
-        attributes: ['id', 'title'],
-        order: [['title', 'ASC']]
+        attributes: ["id", "title"],
+        order: [["title", "ASC"]],
       });
       filters.levels = levels;
     }
 
     // Project-specific filters
-    if (type === 'all' || type === 'projects') {
+    if (type === "all" || type === "projects") {
       filters.difficulties = [
-        { value: 'beginner', label: 'Beginner' },
-        { value: 'intermediate', label: 'Intermediate' },
-        { value: 'advanced', label: 'Advanced' }
+        { value: "beginner", label: "Beginner" },
+        { value: "intermediate", label: "Intermediate" },
+        { value: "advanced", label: "Advanced" },
       ];
 
       // Get programming languages from projects
       const programmingLanguages = await Project.findAll({
-        attributes: [[sequelize.fn('DISTINCT', sequelize.fn('unnest', sequelize.col('programmingLanguages'))), 'language']],
-        where: { status: 'published' },
-        raw: true
+        attributes: [
+          [
+            sequelize.fn(
+              "DISTINCT",
+              sequelize.fn("unnest", sequelize.col("programmingLanguages")),
+            ),
+            "language",
+          ],
+        ],
+        where: { status: "published" },
+        raw: true,
       });
 
       filters.programmingLanguages = programmingLanguages
-        .map(item => item.language)
-        .filter(lang => lang)
+        .map((item) => item.language)
+        .filter((lang) => lang)
         .sort();
     }
 
     res.json({
       success: true,
-      data: filters
+      data: filters,
     });
-
   } catch (error) {
     console.error("Get unified search filters error:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch search filters",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -573,5 +603,5 @@ export const getUnifiedSearchFilters = async (req, res) => {
 export default {
   getUnifiedSearchSuggestions,
   searchCoursesAndProjects,
-  getUnifiedSearchFilters
+  getUnifiedSearchFilters,
 };

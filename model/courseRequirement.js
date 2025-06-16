@@ -33,7 +33,7 @@ const CourseRequirement = sequelize.define(
   {
     tableName: "course_requirements",
     ...commonOptions,
-  }
+  },
 );
 
 export default CourseRequirement;

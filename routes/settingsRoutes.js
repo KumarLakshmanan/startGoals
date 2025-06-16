@@ -15,7 +15,7 @@ import {
   createNotificationTemplate,
   getLegalPages,
   getSystemConfig,
-  updateSystemConfig
+  updateSystemConfig,
 } from "../controller/settingsController.js";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
 
@@ -43,7 +43,7 @@ router.get(
   "/admin/notification-templates",
   authenticateToken,
   isAdmin,
-  getNotificationTemplates
+  getNotificationTemplates,
 );
 
 /**
@@ -55,7 +55,7 @@ router.post(
   "/admin/notification-templates",
   authenticateToken,
   isAdmin,
-  createNotificationTemplate
+  createNotificationTemplate,
 );
 
 /**
@@ -63,24 +63,14 @@ router.post(
  * @desc Get all legal pages with version history
  * @access Private (Super Admin, Course Manager, Project Manager)
  */
-router.get(
-  "/admin/legal-pages",
-  authenticateToken,
-  isAdmin,
-  getLegalPages
-);
+router.get("/admin/legal-pages", authenticateToken, isAdmin, getLegalPages);
 
 /**
  * @route GET /api/admin/settings/system-config
  * @desc Get system configuration by category
  * @access Private (Super Admin, Course Manager, Project Manager)
  */
-router.get(
-  "/admin/system-config",
-  authenticateToken,
-  isAdmin,
-  getSystemConfig
-);
+router.get("/admin/system-config", authenticateToken, isAdmin, getSystemConfig);
 
 /**
  * @route PUT /api/admin/settings/system-config
@@ -91,7 +81,7 @@ router.put(
   "/admin/system-config",
   authenticateToken,
   isAdmin,
-  updateSystemConfig
+  updateSystemConfig,
 );
 
 export default router;

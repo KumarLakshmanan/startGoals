@@ -42,7 +42,7 @@ const RecordedSessionResource = sequelize.define(
   {
     tableName: "recorded_session_resources",
     ...commonOptions,
-  }
+  },
 );
 
 export default RecordedSessionResource;

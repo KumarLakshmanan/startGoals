@@ -5,6 +5,7 @@ import Goal from "../model/goal.js";
 import Skill from "../model/skill.js";
 
 import { Op } from "sequelize";
+
 export const selectLanguages = async (req, res) => {
   try {
     const { userId } = req.user;
@@ -34,7 +35,7 @@ export const selectLanguages = async (req, res) => {
     }
 
     // Step 3: Associate the selected languages with the user
-    await user.setLanguages(languages);
+    await user.addLanguages(languages);
 
     return res.status(200).json({
       status: true,
@@ -51,10 +52,10 @@ export const selectLanguages = async (req, res) => {
 };
 
 //selecting goals
-export const selectGoal = async (req, res) => {
+export const selectGoals = async (req, res) => {
   try {
     const { userId } = req.user;
-    const { goalId } = req.body;
+    const { goalIds } = req.body; // Array of goal IDs from the request body
 
     const user = await User.findByPk(userId);
     if (!user) {
@@ -64,29 +65,35 @@ export const selectGoal = async (req, res) => {
       });
     }
 
-    const goal = await Goal.findByPk(goalId);
-    if (!goal) {
+    // Validate goalIds exist
+    const goals = await Goal.findAll({
+      where: {
+        goalId: { [Op.in]: goalIds },
+      },
+    });
+
+    if (goals.length !== goalIds.length) {
       return res.status(400).json({
         status: false,
-        message: "Invalid goal ID",
+        message: "Some goal IDs are invalid",
       });
     }
 
-    user.goalId = goalId;
-    await user.save();
+    // Associate the selected goals with the user
+    await user.addGoals(goals);
 
-    // Step 4: Fetch skills related to the selected goal
+    // Fetch skills related to the selected goals
     const skills = await Skill.findAll({
-      where: { goalId },
+      where: { goalId: { [Op.in]: goalIds } },
     });
 
     return res.status(200).json({
       status: true,
-      message: "Goal selected successfully",
+      message: "Goals selected successfully",
       skills: skills,
     });
   } catch (error) {
-    console.error("Error selecting goal:", error);
+    console.error("Error selecting goals:", error);
     return res.status(500).json({
       status: false,
       message: "An error occurred",
@@ -98,9 +105,17 @@ export const selectGoal = async (req, res) => {
 //selected skills
 export const selectSkills = async (req, res) => {
   try {
-        const { userId } = req.user;
+    const { userId } = req.user;
 
-    const { skillIds, goalId } = req.body;
+    const { skillIds } = req.body;
+
+    // Validate skillIds array
+    if (!skillIds || !Array.isArray(skillIds) || skillIds.length === 0) {
+      return res.status(400).json({
+        status: false,
+        message: "skillIds is required and must be a non-empty array",
+      });
+    }
 
     const user = await User.findByPk(userId);
     if (!user) {
@@ -110,17 +125,9 @@ export const selectSkills = async (req, res) => {
       });
     }
 
-    if (user.goalId !== goalId) {
-      return res.status(400).json({
-        status: false,
-        message: "Selected goal does not match the user's saved goal",
-      });
-    }
-
     const skills = await Skill.findAll({
       where: {
         skillId: { [Op.in]: skillIds },
-        goalId,
       },
     });
 
@@ -128,11 +135,11 @@ export const selectSkills = async (req, res) => {
       return res.status(400).json({
         status: false,
         message:
-          "Some skill IDs are invalid or not related to the selected goal",
+          "Some skill IDs are invalid or not related to the selected goals",
       });
     }
 
-    await user.setSkills(skills);
+    await user.addSkills(skills);
 
     user.isOnboarded = true;
     await user.save();

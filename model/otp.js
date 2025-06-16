@@ -36,7 +36,7 @@ const Otp = sequelize.define(
   {
     tableName: "otps",
     ...commonOptions,
-  }
+  },
 );
 
 export default Otp;

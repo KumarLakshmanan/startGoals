@@ -5,7 +5,7 @@ import {
   downloadProjectFile,
   updateProjectFile,
   deleteProjectFile,
-  getDownloadStatistics
+  getDownloadStatistics,
 } from "../controller/projectFileController.js";
 import { isAdmin } from "../middleware/authMiddleware.js";
 
@@ -21,14 +21,20 @@ const router = express.Router();
 router.post(
   "/:projectId/files",
   isAdmin, // Add authentication
-  fileUploadMiddleware.array('files', 10), // Allow up to 10 files
+  fileUploadMiddleware.array("files", 10), // Allow up to 10 files
   [
     param("projectId").isInt().withMessage("Valid project ID is required"),
-    body("fileDescriptions").optional().isArray().withMessage("File descriptions must be an array"),
-    body("isPreview").optional().isArray().withMessage("Preview flags must be an array")
+    body("fileDescriptions")
+      .optional()
+      .isArray()
+      .withMessage("File descriptions must be an array"),
+    body("isPreview")
+      .optional()
+      .isArray()
+      .withMessage("Preview flags must be an array"),
   ],
   validateInput,
-  uploadProjectFiles
+  uploadProjectFiles,
 );
 
 // Get project files
@@ -36,22 +42,33 @@ router.get(
   "/:projectId/files",
   [
     param("projectId").isInt().withMessage("Valid project ID is required"),
-    query("fileType").optional().isIn(["archive", "source_code", "documentation", "image", "video", "other"]).withMessage("Invalid file type"),
-    query("isPreview").optional().isBoolean().withMessage("Is preview must be a boolean")
+    query("fileType")
+      .optional()
+      .isIn([
+        "archive",
+        "source_code",
+        "documentation",
+        "image",
+        "video",
+        "other",
+      ])
+      .withMessage("Invalid file type"),
+    query("isPreview")
+      .optional()
+      .isBoolean()
+      .withMessage("Is preview must be a boolean"),
   ],
   validateInput,
-  getProjectFiles
+  getProjectFiles,
 );
 
 // Download project file (Purchased users only)
 router.get(
   "/files/:fileId/download",
   isAdmin, // Add authentication - only purchased users should download
-  [
-    param("fileId").isInt().withMessage("Valid file ID is required")
-  ],
+  [param("fileId").isInt().withMessage("Valid file ID is required")],
   validateInput,
-  downloadProjectFile
+  downloadProjectFile,
 );
 
 // Update project file details (Admin/Creator only)
@@ -60,23 +77,37 @@ router.put(
   isAdmin, // Add authentication
   [
     param("fileId").isInt().withMessage("Valid file ID is required"),
-    body("description").optional().isLength({ max: 500 }).withMessage("Description must be under 500 characters"),
-    body("isPreview").optional().isBoolean().withMessage("Is preview must be a boolean"),
-    body("fileType").optional().isIn(["archive", "source_code", "documentation", "image", "video", "other"]).withMessage("Invalid file type")
+    body("description")
+      .optional()
+      .isLength({ max: 500 })
+      .withMessage("Description must be under 500 characters"),
+    body("isPreview")
+      .optional()
+      .isBoolean()
+      .withMessage("Is preview must be a boolean"),
+    body("fileType")
+      .optional()
+      .isIn([
+        "archive",
+        "source_code",
+        "documentation",
+        "image",
+        "video",
+        "other",
+      ])
+      .withMessage("Invalid file type"),
   ],
   validateInput,
-  updateProjectFile
+  updateProjectFile,
 );
 
 // Delete project file (Admin/Creator only)
 router.delete(
   "/files/:fileId",
   isAdmin, // Add authentication
-  [
-    param("fileId").isInt().withMessage("Valid file ID is required")
-  ],
+  [param("fileId").isInt().withMessage("Valid file ID is required")],
   validateInput,
-  deleteProjectFile
+  deleteProjectFile,
 );
 
 // ===================== DOWNLOAD STATISTICS =====================
@@ -86,11 +117,17 @@ router.get(
   "/admin/downloads/statistics",
   isAdmin,
   [
-    query("projectId").optional().isInt().withMessage("Valid project ID is required"),
-    query("period").optional().isIn(["7d", "30d", "90d", "1y"]).withMessage("Invalid period")
+    query("projectId")
+      .optional()
+      .isInt()
+      .withMessage("Valid project ID is required"),
+    query("period")
+      .optional()
+      .isIn(["7d", "30d", "90d", "1y"])
+      .withMessage("Invalid period"),
   ],
   validateInput,
-  getDownloadStatistics
+  getDownloadStatistics,
 );
 
 export default router;

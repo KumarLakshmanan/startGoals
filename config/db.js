@@ -14,21 +14,24 @@ const sequelize = new Sequelize(
       min: 0,
       acquire: 60000,
       idle: 10000,
-      evict: 5000
+      evict: 5000,
     },
     retry: {
-      max: 3
+      max: 3,
     },
-    dialectOptions: process.env.SERVER_TYPE === "production" ? {
-      ssl: {
-        require: true,
-        rejectUnauthorized: false,
-      },
-      connectTimeout: 60000,
-      socketPath: null,
-    } : {},
-    logging: false
-  }
+    dialectOptions:
+      process.env.SERVER_TYPE === "production"
+        ? {
+            ssl: {
+              require: true,
+              rejectUnauthorized: false,
+            },
+            connectTimeout: 60000,
+            socketPath: null,
+          }
+        : {},
+    logging: false,
+  },
 );
 
 (async () => {

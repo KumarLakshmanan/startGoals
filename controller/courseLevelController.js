@@ -1,48 +1,76 @@
 import CourseLevel from "../model/courseLevel.js";
 import { validateCourseLevelInput } from "../utils/commonUtils.js";
+import sequelize from "../config/db.js";
 
 // Controller for Bulk Upload of Course Levels
 export const bulkUploadCourseLevels = async (req, res) => {
-  const levels = req.body;
+  const { courseLevels, overwriteExisting = false } = req.body;
 
-  if (!Array.isArray(levels) || levels.length === 0) {
+  if (!Array.isArray(courseLevels) || courseLevels.length === 0) {
     return res.status(400).json({
       status: false,
       message: "No levels provided or levels array is empty.",
     });
   }
 
-  // Validate each level object
-  const validationErrors = [];
-  levels.forEach((level, index) => {
-    const errors = validateCourseLevelInput(level);
-    if (errors.length > 0) {
-      validationErrors.push({ index, errors });
-    }
-  });
-
-  if (validationErrors.length > 0) {
-    return res.status(400).json({
-      status: false,
-      message: "Validation failed for one or more levels.",
-      validationErrors,
-    });
-  }
+  // Start a transaction
+  const transaction = await sequelize.transaction();
 
   try {
-    // Bulk insert levels into the database
-    const newLevels = await CourseLevel.bulkCreate(levels);
+    // Validate each level object
+    const validationErrors = [];
+    courseLevels.forEach((level, index) => {
+      const errors = validateCourseLevelInput(level);
+      if (errors.length > 0) {
+        validationErrors.push({ index, errors });
+      }
+    });
+
+    if (validationErrors.length > 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        status: false,
+        message: "Validation failed for one or more levels.",
+        validationErrors,
+      });
+    }
+
+    // If overwriteExisting is true, delete all existing levels
+    if (overwriteExisting) {
+      await CourseLevel.destroy({
+        where: {},
+        truncate: true,
+        transaction,
+      });
+    }
+
+    // Prepare data for insertion
+    const levelsToCreate = courseLevels.map((level) => ({
+      name: level.name,
+      description: level.description,
+      order: level.order,
+    })); // Bulk insert/update levels into the database
+    const newLevels = await CourseLevel.bulkCreate(levelsToCreate, {
+      updateOnDuplicate: overwriteExisting
+        ? ["name", "description", "order"]
+        : undefined,
+      transaction,
+    });
+
+    await transaction.commit();
 
     return res.status(201).json({
       status: true,
-      message: "Bulk upload successful!",
+      message: "Course levels uploaded successfully!",
       data: newLevels,
     });
   } catch (error) {
-    console.error("Error during bulk upload:", error);
+    await transaction.rollback();
+    console.error("Error during course levels upload:", error);
     return res.status(500).json({
       status: false,
-      message: "Error during bulk upload.",
+      message: "Error during course levels upload.",
+      error: error.message,
     });
   }
 };
@@ -50,7 +78,22 @@ export const bulkUploadCourseLevels = async (req, res) => {
 // Controller to Get All Course Levels
 export const getAllCourseLevels = async (req, res) => {
   try {
-    const courseLevels = await CourseLevel.findAll();
+    const {
+      sortBy = "order",
+      sortOrder = "asc",
+      includeStats = false,
+    } = req.query;
+
+    // Validate sortBy field
+    const validSortFields = ["order", "name", "difficultyScore", "createdAt"];
+    const sortField = validSortFields.includes(sortBy) ? sortBy : "order";
+
+    // Validate sortOrder
+    const order = sortOrder.toLowerCase() === "desc" ? "DESC" : "ASC";
+
+    const courseLevels = await CourseLevel.findAll({
+      order: [[sortField, order]],
+    });
 
     if (!courseLevels || courseLevels.length === 0) {
       return res.status(404).json({
@@ -59,15 +102,28 @@ export const getAllCourseLevels = async (req, res) => {
       });
     }
 
+    // Add statistics if requested
+    let responseData = courseLevels;
+    if (includeStats === "true") {
+      responseData = courseLevels.map((level) => ({
+        ...level.toJSON(),
+        stats: {
+          courseCount: 0, // You'll need to implement actual count logic
+          enrollmentCount: 0, // You'll need to implement actual enrollment logic
+        },
+      }));
+    }
+
     return res.status(200).json({
       status: true,
-      data: courseLevels,
+      data: responseData,
     });
   } catch (error) {
     console.error("Error fetching course levels:", error);
     return res.status(500).json({
       status: false,
       message: "Error fetching course levels.",
+      error: error.message,
     });
   }
 };
@@ -96,6 +152,7 @@ export const getCourseLevelById = async (req, res) => {
     return res.status(500).json({
       status: false,
       message: "Error fetching course level.",
+      error: error.message,
     });
   }
 };

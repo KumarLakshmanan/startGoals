@@ -24,7 +24,8 @@ export const authenticateToken = async (req, res, next) => {
     next();
   } catch (error) {
     console.error("JWT error:", error);
-    res.status(401).json({ message: "Invalid or expired token." });  }
+    res.status(401).json({ message: "Invalid or expired token." });
+  }
 };
 
 // Alias for consistency with other parts of the application
@@ -33,23 +34,34 @@ export const verifyToken = authenticateToken;
 // General role check middleware factory
 const checkRole = (allowedRoles) => {
   return (req, res, next) => {
-    authenticateToken(req, res, () => { // Ensure user is authenticated first
+    authenticateToken(req, res, () => {
+      // Ensure user is authenticated first
       if (!req.user || !req.user.role) {
-        return res.status(403).json({ status: false, message: 'Forbidden: Role information missing.' });
+        return res
+          .status(403)
+          .json({
+            status: false,
+            message: "Forbidden: Role information missing.",
+          });
       }
       if (allowedRoles.includes(req.user.role.toLowerCase())) {
         return next();
       }
-      return res.status(403).json({ status: false, message: `Forbidden: Access restricted to ${allowedRoles.join('/')} roles.` });
+      return res
+        .status(403)
+        .json({
+          status: false,
+          message: `Forbidden: Access restricted to ${allowedRoles.join("/")} roles.`,
+        });
     });
   };
 };
 
 // ["admin", "owner", "teacher", "student"]
-export const isStudent = checkRole(['owner', 'admin', 'teacher', 'student']);
-export const isTeacher = checkRole(['admin', 'owner', 'teacher']);
-export const isAdmin = checkRole(['owner', 'admin']);
-export const isOwner = checkRole(['owner']);
+export const isStudent = checkRole(["owner", "admin", "teacher", "student"]);
+export const isTeacher = checkRole(["admin", "owner", "teacher"]);
+export const isAdmin = checkRole(["owner", "admin"]);
+export const isOwner = checkRole(["owner"]);
 
 // Middleware to check if the user is the instructor of the specific session
 export const isSessionInstructor = async (req, res, next) => {
@@ -60,29 +72,51 @@ export const isSessionInstructor = async (req, res, next) => {
 
     if (!userId) {
       // This case should ideally be caught by authenticateToken already
-      return res.status(401).json({ status: false, message: 'Unauthorized: User ID missing.' });
+      return res
+        .status(401)
+        .json({ status: false, message: "Unauthorized: User ID missing." });
     }
 
     if (!sessionId) {
-      return res.status(400).json({ status: false, message: 'Session ID is required for this authorization check.' });
+      return res
+        .status(400)
+        .json({
+          status: false,
+          message: "Session ID is required for this authorization check.",
+        });
     }
 
     try {
       const session = await LiveSession.findOne({ where: { sessionId } });
 
       if (!session) {
-        return res.status(404).json({ status: false, message: 'Session not found.' });
+        return res
+          .status(404)
+          .json({ status: false, message: "Session not found." });
       }
 
       // Check if the authenticated user is the creator of the session or has a general admin/host role
-      if (session.createdBy === userId || ['admin', 'host', 'instructor'].includes(req.user.role.toLowerCase())) {
+      if (
+        session.createdBy === userId ||
+        ["admin", "host", "instructor"].includes(req.user.role.toLowerCase())
+      ) {
         return next();
       }
 
-      return res.status(403).json({ status: false, message: 'Forbidden: You are not authorized to manage this session.' });
+      return res
+        .status(403)
+        .json({
+          status: false,
+          message: "Forbidden: You are not authorized to manage this session.",
+        });
     } catch (error) {
-      console.error('Error in isSessionInstructor middleware:', error);
-      return res.status(500).json({ status: false, message: 'Internal server error during session authorization.' });
+      console.error("Error in isSessionInstructor middleware:", error);
+      return res
+        .status(500)
+        .json({
+          status: false,
+          message: "Internal server error during session authorization.",
+        });
     }
   });
 };

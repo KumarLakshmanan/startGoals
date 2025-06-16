@@ -41,7 +41,7 @@ const Banner = sequelize.define(
   {
     tableName: "banners",
     ...commonOptions,
-  }
+  },
 );
 
 export default Banner;

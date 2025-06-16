@@ -44,7 +44,7 @@ const Resource = sequelize.define(
   {
     tableName: "resources",
     ...commonOptions,
-  }
+  },
 );
 
 export default Resource;

@@ -14,7 +14,6 @@ import { generateOtp } from "../utils/commonUtils.js";
 
 const OTP_EXPIRY_MINUTES = 5;
 
-
 // ✅ Send OTP (initial or for password reset)
 export const sendOtpApi = async (req, res) => {
   try {
@@ -43,7 +42,7 @@ export const sendOtpApi = async (req, res) => {
           identifier,
           status: "active",
         },
-      }
+      },
     );
     // 2️⃣ Soft delete expired or used OTPs
     await Otp.destroy({
@@ -329,7 +328,10 @@ export async function validateOtp(req, res) {
       status: false,
       success: false,
       data: null,
-      error: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error',
+      error:
+        process.env.NODE_ENV === "development"
+          ? err.message
+          : "Internal Server Error",
     });
   }
 }

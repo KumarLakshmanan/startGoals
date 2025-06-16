@@ -111,7 +111,7 @@ const ProjectRating = sequelize.define(
         name: "unique_project_user_rating",
       },
     ],
-  }
+  },
 );
 
 export default ProjectRating;

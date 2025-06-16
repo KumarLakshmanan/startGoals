@@ -10,7 +10,7 @@ export function generateToken(
   channelName,
   userId,
   role,
-  expirationTimeInSeconds
+  expirationTimeInSeconds,
 ) {
   const currentTimestamp = Math.floor(Date.now() / 1000);
   const privilegeExpiredTs = currentTimestamp + expirationTimeInSeconds;
@@ -21,7 +21,7 @@ export function generateToken(
     channelName,
     userId,
     role,
-    privilegeExpiredTs
+    privilegeExpiredTs,
   );
 
   const data = {

@@ -13,7 +13,7 @@ import {
   // Performance & analytics
   getTeacherPerformanceReport,
   getTeacherStudentFeedback,
-  getTeacherAssignedCourses
+  getTeacherAssignedCourses,
 } from "../controller/teacherController.js";
 
 const router = express.Router();

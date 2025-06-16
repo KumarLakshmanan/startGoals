@@ -107,7 +107,7 @@ const CourseRating = sequelize.define(
         name: "unique_course_user_rating",
       },
     ],
-  }
+  },
 );
 
 export default CourseRating;

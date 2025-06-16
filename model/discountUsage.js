@@ -96,7 +96,7 @@ const DiscountUsage = sequelize.define(
         type: "BTREE",
       },
     ],
-  }
+  },
 );
 
 export default DiscountUsage;
