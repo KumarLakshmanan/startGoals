@@ -4,30 +4,17 @@ import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
 const UserLanguage = sequelize.define(
   "userLanguage",
-  {
-    userId: {
+  {    userId: {
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,
       field: "user_id",
-      references: {
-        model: "users",
-        key: "userId",
-      },
-      onDelete: "CASCADE",
-      onUpdate: "CASCADE",
     },
     languageId: {
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,
       field: "language_id",
-      references: {
-        model: "languages",
-        key: "languageId",
-      },
-      onDelete: "CASCADE",
-      onUpdate: "CASCADE",
     },
     proficiencyLevel: {
       type: DataTypes.ENUM("beginner", "intermediate", "advanced", "native"),

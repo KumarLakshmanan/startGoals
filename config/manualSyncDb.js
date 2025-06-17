@@ -27,9 +27,9 @@ export const getModels = async () => {
           field.defaultValue !== undefined ? field.defaultValue : null,
         references: field.references
           ? {
-              model: field.references.model,
-              key: field.references.key,
-            }
+            model: field.references.model,
+            key: field.references.key,
+          }
           : null,
       });
     }
@@ -46,84 +46,102 @@ export const getModels = async () => {
 
 // Sort models based on dependencies (references)
 const sortModelsByDependencies = (modelsArray) => {
+  // Define the proper order based on association.js file
+  // This order follows the exact sequence defined in the models object in association.js
+  const modelCreationOrder = [
+    // Base models with no dependencies first
+    'user',           // Base user model - MUST be first (lowercase!)
+    'language',       // Base language model (lowercase!)
+    'courseCategory', // Base category model
+    'courseLevel',    // Course level model
+    'Banner',         // Banner model
+    'goal',           // Goal model (lowercase!)
+    'Settings',       // Settings model
+    'otp',           // OTP model (lowercase!)
+    
+    // Models that depend on base models
+    'Course',         // Depends on User, CourseCategory, CourseLevel
+    'skill',          // Depends on Goal, CourseCategory, CourseLevel (lowercase!)
+    'Project',        // Depends on User, CourseCategory
+    'DiscountCode',   // Depends on User
+    'SearchAnalytics', // Depends on User
+    
+    // Course-related models
+    'courseTag',      // Depends on Course (lowercase!)
+    'courseGoal',     // Depends on Course (lowercase!)
+    'courseRequirement', // Depends on Course (lowercase!)
+    'section',        // Depends on Course (lowercase!)
+    'batch',          // Depends on Course, User (lowercase!)
+    
+    // Association/junction tables
+    'userGoal',       // Depends on User, Goal (lowercase!)
+    'userSkill',      // Depends on User, Skill (lowercase!)
+    'userLanguage',   // Depends on User, Language (lowercase!)
+    'courseLanguage', // Depends on Course, Language (lowercase!)
+    
+    // Models that depend on sections/batches
+    'lesson',         // Depends on Section (lowercase!)
+    'resource',       // Depends on Lesson (lowercase!)
+    'batch_students', // Depends on Batch, User (exact name!)
+    'enrollment',     // Depends on User, Course, Batch (lowercase!)
+    'liveSession',    // Depends on Batch, Course
+    
+    // Session-related models
+    'liveSessionParticipant', // Depends on LiveSession, User
+    'raisedHand',     // Depends on LiveSession, LiveSessionParticipant (lowercase!)
+    'recordedSession', // Depends on LiveSession (lowercase!)
+    'RecordedSessionResource', // Depends on RecordedSession (exact name!)
+    
+    // Rating models
+    'CourseRating',   // Depends on Course, User
+    'InstructorRating', // Depends on User, Course
+    
+    // Project-related models  
+    'ProjectFile',    // Depends on Project, User
+    'ProjectPurchase', // Depends on Project, User, DiscountCode
+    'ProjectRating',  // Depends on Project, User, ProjectPurchase
+    
+    // Discount-related models
+    'DiscountUsage',  // Depends on DiscountCode, User, Course, Project, Enrollment
+    
+    // Many-to-many association tables
+    'project_tags',   // Depends on Project, CourseTag (exact name!)
+    'discount_categories', // Depends on DiscountCode, CourseCategory (exact name!)
+  ];
+
   const modelMap = {};
-  const dependencyGraph = {};
   const result = [];
-  const visited = {};
-  const visiting = {};
 
-  // Build dependency graph
+  // Create a map of available models
   for (const modelConfig of modelsArray) {
-    const modelName = modelConfig.name;
-    modelMap[modelName] = modelConfig;
-    dependencyGraph[modelName] = [];
+    modelMap[modelConfig.name] = modelConfig;
+  }
 
-    const model = sequelize.models[modelName];
-    if (!model) continue;
-
-    // Look for foreign key references
-    const attributes = model.rawAttributes;
-    for (const fieldName in attributes) {
-      const field = attributes[fieldName];
-      if (field.references && field.references.model) {
-        // Convert table name to model name if needed
-        let referencedModelName = field.references.model;
-
-        // If it's a table name, find corresponding model
-        if (
-          typeof referencedModelName === "string" &&
-          !sequelize.models[referencedModelName]
-        ) {
-          for (const mName in sequelize.models) {
-            if (sequelize.models[mName].tableName === referencedModelName) {
-              referencedModelName = mName;
-              break;
-            }
-          }
-        }
-
-        // Add dependency if the referenced model is in our models array
-        if (modelMap[referencedModelName]) {
-          dependencyGraph[modelName].push(referencedModelName);
-        }
-      }
+  // Sort models according to the predefined order
+  for (const modelName of modelCreationOrder) {
+    if (modelMap[modelName]) {
+      result.push(modelMap[modelName]);
+      delete modelMap[modelName]; // Remove from map to avoid duplicates
     }
   }
 
-  // Topological sort (DFS)
-  function visit(modelName) {
-    if (visited[modelName]) return;
-    if (visiting[modelName]) {
-      // Circular dependency detected, but we'll continue
-      return;
-    }
-
-    visiting[modelName] = true;
-
-    for (const dependency of dependencyGraph[modelName]) {
-      visit(dependency);
-    }
-
-    visiting[modelName] = false;
-    visited[modelName] = true;
+  // Add any remaining models that weren't in our predefined order
+  for (const modelName in modelMap) {
     result.push(modelMap[modelName]);
-  }
-
-  // Visit all nodes
-  for (const modelName in dependencyGraph) {
-    if (!visited[modelName]) {
-      visit(modelName);
-    }
   }
 
   return result;
 };
 
 // Synchronize specific models and fields
-export const syncModels = async (modelsToSync, options = {}) => {
+export const syncModels = async (modelsToSync, options = {
+  force: false,
+  alter: false,
+  safeMode: false,
+}) => {
   const logs = [];
   logs.push(
-    `Starting database synchronization with options: force=${options.force}, alter=${options.alter}`,
+    `Starting database synchronization with options: force=${options.force}, alter=${options.alter}, safeMode=${options.safeMode}`,
   );
 
   try {
@@ -138,6 +156,11 @@ export const syncModels = async (modelsToSync, options = {}) => {
 
     // Sort models by dependencies for creation
     const sortedModelsForCreation = sortModelsByDependencies(modelsToSync);
+    
+    // Log the order in which models will be synced
+    logs.push(
+      `Models will be synced in this order: ${sortedModelsForCreation.map((m) => m.name).join(", ")}`,
+    );
 
     // For dropping tables, we need the reverse order
     const sortedModelsForDropping = [...sortedModelsForCreation].reverse();
@@ -173,10 +196,13 @@ export const syncModels = async (modelsToSync, options = {}) => {
       }
     }
 
-    // Now create or alter tables based on selected models and fields
+    // Now sync the models - simplified approach
     let successCount = 0;
     const totalModels = modelsToSync.length;
 
+    // For simplicity and to avoid foreign key constraint issues,
+    // let's just sync the models directly without field filtering
+    
     // Use dependency-sorted models for creation
     for (const modelConfig of sortedModelsForCreation) {
       const modelName = modelConfig.name;
@@ -187,50 +213,43 @@ export const syncModels = async (modelsToSync, options = {}) => {
         continue;
       }
 
-      const selectedFields = modelConfig.fields;
-      logs.push(
-        `Syncing model: ${modelName} with fields: ${selectedFields.join(", ")}`,
-      );
-
-      // Filter the model's attributes to only include selected fields
-      const filteredAttributes = {};
-      const attributes = model.rawAttributes;
-
-      for (const fieldName of selectedFields) {
-        if (attributes[fieldName]) {
-          filteredAttributes[fieldName] = attributes[fieldName];
-        }
-      }
-
-      // Create a temporary model with only the selected fields
-      const tempModelName = `Temp${modelName}`;
-      const tempModel = sequelize.define(tempModelName, filteredAttributes, {
-        tableName: model.tableName,
-        timestamps: model._timestampAttributes.createdAt !== false,
-        createdAt: model._timestampAttributes.createdAt,
-        updatedAt: model._timestampAttributes.updatedAt,
-        deletedAt: model._timestampAttributes.deletedAt,
-        paranoid: model.options.paranoid,
-        underscored: model.options.underscored,
-      });
-
-      // Create a separate transaction for each model sync
-      const syncTransaction = await sequelize.transaction();
+      logs.push(`Syncing model: ${modelName}`);
 
       try {
-        // Sync the temporary model with deferred constraints to avoid foreign key issues
-        await tempModel.sync({
-          force: false, // We've already dropped tables if force=true
-          alter: options.alter,
-          transaction: syncTransaction,
-        });
+        // Determine sync mode based on options
+        let syncConfig = {
+          force: false, // Never force in individual model sync since we handle drops separately
+          alter: false, // Default to false for safety
+        };
 
-        await syncTransaction.commit();
+        if (options.safeMode) {
+          // Safe mode: only create missing tables, don't alter existing ones
+          syncConfig.force = false;
+          syncConfig.alter = false;
+          logs.push(`Syncing ${modelName} in safe mode (create only if not exists)`);
+        } else if (options.alter && !options.force) {
+          // Alter mode: modify existing table structures
+          syncConfig.alter = true;
+          logs.push(`Syncing ${modelName} with alter enabled (will modify existing structure)`);
+        } else {
+          // Default mode: basic sync
+          logs.push(`Syncing ${modelName} in default mode`);
+        }
+
+        // Sync the whole model - this is the safest approach
+        await model.sync(syncConfig);
+
         logs.push(`Successfully synced model: ${modelName}`);
         successCount++;
       } catch (error) {
-        await syncTransaction.rollback();
         logs.push(`Error syncing model ${modelName}: ${error.message}`);
+        // For debugging, let's see more detail about the error
+        if (error.sql) {
+          logs.push(`SQL that failed: ${error.sql}`);
+        }
+        if (error.parent) {
+          logs.push(`Parent error: ${error.parent.message}`);
+        }
         // Continue with next model rather than aborting everything
       }
     }
@@ -249,7 +268,6 @@ export const syncModels = async (modelsToSync, options = {}) => {
     };
   } catch (error) {
     logs.push(`Error in syncModels: ${error.message}`);
-
     return {
       success: false,
       message: "Database synchronization failed",
@@ -257,7 +275,7 @@ export const syncModels = async (modelsToSync, options = {}) => {
       logs,
     };
   }
-};
+}
 
 // Serve the HTML page
 export const serveSyncDbPage = (req, res) => {

@@ -8,6 +8,7 @@ const constructS3PublicUrl = (bucketName, key, region = "us-east-1") => {
 
 export const uploadFiles = async (req, res) => {
   try {
+    // Check if files were uploaded
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
@@ -16,8 +17,48 @@ export const uploadFiles = async (req, res) => {
       });
     }
 
-    const uploadedFiles = [];
+    // Validate file size limits (optional additional check)
+    const MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB total limit
+    const MAX_SINGLE_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file
+
     let totalSize = 0;
+    const oversizedFiles = [];
+
+    for (const file of req.files) {
+      totalSize += file.size;
+      if (file.size > MAX_SINGLE_FILE_SIZE) {
+        oversizedFiles.push({
+          name: file.originalname,
+          size: file.size,
+          maxAllowed: MAX_SINGLE_FILE_SIZE
+        });
+      }
+    }
+
+    if (totalSize > MAX_TOTAL_SIZE) {
+      return res.status(400).json({
+        success: false,
+        message: "Total upload size exceeds the maximum allowed limit",
+        data: {
+          totalSize,
+          maxAllowed: MAX_TOTAL_SIZE,
+        },
+      });
+    }
+
+    if (oversizedFiles.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "One or more files exceed the maximum allowed file size",
+        data: {
+          oversizedFiles,
+          maxAllowedPerFile: MAX_SINGLE_FILE_SIZE,
+        },
+      });
+    }
+
+    const uploadedFiles = [];
+
     let successful = 0;
     let failed = 0;
     let skipped = 0;
@@ -99,11 +140,27 @@ export const uploadFiles = async (req, res) => {
 // Upload single file
 export const uploadSingleFile = async (req, res) => {
   try {
+    // Check if a file was uploaded
     if (!req.file) {
       return res.status(400).json({
         success: false,
         message: "No file uploaded",
         data: null,
+      });
+    }
+
+    // Validate file size (optional additional check)
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
+
+    if (req.file.size > MAX_FILE_SIZE) {
+      return res.status(400).json({
+        success: false,
+        message: "File size exceeds the maximum allowed limit",
+        data: {
+          fileName: req.file.originalname,
+          fileSize: req.file.size,
+          maxAllowed: MAX_FILE_SIZE,
+        },
       });
     }
 
@@ -172,6 +229,7 @@ export const uploadSingleFile = async (req, res) => {
 // Upload files by field names (for multiple different field types)
 export const uploadFieldFiles = async (req, res) => {
   try {
+    // Check if files were uploaded
     if (!req.files || Object.keys(req.files).length === 0) {
       return res.status(400).json({
         success: false,
@@ -180,8 +238,80 @@ export const uploadFieldFiles = async (req, res) => {
       });
     }
 
-    const uploadedFiles = [];
+    // Validate file size limits
+    const MAX_TOTAL_SIZE = 200 * 1024 * 1024; // 200MB total limit
+    const MAX_SINGLE_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file
+
     let totalSize = 0;
+    const oversizedFiles = [];
+    const invalidFields = [];
+
+    // Valid field names for file uploads
+    const validFieldNames = [
+      'thumbnail', 'video', 'profileImage', 'resource',
+      'artical', 'banner', 'files', 'projectFiles'
+    ];
+
+    // Process files from different fields
+    for (const fieldName in req.files) {
+      // Check if the field name is valid
+      if (!validFieldNames.includes(fieldName)) {
+        invalidFields.push(fieldName);
+        continue;
+      }
+
+      const filesArray = Array.isArray(req.files[fieldName])
+        ? req.files[fieldName]
+        : [req.files[fieldName]];
+
+      for (const file of filesArray) {
+        totalSize += file.size;
+        if (file.size > MAX_SINGLE_FILE_SIZE) {
+          oversizedFiles.push({
+            field: fieldName,
+            name: file.originalname,
+            size: file.size,
+            maxAllowed: MAX_SINGLE_FILE_SIZE
+          });
+        }
+      }
+    }
+
+    // Report validation errors
+    if (invalidFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid field names detected",
+        data: {
+          invalidFields,
+          validFieldNames
+        },
+      });
+    }
+
+    if (totalSize > MAX_TOTAL_SIZE) {
+      return res.status(400).json({
+        success: false,
+        message: "Total upload size exceeds the maximum allowed limit",
+        data: {
+          totalSize,
+          maxAllowed: MAX_TOTAL_SIZE,
+        },
+      });
+    }
+
+    if (oversizedFiles.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "One or more files exceed the maximum allowed file size",
+        data: {
+          oversizedFiles,
+          maxAllowedPerFile: MAX_SINGLE_FILE_SIZE,
+        },
+      });
+    }
+
+    const uploadedFiles = [];
     let successful = 0;
     let failed = 0;
     let skipped = 0;

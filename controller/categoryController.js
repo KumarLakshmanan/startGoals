@@ -17,12 +17,51 @@ export const createCategory = async (req, res) => {
       skills,
     } = req.body;
 
+    // Validate required fields
     if (!categoryName || !categoryCode) {
       await transaction.rollback();
       return res.status(400).json({
         message: "categoryName and categoryCode are required.",
         status: false,
       });
+    }
+    
+    // Validate length constraints
+    if (categoryName.length < 2 || categoryName.length > 100) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: "Category name must be between 2 and 100 characters.",
+        status: false,
+      });
+    }
+    
+    if (categoryCode.length < 2 || categoryCode.length > 20) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: "Category code must be between 2 and 20 characters.",
+        status: false,
+      });
+    }
+    
+    // Validate parentCategoryId format if provided
+    if (parentCategoryId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentCategoryId)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        message: "Invalid parent category ID format. Must be a valid UUID.",
+        status: false,
+      });
+    }
+    
+    // Check if parent category exists
+    if (parentCategoryId) {
+      const parentCategory = await Category.findByPk(parentCategoryId, { transaction });
+      if (!parentCategory) {
+        await transaction.rollback();
+        return res.status(404).json({
+          message: "Parent category not found.",
+          status: false,
+        });
+      }
     }
 
     const existing = await Category.findOne({

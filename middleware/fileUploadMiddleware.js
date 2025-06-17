@@ -108,11 +108,21 @@ const upload = multer({
       resource: /pdf|doc|docx|ppt|pptx|txt|zip|rar/,
       artical: /pdf|doc|docx|txt/,
       banner: /jpeg|jpg|png|gif|webp/,
-      files: /.*/, // Allow all file types for project files
-      projectFiles: /.*/, // Allow all file types for project files
+      files: /pdf|doc|docx|ppt|pptx|txt|zip|rar|jpeg|jpg|png|gif|webp|mp4|avi|mov|wmv|flv|webm/, // More restricted file types for security
+      projectFiles: /pdf|doc|docx|ppt|pptx|txt|zip|rar|jpeg|jpg|png|gif|webp|mp4|avi|mov|wmv|flv|webm/, // More restricted file types for security
     };
 
-    const fieldType = allowedTypes[file.fieldname] || /jpeg|jpg|png|gif/;
+    // Check if the field name is valid
+    if (!Object.keys(allowedTypes).includes(file.fieldname)) {
+      return cb(new Error(`Invalid field name: ${file.fieldname}. Allowed field names are: ${Object.keys(allowedTypes).join(', ')}`), false);
+    }
+
+    // Check file size before processing (additional check)
+    if (file.size > 100 * 1024 * 1024) {
+      return cb(new Error(`File size exceeds limit of 100MB`), false);
+    }
+
+    const fieldType = allowedTypes[file.fieldname];
     const extname = fieldType.test(
       path.extname(file.originalname).toLowerCase(),
     );
@@ -121,7 +131,9 @@ const upload = multer({
     if (extname && mimetype) {
       return cb(null, true);
     } else {
-      cb(new Error(`Only ${file.fieldname} files are allowed!`));
+      // Provide more detailed error message about allowed file types
+      const allowedExtensions = fieldType.toString().replace(/\/|\^|\$/g, '').split('|');
+      cb(new Error(`Only ${allowedExtensions.join(', ')} files are allowed for ${file.fieldname}!`), false);
     }
   },
 });

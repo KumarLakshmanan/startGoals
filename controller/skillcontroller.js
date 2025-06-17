@@ -53,9 +53,7 @@ export const bulkUploadSkills = async (req, res) => {
       if (errors.length > 0) {
         validationErrors.push({ index: i, errors });
         continue;
-      }
-
-      // Look up level ID if level is provided
+      }      // Look up level ID if level is provided
       let levelId = null;
       if (skill.level) {
         const level = await CourseLevel.findOne({
@@ -74,15 +72,38 @@ export const bulkUploadSkills = async (req, res) => {
           continue;
         }
         levelId = level.levelId;
+      } else if (skill.levelId) {
+        // Validate levelId if provided directly
+        const level = await CourseLevel.findByPk(skill.levelId);
+        if (!level) {
+          validationErrors.push({
+            index: i,
+            errors: [`Level with ID '${skill.levelId}' not found`],
+          });
+          continue;
+        }
+        levelId = skill.levelId;
       }
 
-      // Create skill object with new structure
+      // Validate goalId if provided
+      let validGoalId = null;
+      if (skill.goalId) {
+        const goal = await Goal.findByPk(skill.goalId);
+        if (!goal) {
+          validationErrors.push({
+            index: i,
+            errors: [`Goal with ID '${skill.goalId}' not found`],
+          });
+          continue;
+        }
+        validGoalId = skill.goalId;
+      }      // Create skill object with new structure
       const skillData = {
         skillName: skill.skillName,
-        categoryId: null,
+        categoryId: skill.categoryId || null,
         levelId: levelId,
         description: skill.description || null,
-        goalId: skill.goalId || null, // Optional goalId
+        goalId: validGoalId, // Use validated goalId
       };
 
       skillsToCreate.push(skillData);
@@ -169,6 +190,14 @@ export const getSkillsByGoal = async (req, res) => {
   try {
     const { goalId } = req.params;
 
+    // Validate UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(goalId)) {
+      return res.status(400).json({
+        status: false,
+        message: `Invalid goalId format: ${goalId}. Must be a valid UUID.`,
+      });
+    }
+
     // ✅ Step 1: Validate if goal exists
     const goal = await Goal.findByPk(goalId);
     if (!goal) {
@@ -176,7 +205,7 @@ export const getSkillsByGoal = async (req, res) => {
         status: false,
         message: "Goal not found",
       });
-    } // ✅ Step 2: Fetch all skills for that goal
+    }// ✅ Step 2: Fetch all skills for that goal
     const skills = await Skill.findAll({
       where: { goalId },
       attributes: [
@@ -222,6 +251,42 @@ export const getSkillsByCategory = async (req, res) => {
   try {
     const { categoryId } = req.params;
     const { levelId } = req.query; // Optional level filter
+
+    // Validate UUID format for categoryId
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
+      return res.status(400).json({
+        status: false,
+        message: `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`,
+      });
+    }
+
+    // Validate category exists
+    const category = await CourseCategory.findByPk(categoryId);
+    if (!category) {
+      return res.status(404).json({
+        status: false,
+        message: "Category not found",
+      });
+    }
+
+    // Validate levelId if provided
+    if (levelId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
+      return res.status(400).json({
+        status: false,
+        message: `Invalid levelId format: ${levelId}. Must be a valid UUID.`,
+      });
+    }
+    
+    // If levelId is provided, validate it exists
+    if (levelId) {
+      const level = await CourseLevel.findByPk(levelId);
+      if (!level) {
+        return res.status(404).json({
+          status: false,
+          message: "Level not found",
+        });
+      }
+    }
 
     const whereClause = { categoryId };
     if (levelId) {
@@ -283,6 +348,42 @@ export const getSkillsByLevel = async (req, res) => {
   try {
     const { levelId } = req.params;
     const { categoryId } = req.query; // Optional category filter
+
+    // Validate UUID format for levelId
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
+      return res.status(400).json({
+        status: false,
+        message: `Invalid levelId format: ${levelId}. Must be a valid UUID.`,
+      });
+    }
+
+    // Validate level exists
+    const level = await CourseLevel.findByPk(levelId);
+    if (!level) {
+      return res.status(404).json({
+        status: false,
+        message: "Level not found",
+      });
+    }
+
+    // Validate categoryId if provided
+    if (categoryId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
+      return res.status(400).json({
+        status: false,
+        message: `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`,
+      });
+    }
+    
+    // If categoryId is provided, validate it exists
+    if (categoryId) {
+      const category = await CourseCategory.findByPk(categoryId);
+      if (!category) {
+        return res.status(404).json({
+          status: false,
+          message: "Category not found",
+        });
+      }
+    }
 
     const whereClause = { levelId };
     if (categoryId) {

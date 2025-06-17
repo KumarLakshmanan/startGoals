@@ -25,6 +25,7 @@ export const getSearchSuggestions = async (req, res) => {
       include_recent = false,
     } = req.query;
 
+    // Validate query parameter
     if (!query || query.length < 2) {
       return res.status(200).json({
         success: true,
@@ -36,6 +37,24 @@ export const getSearchSuggestions = async (req, res) => {
               ? await getRecentSearches(req.user?.userId)
               : [],
         },
+      });
+    }
+
+    // Validate limit parameter
+    const limitNum = parseInt(limit);
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
+      return res.status(400).json({
+        success: false,
+        message: "Limit must be a number between 1 and 50",
+      });
+    }
+
+    // Validate type parameter
+    const validTypes = ['all', 'courses', 'projects', 'instructors'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid type parameter. Must be one of: ${validTypes.join(', ')}`,
       });
     }
 

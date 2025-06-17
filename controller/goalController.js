@@ -76,6 +76,26 @@ export const bulkUploadGoals = async (req, res) => {
           continue;
         }
         levelId = level.levelId;
+      } else if (goal.levelId) {
+        // If levelId is provided directly, validate it exists
+        // First check for valid UUID format
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(goal.levelId)) {
+          validationErrors.push({
+            index: i,
+            errors: [`Invalid levelId format: ${goal.levelId}. Must be a valid UUID.`],
+          });
+          continue;
+        }
+        
+        const level = await CourseLevel.findByPk(goal.levelId);
+        if (!level) {
+          validationErrors.push({
+            index: i,
+            errors: [`Level with ID '${goal.levelId}' not found`],
+          });
+          continue;
+        }
+        levelId = goal.levelId;
       }
 
       // Create goal object
@@ -147,6 +167,14 @@ export const getAllGoals = async (req, res) => {
 export const getGoalsByLevel = async (req, res) => {
   try {
     const { levelId } = req.params;
+
+    // Validate UUID format for levelId
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
+      return res.status(400).json({
+        status: false,
+        message: `Invalid levelId format: ${levelId}. Must be a valid UUID.`,
+      });
+    }
 
     // Validate if level exists
     const level = await CourseLevel.findByPk(levelId);

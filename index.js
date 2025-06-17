@@ -85,6 +85,9 @@ app.post('/sync-db', syncDbMiddleware, async (req, res) => {
   try {
     const { models, options } = req.body;
     
+    console.log('Received sync request with models:', JSON.stringify(models, null, 2));
+    console.log('Received sync request with options:', JSON.stringify(options, null, 2));
+    
     if (!models || !Array.isArray(models) || models.length === 0) {
       return res.status(400).json({ 
         success: false,

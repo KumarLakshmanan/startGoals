@@ -53,6 +53,71 @@ export const createProject = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Title, description, price and category are required",
+        details: {
+          missingFields: [
+            !title ? 'title' : null,
+            !description ? 'description' : null,
+            !price ? 'price' : null,
+            !categoryId ? 'categoryId' : null
+          ].filter(Boolean)
+        }
+      });
+    }
+
+    // Validate title length
+    if (title.length < 3 || title.length > 100) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Title must be between 3 and 100 characters",
+      });
+    }
+    
+    // Validate description length
+    if (description.length < 10) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Description must be at least 10 characters",
+      });
+    }
+    
+    // Validate price
+    const priceValue = parseFloat(price);
+    if (isNaN(priceValue) || priceValue < 0) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: "Price must be a valid positive number",
+      });
+    }
+    
+    // Validate sale price if provided
+    if (salePrice !== undefined && salePrice !== null) {
+      const salePriceValue = parseFloat(salePrice);
+      if (isNaN(salePriceValue) || salePriceValue < 0) {
+        await transaction.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Sale price must be a valid positive number",
+        });
+      }
+      
+      if (salePriceValue >= priceValue) {
+        await transaction.rollback();
+        return res.status(400).json({
+          success: false,
+          message: "Sale price must be less than regular price",
+        });
+      }
+    }
+    
+    // Validate categoryId UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`,
       });
     }
 

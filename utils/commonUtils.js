@@ -1,3 +1,8 @@
+export function isValidUUID(uuid) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(String(uuid));
+}
+
 export function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(String(email).toLowerCase());
@@ -117,8 +122,12 @@ export const validateSkillInput = (skillData) => {
   }
 
   // Validate goalId if provided (optional)
-  if (skillData.goalId && typeof skillData.goalId !== "string") {
-    errors.push("Goal ID must be a valid UUID string.");
+  if (skillData.goalId) {
+    if (typeof skillData.goalId !== "string") {
+      errors.push("Goal ID must be a string.");
+    } else if (!isValidUUID(skillData.goalId)) {
+      errors.push("Goal ID must be a valid UUID format.");
+    }
   }
 
   return errors;
@@ -176,6 +185,15 @@ export const validateGoalInput = (goalData) => {
   // Validate level field (optional but must be valid string if provided)
   if (goalData.level && typeof goalData.level !== "string") {
     errors.push("Level must be a valid string.");
+  }
+  
+  // Validate levelId if provided directly (optional)
+  if (goalData.levelId) {
+    if (typeof goalData.levelId !== "string") {
+      errors.push("Level ID must be a string.");
+    } else if (!isValidUUID(goalData.levelId)) {
+      errors.push("Level ID must be a valid UUID format.");
+    }
   }
 
   // Validate description (optional)

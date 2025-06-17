@@ -230,9 +230,20 @@ export const userLogin = async (req, res) => {
       }
     } else {
       // 🔒 Other roles require password
+
       if (!password) {
         return res.status(400).json({
-          message: "Password is required for this user role.",
+          message: "Password is required.",
+          status: false,
+          success: false,
+          data: null,
+        });
+      }
+
+      // Validate password length
+      if (password.length < 6) {
+        return res.status(400).json({
+          message: "Password must be at least 6 characters long.",
           status: false,
           success: false,
           data: null,
@@ -449,16 +460,16 @@ export const getUserSkills = async (req, res) => {
 export const getUserDetails = async (req, res) => {
   try {
     let { userId } = req.params;
-    
+
     // If userId is not provided in params, get it from req.user
     if (!userId && req.user) {
       userId = req.user.userId;
     }
-    
+
     if (!userId) {
       return res.status(400).json({
-      status: false,
-      message: "User ID is required",
+        status: false,
+        message: "User ID is required",
       });
     }
 
@@ -881,11 +892,11 @@ export const getStudentById = async (req, res) => {
         averageProgress:
           enrollments.length > 0
             ? (
-                enrollments.reduce(
-                  (sum, e) => sum + (e.progressPercentage || 0),
-                  0,
-                ) / enrollments.length
-              ).toFixed(1)
+              enrollments.reduce(
+                (sum, e) => sum + (e.progressPercentage || 0),
+                0,
+              ) / enrollments.length
+            ).toFixed(1)
             : 0,
       };
 
@@ -1383,10 +1394,10 @@ export const getStudentAnalytics = async (req, res) => {
         completionRate:
           cat.dataValues.totalEnrollments > 0
             ? (
-                (cat.dataValues.completedEnrollments /
-                  cat.dataValues.totalEnrollments) *
-                100
-              ).toFixed(1)
+              (cat.dataValues.completedEnrollments /
+                cat.dataValues.totalEnrollments) *
+              100
+            ).toFixed(1)
             : 0,
       })),
     };

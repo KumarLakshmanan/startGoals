@@ -70,25 +70,47 @@
         <div class="header">
             <h1>Database Synchronization Tool</h1>
             <p class="text-muted">Select tables and fields to synchronize with the database</p>
-        </div>
-
-        <div class="sync-options card">
+        </div>        <div class="sync-options card">
             <div class="card-body">
-                <h4>Synchronization Options</h4>
+                <h4>Synchronization Options</h4>                <div class="alert alert-info">
+                    <small><strong>Tip:</strong> Start with "Safe Mode" for production environments. Use "Force Sync" only when you need to completely rebuild the database structure.</small>
+                </div>
+                
+                <div id="syncModeInfo" class="alert alert-success" style="display: none;">
+                    <div id="syncModeDescription"></div>
+                </div>
+                
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="safeMode" checked>
+                    <label class="form-check-label" for="safeMode">
+                        <strong>Safe Mode</strong> (✅ Recommended)
+                        <br><small class="text-muted">Only creates missing tables without dropping existing data</small>
+                    </label>
+                </div>
+                
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="alterSync">
+                    <label class="form-check-label" for="alterSync">
+                        <strong>Alter Tables</strong> (⚠️ Use with caution)
+                        <br><small class="text-muted">Modifies existing table structures to match models. May cause data loss.</small>
+                    </label>
+                </div>
+                
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="forceSync">
-                    <label class="form-check-label" for="forceSync">Force Sync (⚠️ This will drop all tables and
-                        recreate them)</label>
+                    <label class="form-check-label" for="forceSync">
+                        <strong>Force Sync</strong> (🚨 DANGER!)
+                        <br><small class="text-danger">Drops ALL selected tables and recreates them. ALL DATA WILL BE LOST!</small>
+                    </label>
                 </div>
-                <div class="form-check form-switch mb-3">
-                    <input class="form-check-input" type="checkbox" id="alterSync" checked>
-                    <label class="form-check-label" for="alterSync">Alter Tables (Will modify existing table
-                        structures)</label>
-                </div>
+                
+                <hr>
+                
                 <div class="form-check form-switch mb-3">
                     <input class="form-check-input" type="checkbox" id="selectAllModels">
                     <label class="form-check-label" for="selectAllModels">Select All Models</label>
                 </div>
+                
                 <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                     <button id="createRequiredTablesButton" class="btn btn-success me-2">Create Required Tables</button>
                     <button id="syncButton" class="btn btn-primary">Synchronize Database</button>
@@ -232,7 +254,31 @@
                         });
                     });
                 });
-            }
+            }            // Handle sync option mutual exclusivity
+            const safeModeCheckbox = document.getElementById('safeMode');
+            const alterSyncCheckbox = document.getElementById('alterSync');
+            const forceSyncCheckbox = document.getElementById('forceSync');
+
+            safeModeCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    alterSyncCheckbox.checked = false;
+                    forceSyncCheckbox.checked = false;
+                }
+            });
+
+            alterSyncCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    safeModeCheckbox.checked = false;
+                    forceSyncCheckbox.checked = false;
+                }
+            });
+
+            forceSyncCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    safeModeCheckbox.checked = false;
+                    alterSyncCheckbox.checked = false;
+                }
+            });
 
             // Select all models
             selectAllModels.addEventListener('change', function () {
@@ -247,15 +293,20 @@
             // Synchronize database
             syncButton.addEventListener('click', function () {
                 // Collect selected models and fields
-                const selectedModels = [];
-
-                document.querySelectorAll('.model-checkbox:checked').forEach(modelCheckbox => {
+                const selectedModels = [];                document.querySelectorAll('.model-checkbox:checked').forEach(modelCheckbox => {
                     const modelName = modelCheckbox.getAttribute('data-model');
                     const selectedFields = [];
 
                     document.querySelectorAll(`.field-checkbox[data-model="${modelName}"]:checked`).forEach(fieldCheckbox => {
                         selectedFields.push(fieldCheckbox.getAttribute('data-field'));
                     });
+
+                    // If model is selected but no fields are checked, include all fields
+                    if (selectedFields.length === 0) {
+                        document.querySelectorAll(`.field-checkbox[data-model="${modelName}"]`).forEach(fieldCheckbox => {
+                            selectedFields.push(fieldCheckbox.getAttribute('data-field'));
+                        });
+                    }
 
                     if (selectedFields.length > 0) {
                         selectedModels.push({
@@ -268,19 +319,44 @@
                 if (selectedModels.length === 0) {
                     alert('Please select at least one model and field to synchronize.');
                     return;
+                }                // Get sync options
+                const forceSync = document.getElementById('forceSync').checked;
+                const alterSync = document.getElementById('alterSync').checked;
+                const safeMode = document.getElementById('safeMode').checked;
+
+                // Validate sync options
+                if (forceSync && alterSync) {
+                    alert('Cannot use both Force Sync and Alter Tables at the same time. Please choose one.');
+                    return;
+                }
+
+                if (forceSync && safeMode) {
+                    alert('Cannot use both Force Sync and Safe Mode at the same time. Please choose one.');
+                    return;
                 }
 
                 // Confirm if force sync is enabled
-                const forceSync = document.getElementById('forceSync').checked;
                 if (forceSync) {
-                    const confirmed = confirm('WARNING: Force sync will DROP ALL TABLES and recreate them. All data will be lost. Are you sure you want to continue?');
+                    const confirmed = confirm('🚨 DANGER: Force sync will DROP ALL SELECTED TABLES and recreate them.\n\nALL DATA IN THESE TABLES WILL BE PERMANENTLY LOST!\n\nAre you absolutely sure you want to continue?');
                     if (!confirmed) {
                         return;
                     }
                 }
 
-                // Get alter option
-                const alterSync = document.getElementById('alterSync').checked;
+                // Confirm if alter sync is enabled (but not in safe mode)
+                if (alterSync && !safeMode) {
+                    const confirmed = confirm('⚠️ WARNING: Alter sync will modify existing table structures.\n\nThis may cause data loss if column types are incompatible.\n\nDo you want to continue?');
+                    if (!confirmed) {
+                        return;
+                    }
+                }
+
+                // Determine final sync options
+                const syncOptions = {
+                    force: forceSync,
+                    alter: safeMode ? false : alterSync, // Safe mode overrides alter
+                    safeMode: safeMode
+                };
 
                 // Start synchronization
                 loadingOverlay.style.display = 'flex';
@@ -294,13 +370,9 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
+                    },                    body: JSON.stringify({
                         models: selectedModels,
-                        options: {
-                            force: forceSync,
-                            alter: alterSync
-                        }
+                        options: syncOptions
                     })
                 })
                     .then(response => response.json())

@@ -14,10 +14,68 @@ export const createBatch = async (req, res) => {
     const userId = req.user?.userId || null; // Get userId from request, if available
     const { courseId, title, description, startTime, endTime } = req.body;
 
+    // Validate required fields
     if (!courseId || !title || !description || !startTime || !endTime) {
+      await t.rollback();
       return res.status(400).json({
         status: false,
         message: "Missing required fields",
+        details: {
+          missingFields: [
+            !courseId ? 'courseId' : null,
+            !title ? 'title' : null,
+            !description ? 'description' : null,
+            !startTime ? 'startTime' : null,
+            !endTime ? 'endTime' : null
+          ].filter(Boolean)
+        }
+      });
+    }
+    
+    // Validate UUID format for courseId
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
+      await t.rollback();
+      return res.status(400).json({
+        status: false,
+        message: `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
+      });
+    }
+    
+    // Validate title length
+    if (title.length < 3 || title.length > 100) {
+      await t.rollback();
+      return res.status(400).json({
+        status: false,
+        message: "Title must be between 3 and 100 characters",
+      });
+    }
+    
+    // Validate date formats
+    const startDate = new Date(startTime);
+    const endDate = new Date(endTime);
+    
+    if (isNaN(startDate.getTime())) {
+      await t.rollback();
+      return res.status(400).json({
+        status: false,
+        message: "Invalid startTime format. Must be a valid date.",
+      });
+    }
+    
+    if (isNaN(endDate.getTime())) {
+      await t.rollback();
+      return res.status(400).json({
+        status: false,
+        message: "Invalid endTime format. Must be a valid date.",
+      });
+    }
+    
+    // Validate start time is before end time
+    if (startDate >= endDate) {
+      await t.rollback();
+      return res.status(400).json({
+        status: false,
+        message: "startTime must be before endTime",
       });
     }
 
@@ -70,7 +128,59 @@ export const getAllBatches = async (req, res) => {
       sortOrder = "DESC",
     } = req.query;
 
-    const offset = (page - 1) * limit;
+    // Validate pagination parameters
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({
+        status: false,
+        message: "Page must be a positive integer",
+      });
+    }
+    
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
+      return res.status(400).json({
+        status: false,
+        message: "Limit must be a positive integer between 1 and 50",
+      });
+    }
+    
+    // Validate courseId if provided
+    if (courseId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
+      return res.status(400).json({
+        status: false,
+        message: `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
+      });
+    }
+    
+    // Validate status if provided
+    const validStatuses = ['active', 'inactive', 'completed', 'cancelled', 'scheduled'];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({
+        status: false,
+        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
+      });
+    }
+    
+    // Validate sortBy parameter
+    const validSortFields = ['createdAt', 'title', 'startTime', 'endTime', 'status'];
+    if (!validSortFields.includes(sortBy)) {
+      return res.status(400).json({
+        status: false,
+        message: `Invalid sortBy parameter. Must be one of: ${validSortFields.join(', ')}`,
+      });
+    }
+    
+    // Validate sortOrder parameter
+    if (sortOrder !== 'ASC' && sortOrder !== 'DESC') {
+      return res.status(400).json({
+        status: false,
+        message: "sortOrder must be either ASC or DESC",
+      });
+    }
+
+    const offset = (pageNum - 1) * limitNum;
     const whereClause = {};
 
     // Add filters

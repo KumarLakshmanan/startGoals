@@ -1,7 +1,7 @@
 import sequelize from "../config/db.js";
 import User from "./user.js";
 import Language from "./language.js";
-import Opt from "./otp.js";
+import Otp from "./otp.js";
 import Course from "./course.js";
 import CourseCategory from "./courseCategory.js";
 import CourseTag from "./courseTag.js";
@@ -20,6 +20,8 @@ import Batch from "./batch.js";
 import BatchStudents from "./batchStudents.js";
 import Enrollment from "./enrollment.js";
 import LiveSession from "./liveSession.js";
+import LiveSessionParticipant from "./liveSessionParticipant.js";
+import RaisedHand from "./raisedHand.js";
 import RecordedSession from "./recordedSession.js";
 import RecordedSessionResource from "./recordedSessionResource.js";
 import Settings from "./settings.js";
@@ -40,7 +42,7 @@ const models = {
   User,
   Course,
   Language,
-  Opt,
+  Otp,
   CourseCategory,
   CourseTag,
   Banner,
@@ -56,9 +58,11 @@ const models = {
   Lesson,
   Resource,
   Batch,
-  BatchStudents,
-  Enrollment,
+  BatchStudents,  Enrollment,
   LiveSession,
+  LiveSessionParticipant,
+  RaisedHand,
+  RecordedSession,
   RecordedSessionResource,
   Settings,
   SearchAnalytics,

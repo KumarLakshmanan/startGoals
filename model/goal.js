@@ -31,12 +31,6 @@ const Goal = sequelize.define(
       type: DataTypes.UUID,
       allowNull: true,
       field: "level_id",
-      references: {
-        model: "course_levels",
-        key: "levelId",
-      },
-      onDelete: "SET NULL",
-      onUpdate: "CASCADE",
     },
     ...commonFields,
   },

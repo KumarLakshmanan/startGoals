@@ -103,8 +103,7 @@ export const createRequiredTables = async () => {
       logs.push('languages table created successfully with default languages');
     } else {
       logs.push('languages table already exists');
-    }
-      // 1. Check and create goals table
+    }    // 1. Check and create goals table
     logs.push('Checking goals table...');
     const goalsTableExists = await sequelize.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'goals'",
@@ -118,7 +117,7 @@ export const createRequiredTables = async () => {
           goal_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           goal_name VARCHAR(255) NOT NULL UNIQUE,
           description TEXT,
-          level_id UUID REFERENCES course_levels(level_id) ON DELETE SET NULL ON UPDATE CASCADE,
+          level_id UUID,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           deleted_at TIMESTAMP WITH TIME ZONE
@@ -143,9 +142,9 @@ export const createRequiredTables = async () => {
           skill_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           skill_name VARCHAR(255) NOT NULL,
           description TEXT,
-          goal_id UUID REFERENCES goals(goal_id) ON DELETE CASCADE ON UPDATE CASCADE,
-          category_id UUID REFERENCES course_categories(category_id) ON DELETE SET NULL ON UPDATE CASCADE,
-          level_id UUID REFERENCES course_levels(level_id) ON DELETE SET NULL ON UPDATE CASCADE,
+          goal_id UUID,
+          category_id UUID,
+          level_id UUID,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
           deleted_at TIMESTAMP WITH TIME ZONE
@@ -155,8 +154,7 @@ export const createRequiredTables = async () => {
     } else {
       logs.push('skills table already exists');
     }
-    
-    // 2. Check and create user_languages table
+      // 2. Check and create user_languages table
     logs.push('Checking user_languages table...');
     const userLanguagesTableExists = await sequelize.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_languages'",
@@ -167,8 +165,8 @@ export const createRequiredTables = async () => {
       logs.push('Creating user_languages table...');
       await sequelize.query(`
         CREATE TABLE user_languages (
-          user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-          language_id UUID NOT NULL REFERENCES languages(language_id) ON DELETE CASCADE,
+          user_id UUID NOT NULL,
+          language_id UUID NOT NULL,
           proficiency_level VARCHAR(20) DEFAULT 'intermediate' 
             CHECK (proficiency_level IN ('beginner', 'intermediate', 'advanced', 'native')),
           is_primary BOOLEAN DEFAULT false,
@@ -211,8 +209,7 @@ export const createRequiredTables = async () => {
         logs.push('is_primary column added to user_languages');
       }
     }
-    
-    // 3. Check and create user_goals table
+      // 3. Check and create user_goals table
     logs.push('Checking user_goals table...');
     const userGoalsTableExists = await sequelize.query(
       "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'user_goals'",
@@ -223,8 +220,8 @@ export const createRequiredTables = async () => {
       logs.push('Creating user_goals table...');
       await sequelize.query(`
         CREATE TABLE user_goals (
-          user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-          goal_id UUID NOT NULL REFERENCES goals(goal_id) ON DELETE CASCADE,
+          user_id UUID NOT NULL,
+          goal_id UUID NOT NULL,
           created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (user_id, goal_id)
@@ -246,8 +243,8 @@ export const createRequiredTables = async () => {
       logs.push('Creating user_skills table...');
       await sequelize.query(`
         CREATE TABLE user_skills (
-          user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-          skill_id UUID NOT NULL REFERENCES skills(skill_id) ON DELETE CASCADE,
+          user_id UUID NOT NULL,
+          skill_id UUID NOT NULL,
           proficiency_level VARCHAR(20) DEFAULT 'intermediate' 
             CHECK (proficiency_level IN ('beginner', 'intermediate', 'advanced', 'expert')),
           created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,

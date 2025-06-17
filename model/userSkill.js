@@ -4,29 +4,17 @@ import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
 const UserSkill = sequelize.define(
   "userSkill",
-  {
-    userId: {
+  {    userId: {
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,
       field: "user_id",
-      references: {
-        model: "users",
-        key: "userId",
-      },
-      onDelete: "CASCADE",
-      onUpdate: "CASCADE",
-    },    skillId: {
+    },    
+    skillId: {
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,
       field: "skill_id",
-      references: {
-        model: "skills",
-        key: "skillId",
-      },
-      onDelete: "CASCADE",
-      onUpdate: "CASCADE",
     },
     proficiencyLevel: {
       type: DataTypes.ENUM("beginner", "intermediate", "advanced", "expert"),

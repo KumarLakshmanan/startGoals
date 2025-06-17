@@ -27,6 +27,7 @@ export const createCourseOrder = async (req, res) => {
     const { courseId } = req.body;
     const userId = req.user?.userId;
 
+    // Validate user authentication
     if (!userId) {
       await transaction.rollback();
       return res.status(401).json({
@@ -35,11 +36,21 @@ export const createCourseOrder = async (req, res) => {
       });
     }
 
+    // Validate courseId is provided
     if (!courseId) {
       await transaction.rollback();
       return res.status(400).json({
         success: false,
         message: "Course ID is required",
+      });
+    }
+    
+    // Validate UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
       });
     }
 
@@ -173,6 +184,7 @@ export const verifyPaymentAndEnroll = async (req, res) => {
 
     const userId = req.user?.userId;
 
+    // Validate user authentication
     if (!userId) {
       await transaction.rollback();
       return res.status(401).json({
@@ -192,6 +204,23 @@ export const verifyPaymentAndEnroll = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Missing required payment verification data",
+        details: {
+          missingFields: [
+            !razorpay_order_id ? 'razorpay_order_id' : null,
+            !razorpay_payment_id ? 'razorpay_payment_id' : null,
+            !razorpay_signature ? 'razorpay_signature' : null,
+            !courseId ? 'courseId' : null
+          ].filter(Boolean)
+        }
+      });
+    }
+    
+    // Validate courseId UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
+      await transaction.rollback();
+      return res.status(400).json({
+        success: false,
+        message: `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
       });
     }
 
@@ -329,7 +358,41 @@ export const getUserPurchases = async (req, res) => {
       });
     }
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    // Validate page and limit parameters
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Page must be a positive integer",
+      });
+    }
+    
+    if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Limit must be a positive integer between 1 and 100",
+      });
+    }
+
+    // Validate status if provided
+    if (status && !['not_started', 'in_progress', 'completed', 'on_hold'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value. Must be one of: not_started, in_progress, completed, on_hold",
+      });
+    }
+
+    // Validate type if provided
+    if (type && !['live', 'recorded', 'hybrid'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid type value. Must be one of: live, recorded, hybrid",
+      });
+    }
+
+    const offset = (pageNum - 1) * limitNum;
 
     // Build where conditions
     const whereConditions = {
@@ -418,6 +481,14 @@ export const getCoursePurchaseDetails = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: "Authentication required",
+      });
+    }
+    
+    // Validate UUID format for courseId
+    if (!courseId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
       });
     }
 
@@ -509,6 +580,38 @@ export const handlePaymentFailure = async (req, res) => {
   try {
     const { razorpay_order_id, razorpay_payment_id, error } = req.body;
     const userId = req.user?.userId;
+
+    // Validate user authentication
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Authentication required",
+      });
+    }
+    
+    // Validate required fields
+    if (!razorpay_order_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Razorpay order ID is required",
+      });
+    }
+    
+    // Validate format of order_id if present
+    if (razorpay_order_id && !/^order_[a-zA-Z0-9]+$/i.test(razorpay_order_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Razorpay order ID format",
+      });
+    }
+    
+    // Validate format of payment_id if present
+    if (razorpay_payment_id && !/^pay_[a-zA-Z0-9]+$/i.test(razorpay_payment_id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Razorpay payment ID format",
+      });
+    }
 
     console.log("Payment failure:", {
       userId,
