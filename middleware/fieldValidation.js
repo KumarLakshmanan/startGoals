@@ -85,7 +85,6 @@ export const userValidation = {
 
   login: Joi.object({
     identifier: commonSchemas.identifier.required(),
-    password: Joi.string().required(),
   }),
 
   updateProfile: Joi.object({
