@@ -71,19 +71,19 @@ export const userRegistration = async (req, res) => {
     }
 
     // Check for existing username
-    if (username) {
-      const existingUsername = await User.findOne({
-        where: { username },
-        transaction: trans,
-      });
+    // if (username) {
+    //   const existingUsername = await User.findOne({
+    //     where: { username },
+    //     transaction: trans,
+    //   });
 
-      if (existingUsername) {
-        await trans.rollback();
-        return res
-          .status(409)
-          .json({ message: "This username is already taken", status: false });
-      }
-    }
+    //   if (existingUsername) {
+    //     await trans.rollback();
+    //     return res
+    //       .status(409)
+    //       .json({ message: "This username is already taken", status: false });
+    //   }
+    // }
 
     // Check for existing mobile
     if (mobile) {

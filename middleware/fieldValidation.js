@@ -75,9 +75,7 @@ export const userValidation = {
     username: Joi.string().alphanum().min(3).max(30).required(),
     email: commonSchemas.email,
     mobile: commonSchemas.mobile,
-    password: commonSchemas.strongPassword.required(),
-    firstName: Joi.string().min(2).max(50),
-    lastName: Joi.string().min(2).max(50),
+    password: commonSchemas.strongPassword,
     role: Joi.string()
       .valid("student", "teacher", "admin", "owner")
       .default("student"),
@@ -85,6 +83,7 @@ export const userValidation = {
 
   login: Joi.object({
     identifier: commonSchemas.identifier.required(),
+    password: commonSchemas.password,
   }),
 
   updateProfile: Joi.object({

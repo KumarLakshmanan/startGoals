@@ -47,6 +47,7 @@ userRoutes.get(
 );
 userRoutes.get("/auth/callback/success", authenticateToken, googleCallback);
 userRoutes.get("/usersDetailsById/:userId", authenticateToken, getUserDetails);
+userRoutes.get("/getUserDetails", authenticateToken, getUserDetails);
 userRoutes.get("/getUserData", authenticateToken, getUserDetails);
 userRoutes.get("/homepage", authenticateToken, getHomePage);
 
