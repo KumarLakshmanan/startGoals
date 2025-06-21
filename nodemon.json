@@ -1,0 +1,25 @@
+{
+    "restartable": "rs",
+    "verbose": true,
+    "ext": "js",
+    "ignore": [
+        "node_modules/**",
+        "frontend/**",
+        "dist/**",
+        "public/**",
+        "logs/**",
+        "postman/**",
+        "coverage/**",
+        "test/**",
+        "tests/**",
+        "e2e/**",
+        "e2e-tests/**"
+    ],
+    "watch": [
+        "app",
+        "app.js"
+    ],
+    "env": {
+        "PORT": "8080"
+    }
+}

@@ -12,8 +12,8 @@ import CourseGoal from "./courseGoal.js";
 import CourseRequirement from "./courseRequirement.js";
 import CourseLevel from "./courseLevel.js";
 import Section from "./section.js";
-import UserGoal from "./userGoal.js";
-import UserSkill from "./userSkill.js";
+import UserGoals from "./userGoals.js";
+import UserSkills from "./userSkills.js";
 import Lesson from "./lesson.js";
 import Resource from "./resource.js";
 import Batch from "./batch.js";
@@ -34,7 +34,7 @@ import ProjectPurchase from "./projectPurchase.js";
 import ProjectRating from "./projectRating.js";
 import DiscountCode from "./discountCode.js";
 import DiscountUsage from "./discountUsage.js";
-import UserLanguage from "./userLanguage.js";
+import UserLanguages from "./userLanguages.js";
 import CourseLanguage from "./courseLanguage.js";
 
 // All models must be defined before we associate them
@@ -47,9 +47,9 @@ const models = {
   CourseTag,
   Banner,
   Goal,
-  Skill,  UserGoal,
-  UserSkill,
-  UserLanguage,
+  Skill,  UserGoals,
+  UserSkills,
+  UserLanguages,
   CourseLanguage,
   CourseGoal,
   CourseRequirement,
@@ -91,14 +91,14 @@ User.hasMany(Course, {
 //User to language
 // Associations (✅ define them after all models are loaded)
 User.belongsToMany(Language, {
-  through: UserLanguage,
+  through: UserLanguages,
   foreignKey: "user_id",
   otherKey: "language_id",
   onDelete: "CASCADE",
 });
 
 Language.belongsToMany(User, {
-  through: UserLanguage,
+  through: UserLanguages,
   foreignKey: "language_id",
   otherKey: "user_id",
   onDelete: "CASCADE",
@@ -154,14 +154,14 @@ CourseLevel.hasMany(Goal, {
 // user to goal
 // User can select multiple goals (many-to-many relationship)
 User.belongsToMany(Goal, {
-  through: UserGoal,
+  through: UserGoals,
   foreignKey: "user_id",
   otherKey: "goal_id",
   onDelete: "CASCADE",
 });
 
 Goal.belongsToMany(User, {
-  through: UserGoal,
+  through: UserGoals,
   foreignKey: "goal_id",
   otherKey: "user_id",
   onDelete: "CASCADE",
@@ -170,13 +170,13 @@ Goal.belongsToMany(User, {
 ///user to skill
 // User selects multiple skills related to the selected goal (many-to-many relationship)
 User.belongsToMany(Skill, {
-  through: UserSkill,
+  through: UserSkills,
   foreignKey: "user_id",
   otherKey: "skill_id",
   onDelete: "CASCADE",
 });
 Skill.belongsToMany(User, {
-  through: UserSkill,
+  through: UserSkills,
   foreignKey: "skill_id",
   otherKey: "user_id",
   onDelete: "CASCADE",
@@ -330,13 +330,13 @@ Batch.belongsTo(Course, {
 Batch.belongsToMany(User, {
   through: BatchStudents,
   foreignKey: "batchId",
-  otherKey: "userId",
+  otherKey: "user_id",
   as: "students",
 });
 
 User.belongsToMany(Batch, {
   through: BatchStudents,
-  foreignKey: "userId",
+  foreignKey: "user_id",
   otherKey: "batchId",
   as: "batches",
 });
@@ -348,7 +348,7 @@ BatchStudents.belongsTo(Batch, {
 });
 
 BatchStudents.belongsTo(User, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "student",
 });
 
@@ -358,7 +358,7 @@ Batch.hasMany(BatchStudents, {
 });
 
 User.hasMany(BatchStudents, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "studentBatches",
 });
 
@@ -369,14 +369,14 @@ Batch.belongsTo(User, {
 });
 
 // enrollement Associations with User and Course models
-Enrollment.belongsTo(User, { foreignKey: "userId" });
+Enrollment.belongsTo(User, { foreignKey: "user_id" });
 Enrollment.belongsTo(Course, { foreignKey: "courseId" });
 //enrollment
 Enrollment.belongsTo(Batch, { foreignKey: "batchId" });
 
 // Reverse associations for Enrollment
 User.hasMany(Enrollment, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "enrollments",
 });
 
@@ -434,13 +434,13 @@ RecordedSessionResource.belongsTo(RecordedSession, {
 
 // SearchAnalytics associations
 SearchAnalytics.belongsTo(User, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "user",
   onDelete: "SET NULL",
 });
 
 User.hasMany(SearchAnalytics, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "searchHistory",
 });
 
@@ -459,13 +459,13 @@ CourseRating.belongsTo(Course, {
 });
 
 User.hasMany(CourseRating, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "courseRatings",
   onDelete: "CASCADE",
 });
 
 CourseRating.belongsTo(User, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "user",
 });
 
@@ -493,13 +493,13 @@ InstructorRating.belongsTo(User, {
 });
 
 User.hasMany(InstructorRating, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "givenInstructorRatings",
   onDelete: "CASCADE",
 });
 
 InstructorRating.belongsTo(User, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "user",
 });
 
@@ -603,13 +603,13 @@ ProjectPurchase.belongsTo(Project, {
 });
 
 User.hasMany(ProjectPurchase, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "projectPurchases",
   onDelete: "CASCADE",
 });
 
 ProjectPurchase.belongsTo(User, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "user",
 });
 
@@ -637,13 +637,13 @@ ProjectRating.belongsTo(Project, {
 });
 
 User.hasMany(ProjectRating, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "projectRatings",
   onDelete: "CASCADE",
 });
 
 ProjectRating.belongsTo(User, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "user",
 });
 
@@ -710,13 +710,13 @@ DiscountUsage.belongsTo(DiscountCode, {
 });
 
 User.hasMany(DiscountUsage, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "discountUsages",
   onDelete: "CASCADE",
 });
 
 DiscountUsage.belongsTo(User, {
-  foreignKey: "userId",
+  foreignKey: "user_id",
   as: "user",
 });
 

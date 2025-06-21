@@ -2,38 +2,32 @@ import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
-const UserLanguage = sequelize.define(
-  "userLanguage",
+const UserSkills = sequelize.define(
+  "userSkills",
   {    userId: {
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,
       field: "user_id",
-    },
-    languageId: {
+    },    
+    skillId: {
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,
-      field: "language_id",
+      field: "skill_id",
     },
     proficiencyLevel: {
-      type: DataTypes.ENUM("beginner", "intermediate", "advanced", "native"),
+      type: DataTypes.ENUM("beginner", "intermediate", "advanced", "expert"),
       allowNull: true,
       defaultValue: "intermediate",
       field: "proficiency_level",
     },
-    isPrimary: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
-      field: "is_primary",
-    },
     ...commonFields,
   },
   {
-    tableName: "user_languages",
+    tableName: "user_skills",
     ...commonOptions,
   }
 );
 
-export default UserLanguage;
+export default UserSkills;

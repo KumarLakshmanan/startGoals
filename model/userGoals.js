@@ -2,8 +2,8 @@ import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
-const UserGoal = sequelize.define(
-  "userGoal",
+const UserGoals = sequelize.define(
+  "userGoals",
   {    userId: {
       type: DataTypes.UUID,
       allowNull: false,
@@ -24,4 +24,4 @@ const UserGoal = sequelize.define(
   }
 );
 
-export default UserGoal;
+export default UserGoals;

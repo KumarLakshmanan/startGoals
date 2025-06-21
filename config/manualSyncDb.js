@@ -74,9 +74,9 @@ const sortModelsByDependencies = (modelsArray) => {
     'batch',          // Depends on Course, User (lowercase!)
     
     // Association/junction tables
-    'userGoal',       // Depends on User, Goal (lowercase!)
-    'userSkill',      // Depends on User, Skill (lowercase!)
-    'userLanguage',   // Depends on User, Language (lowercase!)
+    'userGoals',       // Depends on User, Goal (lowercase!)
+    'userSkills',      // Depends on User, Skill (lowercase!)
+    'userLanguages',   // Depends on User, Language (lowercase!)
     'courseLanguage', // Depends on Course, Language (lowercase!)
     
     // Models that depend on sections/batches

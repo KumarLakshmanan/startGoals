@@ -14,7 +14,6 @@ const router = express.Router();
 
 // Public routes
 router.get("/active", getActiveBanners); // Get active banners for public use
-
 // Admin routes (require authentication and admin role)
 router.get("/getAll", getAllBanners); // Get all banners with pagination
 router.get("/get/:id", isAdmin, getBannerById); // Get banner by ID
