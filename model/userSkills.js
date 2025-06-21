@@ -4,12 +4,13 @@ import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
 const UserSkills = sequelize.define(
   "userSkills",
-  {    userId: {
+  {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,
       field: "user_id",
-    },    
+    },
     skillId: {
       type: DataTypes.UUID,
       allowNull: false,

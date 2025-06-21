@@ -16,7 +16,14 @@
         "e2e-tests/**"
     ],
     "watch": [
-        "app",
+        "controller",
+        "middleware",
+        "model",
+        "routes",
+        "services",
+        "utils",
+        "config",
+        "lib",
         "app.js"
     ],
     "env": {

@@ -4,7 +4,8 @@ import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
 const UserGoals = sequelize.define(
   "userGoals",
-  {    userId: {
+  {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
       primaryKey: true,

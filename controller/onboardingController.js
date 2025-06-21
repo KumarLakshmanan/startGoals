@@ -5,6 +5,7 @@ import Skill from "../model/skill.js";
 import UserLanguages from "../model/userLanguages.js";
 import UserGoals from "../model/userGoals.js";
 import UserSkills from "../model/userSkills.js";
+import sequelize from "../config/db.js";
 import { Op } from "sequelize";
 
 // Select Languages
@@ -69,17 +70,42 @@ export const selectLanguages = async (req, res) => {
       });
     }
 
-    // Remove existing associations
-    await UserLanguages.destroy({ where: { userId } });
+    // Use a transaction to ensure atomicity
+    const transaction = await sequelize.transaction();
 
-    // Insert new associations
-    const languageAssociations = languageIds.map((languageId, index) => ({
-      userId,
-      languageId,
-      proficiencyLevel: proficiencyLevels && proficiencyLevels[index] ? proficiencyLevels[index] : 'intermediate'
-    }));
+    try {
+      // Remove duplicate languageIds to avoid unique constraint violation
+      const uniqueLanguageIds = [...new Set(languageIds)];
 
-    await UserLanguages.bulkCreate(languageAssociations);
+      const languageAssociations = uniqueLanguageIds.map((languageId, index) => {
+        const originalIndex = languageIds.indexOf(languageId);
+        return {
+          userId,
+          languageId,
+          proficiencyLevel: proficiencyLevels && proficiencyLevels[originalIndex]
+            ? proficiencyLevels[originalIndex]
+            : 'intermediate'
+        };
+      });
+
+      // Delete existing associations within transaction
+      await UserLanguages.destroy({
+        where: { userId: userId },
+        transaction
+      });
+
+      // Insert new associations within transaction
+      await UserLanguages.bulkCreate(languageAssociations, {
+        transaction,
+        ignoreDuplicates: true // This will ignore any duplicate key violations
+      });
+
+      await transaction.commit();
+
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
+    }
 
     return res.status(200).json({
       status: true,
@@ -95,7 +121,7 @@ export const selectLanguages = async (req, res) => {
   }
 };
 
-// Select Goals
+
 export const selectGoals = async (req, res) => {
   try {
     const { userId } = req.user;
@@ -125,13 +151,16 @@ export const selectGoals = async (req, res) => {
       });
     }
 
+    // Remove duplicate goalIds to avoid unique constraint violation
+    const uniqueGoalIds = [...new Set(goalIds)];
+
     const goals = await Goal.findAll({
-      where: { goalId: { [Op.in]: goalIds } },
+      where: { goalId: { [Op.in]: uniqueGoalIds } },
     });
 
-    if (goals.length !== goalIds.length) {
+    if (goals.length !== uniqueGoalIds.length) {
       const foundGoalIds = goals.map(goal => goal.goalId);
-      const missingGoalIds = goalIds.filter(id => !foundGoalIds.includes(id));
+      const missingGoalIds = uniqueGoalIds.filter(id => !foundGoalIds.includes(id));
       return res.status(400).json({
         status: false,
         message: "Some goal IDs are invalid",
@@ -139,36 +168,32 @@ export const selectGoals = async (req, res) => {
       });
     }
 
-    // Remove existing associations
-    await UserGoals.destroy({ where: { userId } });
-
-    // Insert new associations
-    const goalAssociations = goalIds.map(goalId => ({
-      userId,
-      goalId
-    }));
-
-    await UserGoals.bulkCreate(goalAssociations);
-
-    // Fetch skills related to the selected goals
+    // Use a transaction to ensure atomicity
+    const transaction = await sequelize.transaction();
     try {
-      const skills = await Skill.findAll({
-        where: { goalId: { [Op.in]: goalIds } },
+      // Remove existing associations within transaction
+      await UserGoals.destroy({ where: { userId }, transaction });
+
+      // Insert new associations within transaction
+      const goalAssociations = uniqueGoalIds.map(goalId => ({
+        userId,
+        goalId
+      }));
+
+      await UserGoals.bulkCreate(goalAssociations, {
+        transaction,
+        ignoreDuplicates: true
       });
 
-      return res.status(200).json({
-        status: true,
-        message: "Goals selected successfully",
-        skills: skills,
-      });
-    } catch (skillsError) {
-      console.error("Error fetching related skills:", skillsError);
-      return res.status(200).json({
-        status: true,
-        message: "Goals selected successfully, but could not fetch related skills",
-        warning: "Error fetching related skills: " + skillsError.message
-      });
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
+    return res.status(200).json({
+      status: true,
+      message: "Goals selected successfully",
+    });
   } catch (error) {
     console.error("Error selecting goals:", error);
     return res.status(500).json({
@@ -179,7 +204,7 @@ export const selectGoals = async (req, res) => {
   }
 };
 
-// Select Skills
+
 export const selectSkills = async (req, res) => {
   try {
     const { userId } = req.user;
@@ -227,13 +252,16 @@ export const selectSkills = async (req, res) => {
       });
     }
 
+    // Remove duplicate skillIds to avoid unique constraint violation
+    const uniqueSkillIds = [...new Set(skillIds)];
+
     const skills = await Skill.findAll({
-      where: { skillId: { [Op.in]: skillIds } },
+      where: { skillId: { [Op.in]: uniqueSkillIds } },
     });
 
-    if (skills.length !== skillIds.length) {
+    if (skills.length !== uniqueSkillIds.length) {
       const foundSkillIds = skills.map(skill => skill.skillId);
-      const missingSkillIds = skillIds.filter(id => !foundSkillIds.includes(id));
+      const missingSkillIds = uniqueSkillIds.filter(id => !foundSkillIds.includes(id));
       return res.status(400).json({
         status: false,
         message: "Some skill IDs are invalid or not related to the selected goals",
@@ -241,33 +269,49 @@ export const selectSkills = async (req, res) => {
       });
     }
 
-    // Remove existing associations
-    await UserSkills.destroy({ where: { userId } });
+    // Use a transaction to ensure atomicity
+    const transaction = await sequelize.transaction();
+    try {
+      // Remove existing associations within transaction
+      await UserSkills.destroy({ where: { userId }, transaction });
 
-    // Insert new associations
-    let skillAssociations;
-    if (proficiencyLevels) {
-      skillAssociations = skillIds.map((skillId, index) => ({
-        userId,
-        skillId,
-        proficiencyLevel: proficiencyLevels[index]
-      }));
-    } else {
-      skillAssociations = skillIds.map(skillId => ({
-        userId,
-        skillId,
-        proficiencyLevel: "intermediate"
-      }));
+      // Insert new associations within transaction
+      let skillAssociations;
+      if (proficiencyLevels) {
+        skillAssociations = uniqueSkillIds.map((skillId, index) => {
+          // Find the original index to get the correct proficiency level
+          const originalIndex = skillIds.indexOf(skillId);
+          return {
+            userId,
+            skillId,
+            proficiencyLevel: proficiencyLevels[originalIndex]
+          };
+        });
+      } else {
+        skillAssociations = uniqueSkillIds.map(skillId => ({
+          userId,
+          skillId,
+          proficiencyLevel: "intermediate"
+        }));
+      }
+
+      await UserSkills.bulkCreate(skillAssociations, {
+        transaction,
+        ignoreDuplicates: true
+      });
+
+      user.isOnboarded = true;
+      await user.save({ transaction });
+
+      await transaction.commit();
+    } catch (error) {
+      await transaction.rollback();
+      throw error;
     }
-
-    await UserSkills.bulkCreate(skillAssociations);
-
-    user.isOnboarded = true;
-    await user.save();
 
     return res.status(200).json({
       status: true,
-      message: "Skills selected and onboarding completed successfully",
+      message: "Skills selected successfully",
     });
   } catch (error) {
     console.error("Error selecting skills:", error);
