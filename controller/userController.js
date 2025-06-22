@@ -18,6 +18,7 @@ import Category from "../model/courseCategory.js";
 import Course from "../model/course.js";
 import Settings from "../model/settings.js";
 import { Op } from "sequelize";
+import Exam from "../model/exam.js";
 
 export const userRegistration = async (req, res) => {
   const trans = await sequelize.transaction();
@@ -472,35 +473,40 @@ export const getUserDetails = async (req, res) => {
         message: "User ID is required",
       });
     }
-
-    const user = await User.findByPk(userId, {
-      attributes: { exclude: ["password"] }, // Optional: Hide sensitive data
+    const userWithDetails = await User.findByPk(userId, {
+      attributes: { exclude: ["password"] },
       include: [
         {
           model: Language,
-          as: "languages", // 👈 Use alias if defined in association
-          through: { attributes: [] }, // Exclude join table fields
+          as: "languages",
+          through: { attributes: [] },
         },
         {
           model: Goal,
-          as: "goals", // Use correct plural alias for many-to-many relationship
+          as: "goals",
           through: { attributes: [] },
         },
         {
           model: Skill,
-          as: "skills", // 👈 Use alias if defined
+          as: "skills",
+          through: { attributes: [] },
+        },
+        {
+          model: Exam,
+          as: "exams",
           through: { attributes: [] },
         },
       ],
     });
 
-    if (!user) {
+    if (!userWithDetails) {
       return res.status(404).json({
         status: false,
         message: "User not found",
       });
     }
 
+    const user = userWithDetails;
     return res.status(200).json({
       status: true,
       message: "User details fetched successfully",

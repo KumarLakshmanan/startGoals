@@ -36,6 +36,8 @@ import DiscountCode from "./discountCode.js";
 import DiscountUsage from "./discountUsage.js";
 import UserLanguages from "./userLanguages.js";
 import CourseLanguage from "./courseLanguage.js";
+import Exam from "./exam.js";
+import UserExams from "./userExams.js";
 
 // All models must be defined before we associate them
 const models = {
@@ -368,7 +370,7 @@ Batch.belongsTo(User, {
   as: "creator",
 });
 
-// enrollement Associations with User and Course models
+// enrolement Associations with User and Course models
 Enrollment.belongsTo(User, { foreignKey: "user_id" });
 Enrollment.belongsTo(Course, { foreignKey: "courseId" });
 //enrollment
@@ -751,6 +753,32 @@ DiscountUsage.belongsTo(Enrollment, {
 Enrollment.hasOne(DiscountUsage, {
   foreignKey: "enrollmentId",
   as: "discountUsage",
+});
+
+// Exam to CourseLevel
+Exam.belongsTo(CourseLevel, {
+  foreignKey: "level_id",
+  as: "level",
+  onDelete: "SET NULL",
+  onUpdate: "CASCADE",
+});
+
+// ===================== EXAM ASSOCIATIONS =====================
+// User to Exam (many-to-many)
+User.belongsToMany(Exam, {
+  through: UserExams,
+  foreignKey: "user_id",
+  otherKey: "exam_id",
+  as: "exams",
+  onDelete: "CASCADE",
+});
+
+Exam.belongsToMany(User, {
+  through: UserExams,
+  foreignKey: "exam_id",
+  otherKey: "user_id",
+  as: "users",
+  onDelete: "CASCADE",
 });
 
 // Export all models + sequelize
