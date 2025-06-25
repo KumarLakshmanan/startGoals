@@ -8,6 +8,14 @@ import Enrollment from "../model/enrollment.js";
 import ProjectPurchase from "../model/projectPurchase.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendServerError,
+  sendConflict,
+} from "../utils/responseHelper.js";
 
 // ===================== ADMIN DISCOUNT CODE MANAGEMENT =====================
 
@@ -43,27 +51,28 @@ export const createDiscountCode = async (req, res) => {
       !validUntil
     ) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message:
-          "Code, discount type, value, applicable type, and validity dates are required",
+      return sendValidationError(res, "Missing required fields", {
+        code: !code ? "Required field" : undefined,
+        discountType: !discountType ? "Required field" : undefined,
+        discountValue: !discountValue ? "Required field" : undefined,
+        applicableType: !applicableType ? "Required field" : undefined,
+        validFrom: !validFrom ? "Required field" : undefined,
+        validUntil: !validUntil ? "Required field" : undefined,
       });
     }
 
     // Validate discount value
     if (discountValue <= 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Discount value must be greater than 0",
+      return sendValidationError(res, "Discount value must be greater than 0", {
+        discountValue: "Must be greater than 0",
       });
     }
 
     if (discountType === "percentage" && discountValue > 100) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Percentage discount cannot exceed 100%",
+      return sendValidationError(res, "Percentage discount cannot exceed 100%", {
+        discountValue: "Cannot exceed 100%",
       });
     }
 
@@ -74,10 +83,7 @@ export const createDiscountCode = async (req, res) => {
 
     if (existingCode) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Discount code already exists",
-      });
+      return sendConflict(res, "code", code.toUpperCase());
     }
 
     // Validate dates
@@ -86,10 +92,14 @@ export const createDiscountCode = async (req, res) => {
 
     if (fromDate >= untilDate) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Valid from date must be before valid until date",
-      });
+      return sendValidationError(
+        res,
+        "Valid from date must be before valid until date",
+        {
+          validFrom: "Must be before validUntil",
+          validUntil: "Must be after validFrom",
+        }
+      );
     }
 
     // Create discount code
@@ -111,7 +121,7 @@ export const createDiscountCode = async (req, res) => {
         createdBy: userId,
         currentUses: 0,
       },
-      { transaction },
+      { transaction }
     );
 
     // Add applicable categories if provided
@@ -145,19 +155,16 @@ export const createDiscountCode = async (req, res) => {
       ],
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Discount code created successfully",
-      data: completeDiscountCode,
-    });
+    return sendSuccess(
+      res,
+      201,
+      "Discount code created successfully",
+      completeDiscountCode
+    );
   } catch (error) {
     await transaction.rollback();
     console.error("Create discount code error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create discount code",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -249,9 +256,8 @@ export const getAllDiscountCodes = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    res.json({
-      success: true,
-      data: formattedDiscountCodes,
+    return sendSuccess(res, 200, "Discount codes fetched successfully", {
+      discountCodes: formattedDiscountCodes,
       pagination: {
         currentPage: parseInt(page),
         totalPages,
@@ -261,11 +267,7 @@ export const getAllDiscountCodes = async (req, res) => {
     });
   } catch (error) {
     console.error("Get all discount codes error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch discount codes",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -324,10 +326,7 @@ export const getDiscountCodeById = async (req, res) => {
     });
 
     if (!discountCode) {
-      return res.status(404).json({
-        success: false,
-        message: "Discount code not found",
-      });
+      return sendNotFound(res, "Discount code not found");
     }
 
     const dcData = discountCode.toJSON();
@@ -354,21 +353,14 @@ export const getDiscountCodeById = async (req, res) => {
     // Calculate total discount amount given
     const totalDiscountGiven = dcData.usages.reduce(
       (sum, usage) => sum + parseFloat(usage.discountAmount),
-      0,
+      0
     );
     dcData.totalDiscountGiven = totalDiscountGiven;
 
-    res.json({
-      success: true,
-      data: dcData,
-    });
+    return sendSuccess(res, 200, "Discount code fetched successfully", dcData);
   } catch (error) {
     console.error("Get discount code by ID error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch discount code",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -383,25 +375,26 @@ export const updateDiscountCode = async (req, res) => {
     const discountCode = await DiscountCode.findByPk(id);
     if (!discountCode) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Discount code not found",
-      });
+      return sendNotFound(res, "Discount code not found");
     }
 
     // Validate dates if being updated
     if (updateData.validFrom || updateData.validUntil) {
       const fromDate = new Date(updateData.validFrom || discountCode.validFrom);
       const untilDate = new Date(
-        updateData.validUntil || discountCode.validUntil,
+        updateData.validUntil || discountCode.validUntil
       );
 
       if (fromDate >= untilDate) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Valid from date must be before valid until date",
-        });
+        return sendValidationError(
+          res,
+          "Valid from date must be before valid until date",
+          {
+            validFrom: "Must be before validUntil",
+            validUntil: "Must be after validFrom",
+          }
+        );
       }
     }
 
@@ -409,10 +402,11 @@ export const updateDiscountCode = async (req, res) => {
     if (updateData.discountValue !== undefined) {
       if (updateData.discountValue <= 0) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Discount value must be greater than 0",
-        });
+        return sendValidationError(
+          res,
+          "Discount value must be greater than 0",
+          { discountValue: "Must be greater than 0" }
+        );
       }
 
       if (
@@ -420,10 +414,11 @@ export const updateDiscountCode = async (req, res) => {
         updateData.discountValue > 100
       ) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Percentage discount cannot exceed 100%",
-        });
+        return sendValidationError(
+          res,
+          "Percentage discount cannot exceed 100%",
+          { discountValue: "Cannot exceed 100%" }
+        );
       }
     }
 
@@ -464,19 +459,16 @@ export const updateDiscountCode = async (req, res) => {
       ],
     });
 
-    res.json({
-      success: true,
-      message: "Discount code updated successfully",
-      data: updatedDiscountCode,
-    });
+    return sendSuccess(
+      res,
+      200,
+      "Discount code updated successfully",
+      updatedDiscountCode
+    );
   } catch (error) {
     await transaction.rollback();
     console.error("Update discount code error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update discount code",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -490,10 +482,7 @@ export const deleteDiscountCode = async (req, res) => {
     const discountCode = await DiscountCode.findByPk(id);
     if (!discountCode) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Discount code not found",
-      });
+      return sendNotFound(res, "Discount code not found");
     }
 
     // Check if discount code has been used
@@ -503,28 +492,21 @@ export const deleteDiscountCode = async (req, res) => {
 
     if (usageCount > 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message:
-          "Cannot delete discount code that has been used. Consider deactivating it instead.",
-      });
+      return sendError(
+        res,
+        400,
+        "Cannot delete discount code that has been used. Consider deactivating it instead."
+      );
     }
 
     await discountCode.destroy({ transaction });
     await transaction.commit();
 
-    res.json({
-      success: true,
-      message: "Discount code deleted successfully",
-    });
+    return sendSuccess(res, 200, "Discount code deleted successfully");
   } catch (error) {
     await transaction.rollback();
     console.error("Delete discount code error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete discount code",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -537,17 +519,21 @@ export const validateDiscountCode = async (req, res) => {
     const userId = req.user.id;
 
     if (!code || !amount) {
-      return res.status(400).json({
-        success: false,
-        message: "Discount code and amount are required",
+      return sendValidationError(res, "Discount code and amount are required", {
+        code: !code ? "Required" : undefined,
+        amount: !amount ? "Required" : undefined,
       });
     }
 
     if (!courseId && !projectId) {
-      return res.status(400).json({
-        success: false,
-        message: "Either course ID or project ID is required",
-      });
+      return sendValidationError(
+        res,
+        "Either course ID or project ID is required",
+        {
+          courseId: "Required if projectId not provided",
+          projectId: "Required if courseId not provided",
+        }
+      );
     }
 
     // Find discount code
@@ -569,10 +555,7 @@ export const validateDiscountCode = async (req, res) => {
     });
 
     if (!discountCode) {
-      return res.status(404).json({
-        success: false,
-        message: "Invalid or expired discount code",
-      });
+      return sendNotFound(res, "Invalid or expired discount code");
     }
 
     // Check usage limits
@@ -580,10 +563,7 @@ export const validateDiscountCode = async (req, res) => {
       discountCode.maxUses &&
       discountCode.currentUses >= discountCode.maxUses
     ) {
-      return res.status(400).json({
-        success: false,
-        message: "Discount code usage limit exceeded",
-      });
+      return sendError(res, 400, "Discount code usage limit exceeded");
     }
 
     if (discountCode.maxUsesPerUser) {
@@ -592,10 +572,11 @@ export const validateDiscountCode = async (req, res) => {
       });
 
       if (userUsages >= discountCode.maxUsesPerUser) {
-        return res.status(400).json({
-          success: false,
-          message: "You have reached the usage limit for this discount code",
-        });
+        return sendError(
+          res,
+          400,
+          "You have reached the usage limit for this discount code"
+        );
       }
     }
 
@@ -604,10 +585,11 @@ export const validateDiscountCode = async (req, res) => {
       discountCode.minPurchaseAmount &&
       amount < discountCode.minPurchaseAmount
     ) {
-      return res.status(400).json({
-        success: false,
-        message: `Minimum purchase amount of $${discountCode.minPurchaseAmount} required`,
-      });
+      return sendError(
+        res,
+        400,
+        `Minimum purchase amount of $${discountCode.minPurchaseAmount} required`
+      );
     }
 
     // Check applicable type and category
@@ -618,10 +600,11 @@ export const validateDiscountCode = async (req, res) => {
         discountCode.applicableType !== "course" &&
         discountCode.applicableType !== "both"
       ) {
-        return res.status(400).json({
-          success: false,
-          message: "This discount code is not applicable to courses",
-        });
+        return sendError(
+          res,
+          400,
+          "This discount code is not applicable to courses"
+        );
       }
 
       const course = await Course.findByPk(courseId, {
@@ -629,10 +612,7 @@ export const validateDiscountCode = async (req, res) => {
       });
 
       if (!course) {
-        return res.status(404).json({
-          success: false,
-          message: "Course not found",
-        });
+        return sendNotFound(res, "Course not found");
       }
 
       itemCategoryId = course.categoryId;
@@ -643,10 +623,11 @@ export const validateDiscountCode = async (req, res) => {
         discountCode.applicableType !== "project" &&
         discountCode.applicableType !== "both"
       ) {
-        return res.status(400).json({
-          success: false,
-          message: "This discount code is not applicable to projects",
-        });
+        return sendError(
+          res,
+          400,
+          "This discount code is not applicable to projects"
+        );
       }
 
       const project = await Project.findByPk(projectId, {
@@ -654,10 +635,7 @@ export const validateDiscountCode = async (req, res) => {
       });
 
       if (!project) {
-        return res.status(404).json({
-          success: false,
-          message: "Project not found",
-        });
+        return sendNotFound(res, "Project not found");
       }
 
       itemCategoryId = project.categoryId;
@@ -669,13 +647,14 @@ export const validateDiscountCode = async (req, res) => {
       discountCode.applicableCategories.length > 0
     ) {
       const applicableCategoryIds = discountCode.applicableCategories.map(
-        (cat) => cat.id,
+        (cat) => cat.id
       );
       if (!applicableCategoryIds.includes(itemCategoryId)) {
-        return res.status(400).json({
-          success: false,
-          message: "This discount code is not applicable to this category",
-        });
+        return sendError(
+          res,
+          400,
+          "This discount code is not applicable to this category"
+        );
       }
     }
 
@@ -690,30 +669,22 @@ export const validateDiscountCode = async (req, res) => {
     discountAmount = Math.min(discountAmount, amount); // Don't exceed original price
     const finalAmount = amount - discountAmount;
 
-    res.json({
-      success: true,
-      message: "Discount code is valid",
-      data: {
-        discountCode: {
-          id: discountCode.id,
-          code: discountCode.code,
-          description: discountCode.description,
-          discountType: discountCode.discountType,
-          discountValue: discountCode.discountValue,
-        },
-        originalAmount: amount,
-        discountAmount: discountAmount,
-        finalAmount: finalAmount,
-        savings: discountAmount,
+    return sendSuccess(res, 200, "Discount code is valid", {
+      discountCode: {
+        id: discountCode.id,
+        code: discountCode.code,
+        description: discountCode.description,
+        discountType: discountCode.discountType,
+        discountValue: discountCode.discountValue,
       },
+      originalAmount: amount,
+      discountAmount: discountAmount,
+      finalAmount: finalAmount,
+      savings: discountAmount,
     });
   } catch (error) {
     console.error("Validate discount code error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to validate discount code",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -770,7 +741,7 @@ export const getDiscountUsageStatistics = async (req, res) => {
     });
 
     const totalDiscountGiven = parseFloat(
-      totalDiscountResult[0]?.totalDiscount || 0,
+      totalDiscountResult[0]?.totalDiscount || 0
     );
 
     // Usage by discount code
@@ -839,26 +810,19 @@ export const getDiscountUsageStatistics = async (req, res) => {
       raw: true,
     });
 
-    res.json({
-      success: true,
-      data: {
-        overview: {
-          totalUsages,
-          totalDiscountGiven,
-          period,
-        },
-        usageByCode,
-        usageByType,
-        dailyTrend: dailyUsage,
+    return sendSuccess(res, 200, "Discount usage statistics fetched", {
+      overview: {
+        totalUsages,
+        totalDiscountGiven,
+        period,
       },
+      usageByCode,
+      usageByType,
+      dailyTrend: dailyUsage,
     });
   } catch (error) {
     console.error("Get discount usage statistics error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch discount usage statistics",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -901,14 +865,13 @@ export const getUserDiscountHistory = async (req, res) => {
         limit: parseInt(limit),
         offset: offset,
         order: [["createdAt", "DESC"]],
-      },
+      }
     );
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    res.json({
-      success: true,
-      data: discountUsages,
+    return sendSuccess(res, 200, "Discount usage history fetched", {
+      discountUsages,
       pagination: {
         currentPage: parseInt(page),
         totalPages,
@@ -918,11 +881,7 @@ export const getUserDiscountHistory = async (req, res) => {
     });
   } catch (error) {
     console.error("Get user discount history error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch discount history",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -965,7 +924,7 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
         sequelize.where(
           sequelize.col("currentUsage"),
           Op.gte,
-          sequelize.col("usageLimit"),
+          sequelize.col("usageLimit")
         ),
         { usageLimit: { [Op.ne]: null } },
       ];
@@ -1028,7 +987,7 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
             [
               sequelize.fn(
                 "COUNT",
-                sequelize.fn("DISTINCT", sequelize.col("userId")),
+                sequelize.fn("DISTINCT", sequelize.col("userId"))
               ),
               "uniqueUsers",
             ],
@@ -1065,15 +1024,16 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
           avgDiscountPerUse:
             usageStats[0]?.totalUsages > 0
               ? (
-                  usageStats[0]?.totalDiscountGiven / usageStats[0]?.totalUsages
+                  usageStats[0]?.totalDiscountGiven /
+                  usageStats[0]?.totalUsages
                 ).toFixed(2)
               : 0,
           daysActive: Math.ceil(
-            (new Date() - new Date(discount.validFrom)) / (1000 * 60 * 60 * 24),
+            (new Date() - new Date(discount.validFrom)) / (1000 * 60 * 60 * 24)
           ),
           daysRemaining: Math.ceil(
             (new Date(discount.validUntil) - new Date()) /
-              (1000 * 60 * 60 * 24),
+              (1000 * 60 * 60 * 24)
           ),
         };
 
@@ -1088,53 +1048,45 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
           effectiveness,
           status: getDiscountStatus(discount),
         };
-      }),
+      })
     );
 
     // Calculate overall statistics
     const overallStats = {
       totalCodes: count,
       activeCodesCount: enrichedDiscountCodes.filter(
-        (d) => d.status === "active",
+        (d) => d.status === "active"
       ).length,
       expiredCodesCount: enrichedDiscountCodes.filter(
-        (d) => d.status === "expired",
+        (d) => d.status === "expired"
       ).length,
       scheduledCodesCount: enrichedDiscountCodes.filter(
-        (d) => d.status === "scheduled",
+        (d) => d.status === "scheduled"
       ).length,
       totalDiscountGiven: enrichedDiscountCodes.reduce(
         (sum, d) =>
           sum + (parseFloat(d.usageStatistics.totalDiscountGiven) || 0),
-        0,
+        0
       ),
       totalUsages: enrichedDiscountCodes.reduce(
         (sum, d) => sum + (parseInt(d.usageStatistics.totalUsages) || 0),
-        0,
+        0
       ),
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Discount codes retrieved successfully",
-      data: {
-        discountCodes: enrichedDiscountCodes,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(count / parseInt(limit)),
-          totalRecords: count,
-          recordsPerPage: parseInt(limit),
-        },
-        overallStatistics: overallStats,
+    return sendSuccess(res, 200, "Discount codes retrieved successfully", {
+      discountCodes: enrichedDiscountCodes,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / parseInt(limit)),
+        totalRecords: count,
+        recordsPerPage: parseInt(limit),
       },
+      overallStatistics: overallStats,
     });
   } catch (error) {
     console.error("Get all discount codes error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve discount codes",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1149,10 +1101,7 @@ export const getDiscountAnalytics = async (req, res) => {
     // Validate discount code exists
     const discountCode = await DiscountCode.findByPk(discountId);
     if (!discountCode) {
-      return res.status(404).json({
-        success: false,
-        message: "Discount code not found",
-      });
+      return sendNotFound(res, "Discount code not found");
     }
 
     // Calculate date range based on period
@@ -1214,7 +1163,7 @@ export const getDiscountAnalytics = async (req, res) => {
         [
           sequelize.fn(
             "COUNT",
-            sequelize.fn("DISTINCT", sequelize.col("userId")),
+            sequelize.fn("DISTINCT", sequelize.col("userId"))
           ),
           "uniqueUsers",
         ],
@@ -1253,11 +1202,11 @@ export const getDiscountAnalytics = async (req, res) => {
       summary: {
         totalUsages: usageOverTime.reduce(
           (sum, item) => sum + parseInt(item.dataValues.usageCount),
-          0,
+          0
         ),
         totalDiscountGiven: usageOverTime.reduce(
           (sum, item) => sum + parseFloat(item.dataValues.totalDiscount || 0),
-          0,
+          0
         ),
         avgDiscountPerUse: 0, // Will be calculated
         conversionRate: 0, // Mock - would need additional data
@@ -1271,18 +1220,15 @@ export const getDiscountAnalytics = async (req, res) => {
       ).toFixed(2);
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Discount analytics retrieved successfully",
-      data: analytics,
-    });
+    return sendSuccess(
+      res,
+      200,
+      "Discount analytics retrieved successfully",
+      analytics
+    );
   } catch (error) {
     console.error("Get discount analytics error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve discount analytics",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1297,17 +1243,15 @@ export const bulkUpdateDiscountCodes = async (req, res) => {
 
     if (!Array.isArray(discountIds) || discountIds.length === 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Discount IDs array is required",
+      return sendValidationError(res, "Discount IDs array is required", {
+        discountIds: "Required and must be a non-empty array",
       });
     }
 
     if (!updateData || Object.keys(updateData).length === 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Update data is required",
+      return sendValidationError(res, "Update data is required", {
+        updateData: "Required and must not be empty",
       });
     }
 
@@ -1321,15 +1265,16 @@ export const bulkUpdateDiscountCodes = async (req, res) => {
     ];
     const updateFields = Object.keys(updateData);
     const invalidFields = updateFields.filter(
-      (field) => !allowedFields.includes(field),
+      (field) => !allowedFields.includes(field)
     );
 
     if (invalidFields.length > 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: `Invalid fields for bulk update: ${invalidFields.join(", ")}`,
-      });
+      return sendValidationError(
+        res,
+        `Invalid fields for bulk update: ${invalidFields.join(", ")}`,
+        { invalidFields }
+      );
     }
 
     // Perform bulk update
@@ -1340,22 +1285,14 @@ export const bulkUpdateDiscountCodes = async (req, res) => {
 
     await transaction.commit();
 
-    res.status(200).json({
-      success: true,
-      message: `Successfully updated ${updatedCount} discount codes`,
-      data: {
-        updatedCount,
-        updateData,
-      },
+    return sendSuccess(res, 200, `Successfully updated ${updatedCount} discount codes`, {
+      updatedCount,
+      updateData,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Bulk update discount codes error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update discount codes",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1440,32 +1377,23 @@ export const exportDiscountData = async (req, res) => {
 
     // Format response based on requested format
     if (format === "csv") {
-      // In a real implementation, you would convert to CSV format
       res.setHeader("Content-Type", "text/csv");
       res.setHeader(
         "Content-Disposition",
-        'attachment; filename="discount_codes.csv"',
+        'attachment; filename="discount_codes.csv"'
       );
     } else {
       res.setHeader("Content-Type", "application/json");
       res.setHeader(
         "Content-Disposition",
-        'attachment; filename="discount_codes.json"',
+        'attachment; filename="discount_codes.json"'
       );
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Discount data exported successfully",
-      data: exportData,
-    });
+    return sendSuccess(res, 200, "Discount data exported successfully", exportData);
   } catch (error) {
     console.error("Export discount data error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to export discount data",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 

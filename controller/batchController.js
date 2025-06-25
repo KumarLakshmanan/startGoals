@@ -7,87 +7,73 @@ import Enrollment from "../model/enrollment.js";
 import LiveSession from "../model/liveSession.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError } from "../utils/responseHelper.js";
 
 export const createBatch = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const userId = req.user?.userId || null; // Get userId from request, if available
-    const { courseId, title, description, startTime, endTime } = req.body;
-
-    // Validate required fields
+    const { courseId, title, description, startTime, endTime } = req.body;    // Validate required fields
     if (!courseId || !title || !description || !startTime || !endTime) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Missing required fields",
-        details: {
-          missingFields: [
-            !courseId ? 'courseId' : null,
-            !title ? 'title' : null,
-            !description ? 'description' : null,
-            !startTime ? 'startTime' : null,
-            !endTime ? 'endTime' : null
-          ].filter(Boolean)
-        }
+      return sendValidationError(res, "Missing required fields", {
+        missingFields: [
+          !courseId ? 'courseId' : null,
+          !title ? 'title' : null,
+          !description ? 'description' : null,
+          !startTime ? 'startTime' : null,
+          !endTime ? 'endTime' : null
+        ].filter(Boolean)
       });
     }
     
     // Validate UUID format for courseId
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
+      return sendValidationError(res, `Invalid courseId format: ${courseId}. Must be a valid UUID.`, {
+        courseId: "Must be a valid UUID"
       });
     }
     
     // Validate title length
     if (title.length < 3 || title.length > 100) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Title must be between 3 and 100 characters",
+      return sendValidationError(res, "Title must be between 3 and 100 characters", {
+        title: "Title must be between 3 and 100 characters"
       });
     }
     
     // Validate date formats
     const startDate = new Date(startTime);
     const endDate = new Date(endTime);
-    
-    if (isNaN(startDate.getTime())) {
+      if (isNaN(startDate.getTime())) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid startTime format. Must be a valid date.",
+      return sendValidationError(res, "Invalid startTime format. Must be a valid date.", {
+        startTime: "Must be a valid date"
       });
     }
     
     if (isNaN(endDate.getTime())) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid endTime format. Must be a valid date.",
+      return sendValidationError(res, "Invalid endTime format. Must be a valid date.", {
+        endTime: "Must be a valid date"
       });
     }
     
     // Validate start time is before end time
     if (startDate >= endDate) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "startTime must be before endTime",
+      return sendValidationError(res, "startTime must be before endTime", {
+        startTime: "Must be before endTime",
+        endTime: "Must be after startTime"
       });
-    }
-
-    const courseExists = await Course.count({
+    }    const courseExists = await Course.count({
       where: { courseId },
       transaction: t,
     });
     if (!courseExists) {
       await t.rollback();
-      return res
-        .status(404)
-        .json({ status: false, message: "Course not found" });
+      return sendNotFound(res, "Course not found", { courseId: "Course not found" });
     }
 
     const batch = await Batch.create(
@@ -100,18 +86,12 @@ export const createBatch = async (req, res) => {
         createdBy: userId || null,
       },
       { transaction: t },
-    );
-
-    await t.commit();
-    return res
-      .status(201)
-      .json({ status: true, message: "Batch created", data: batch });
+    );    await t.commit();
+    return sendSuccess(res, 201, "Batch created", batch);
   } catch (err) {
     await t.rollback();
     console.error("Batch creation error:", err);
-    return res
-      .status(500)
-      .json({ status: false, message: "Internal server error" });
+    return sendServerError(res, err);
   }
 };
 
@@ -131,52 +111,43 @@ export const getAllBatches = async (req, res) => {
     // Validate pagination parameters
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
-    
-    if (isNaN(pageNum) || pageNum < 1) {
-      return res.status(400).json({
-        status: false,
-        message: "Page must be a positive integer",
+      if (isNaN(pageNum) || pageNum < 1) {
+      return sendValidationError(res, "Page must be a positive integer", {
+        page: "Must be a positive integer"
       });
     }
     
     if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
-      return res.status(400).json({
-        status: false,
-        message: "Limit must be a positive integer between 1 and 50",
+      return sendValidationError(res, "Limit must be a positive integer between 1 and 50", {
+        limit: "Must be a positive integer between 1 and 50"
       });
     }
     
     // Validate courseId if provided
     if (courseId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
-      return res.status(400).json({
-        status: false,
-        message: `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
+      return sendValidationError(res, `Invalid courseId format: ${courseId}. Must be a valid UUID.`, {
+        courseId: "Must be a valid UUID"
       });
     }
     
     // Validate status if provided
     const validStatuses = ['active', 'inactive', 'completed', 'cancelled', 'scheduled'];
     if (status && !validStatuses.includes(status)) {
-      return res.status(400).json({
-        status: false,
-        message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
+      return sendValidationError(res, `Invalid status. Must be one of: ${validStatuses.join(', ')}`, {
+        status: `Must be one of: ${validStatuses.join(', ')}`
       });
     }
-    
-    // Validate sortBy parameter
+      // Validate sortBy parameter
     const validSortFields = ['createdAt', 'title', 'startTime', 'endTime', 'status'];
     if (!validSortFields.includes(sortBy)) {
-      return res.status(400).json({
-        status: false,
-        message: `Invalid sortBy parameter. Must be one of: ${validSortFields.join(', ')}`,
+      return sendValidationError(res, `Invalid sortBy parameter. Must be one of: ${validSortFields.join(', ')}`, {
+        sortBy: `Must be one of: ${validSortFields.join(', ')}`
       });
     }
-    
-    // Validate sortOrder parameter
+      // Validate sortOrder parameter
     if (sortOrder !== 'ASC' && sortOrder !== 'DESC') {
-      return res.status(400).json({
-        status: false,
-        message: "sortOrder must be either ASC or DESC",
+      return sendValidationError(res, "sortOrder must be either ASC or DESC", {
+        sortOrder: "Must be either ASC or DESC"
       });
     }
 
@@ -214,12 +185,7 @@ export const getAllBatches = async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [[sortBy, sortOrder.toUpperCase()]],
-    });
-
-    return res.status(200).json({
-      status: true,
-      message: "Batches retrieved successfully",
-      data: {
+    });    return sendSuccess(res, 200, "Batches retrieved successfully", {
         batches: rows,
         pagination: {
           currentPage: parseInt(page),
@@ -227,29 +193,22 @@ export const getAllBatches = async (req, res) => {
           totalItems: count,
           itemsPerPage: parseInt(limit),
         },
-      },
-    });
+      });
   } catch (err) {
     console.error("Get all batches error:", err);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return sendServerError(res, err);
   }
 };
 
 // Get batch by ID
 export const getBatchById = async (req, res) => {
   try {
-    const { batchId } = req.params;
-
-    // Validate UUID format
+    const { batchId } = req.params;    // Validate UUID format
     const uuidRegex =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(batchId)) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid batch ID format",
+      return sendValidationError(res, "Invalid batch ID format", {
+        batchId: "Must be a valid UUID"
       });
     }
 
@@ -280,29 +239,17 @@ export const getBatchById = async (req, res) => {
     });
 
     if (!batch) {
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
-      });
+      return sendNotFound(res, "Batch not found");
     }
-
-    return res.status(200).json({
-      status: true,
-      message: "Batch retrieved successfully",
-      data: batch,
-    });
+    return sendSuccess(res, 200, "Batch retrieved successfully", batch);
   } catch (err) {
     console.error("Get batch by ID error:", err);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return sendServerError(res, err);
   }
 };
 
 // Update batch
-export const updateBatch = async (req, res) => {
-  const t = await sequelize.transaction();
+export const updateBatch = async (req, res) => {  const t = await sequelize.transaction();
   try {
     const { batchId } = req.params;
     const { title, startTime, endTime, status, maxStudents } = req.body;
@@ -312,18 +259,16 @@ export const updateBatch = async (req, res) => {
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(batchId)) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid batch ID format",
+      return sendValidationError(res, "Invalid batch ID format", {
+        batchId: "Must be a valid UUID"
       });
     }
 
     const batch = await Batch.findByPk(batchId, { transaction: t });
     if (!batch) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
+      return sendNotFound(res, "Batch not found", {
+        batchId: "Batch not found"
       });
     }
 
@@ -333,23 +278,14 @@ export const updateBatch = async (req, res) => {
     if (startTime !== undefined) updateData.startTime = startTime;
     if (endTime !== undefined) updateData.endTime = endTime;
     if (status !== undefined) updateData.status = status;
-    if (maxStudents !== undefined) updateData.maxStudents = maxStudents;
-
-    await batch.update(updateData, { transaction: t });
+    if (maxStudents !== undefined) updateData.maxStudents = maxStudents;    await batch.update(updateData, { transaction: t });
 
     await t.commit();
-    return res.status(200).json({
-      status: true,
-      message: "Batch updated successfully",
-      data: batch,
-    });
+    return sendSuccess(res, 200, "Batch updated successfully", batch);
   } catch (err) {
     await t.rollback();
     console.error("Update batch error:", err);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return sendServerError(res, err);
   }
 };
 
@@ -357,25 +293,21 @@ export const updateBatch = async (req, res) => {
 export const deleteBatch = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { batchId } = req.params;
-
-    // Validate UUID format
+    const { batchId } = req.params;    // Validate UUID format
     const uuidRegex =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(batchId)) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid batch ID format",
+      return sendValidationError(res, "Invalid batch ID format", {
+        batchId: "Must be a valid UUID"
       });
     }
 
     const batch = await Batch.findByPk(batchId, { transaction: t });
     if (!batch) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
+      return sendNotFound(res, "Batch not found", {
+        batchId: "Batch not found"
       });
     }
 
@@ -383,30 +315,19 @@ export const deleteBatch = async (req, res) => {
     const studentsCount = await BatchStudents.count({
       where: { batchId },
       transaction: t,
-    });
-
-    if (studentsCount > 0) {
+    });    if (studentsCount > 0) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Cannot delete batch with enrolled students",
+      return sendValidationError(res, "Cannot delete batch with enrolled students", {
+        batch: "Cannot delete batch with enrolled students"
       });
-    }
-
-    await batch.destroy({ transaction: t });
+    }    await batch.destroy({ transaction: t });
 
     await t.commit();
-    return res.status(200).json({
-      status: true,
-      message: "Batch deleted successfully",
-    });
+    return sendSuccess(res, 200, "Batch deleted successfully");
   } catch (err) {
     await t.rollback();
     console.error("Delete batch error:", err);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return sendServerError(res, err);
   }
 };
 
@@ -414,24 +335,20 @@ export const deleteBatch = async (req, res) => {
 export const getBatchesByCourse = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { status, page = 1, limit = 10 } = req.query;
-
-    // Validate UUID format
+    const { status, page = 1, limit = 10 } = req.query;    // Validate UUID format
     const uuidRegex =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(courseId)) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid course ID format",
+      return sendValidationError(res, "Invalid course ID format", {
+        courseId: "Must be a valid UUID"
       });
     }
 
     // Check if course exists
     const course = await Course.findByPk(courseId);
     if (!course) {
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
+      return sendNotFound(res, "Course not found", {
+        courseId: "Course not found"
       });
     }
 
@@ -458,11 +375,7 @@ export const getBatchesByCourse = async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [["createdAt", "DESC"]],
-    });
-    return res.status(200).json({
-      status: true,
-      message: "Batches retrieved successfully",
-      data: {
+    });    return sendSuccess(res, 200, "Batches retrieved successfully", {
         batches: rows,
         pagination: {
           currentPage: parseInt(page),
@@ -470,14 +383,10 @@ export const getBatchesByCourse = async (req, res) => {
           totalItems: count,
           itemsPerPage: parseInt(limit),
         },
-      },
-    });
+      });
   } catch (err) {
     console.error("Get batches by course error:", err);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return sendServerError(res, err);
   }
 };
 
@@ -501,13 +410,15 @@ export const createBatchWithAutoEnrollment = async (req, res) => {
       autoEnrollmentCriteria,
       teacherIds = [],
       studentIds = [],
-    } = req.body;
-
-    // Validate required fields
+    } = req.body;    // Validate required fields
     if (!courseId || !title || !startTime || !endTime) {
-      return res.status(400).json({
-        status: false,
-        message: "Missing required fields: courseId, title, startTime, endTime",
+      return sendValidationError(res, "Missing required fields: courseId, title, startTime, endTime", {
+        missingFields: [
+          !courseId ? 'courseId' : null,
+          !title ? 'title' : null,
+          !startTime ? 'startTime' : null,
+          !endTime ? 'endTime' : null
+        ].filter(Boolean)
       });
     }
 
@@ -515,9 +426,8 @@ export const createBatchWithAutoEnrollment = async (req, res) => {
     const course = await Course.findByPk(courseId, { transaction: t });
     if (!course) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
+      return sendNotFound(res, "Course not found", { 
+        courseId: "Course not found" 
       });
     }
 
@@ -610,27 +520,17 @@ export const createBatchWithAutoEnrollment = async (req, res) => {
           { transaction: t },
         );
       }
-    }
+    }    await t.commit();
 
-    await t.commit();
-
-    res.status(201).json({
-      status: true,
-      message: "Batch created successfully with auto-enrollment",
-      data: {
-        batch,
-        enrolledStudentsCount: enrolledStudents.length,
-        assignedTeachersCount: teacherIds.length,
-      },
+    return sendSuccess(res, 200, "Batch created successfully with auto-enrollment", {
+      batch,
+      enrolledStudentsCount: enrolledStudents.length,
+      assignedTeachersCount: teacherIds.length,
     });
   } catch (error) {
     await t.rollback();
     console.error("Create batch with auto-enrollment error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to create batch with auto-enrollment",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -642,19 +542,15 @@ export const manageBatchStudents = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { batchId } = req.params;
-    const { action, userIds, role = "student" } = req.body;
-
-    if (!["add", "remove"].includes(action)) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid action. Use 'add' or 'remove'",
+    const { action, userIds, role = "student" } = req.body;    if (!["add", "remove"].includes(action)) {
+      return sendValidationError(res, "Invalid action. Use 'add' or 'remove'", {
+        action: "Must be 'add' or 'remove'"
       });
     }
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "userIds must be a non-empty array",
+      return sendValidationError(res, "userIds must be a non-empty array", {
+        userIds: "Must be a non-empty array"
       });
     }
 
@@ -662,9 +558,8 @@ export const manageBatchStudents = async (req, res) => {
     const batch = await Batch.findByPk(batchId, { transaction: t });
     if (!batch) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
+      return sendNotFound(res, "Batch not found", {
+        batchId: "Batch not found"
       });
     }
 
@@ -724,23 +619,13 @@ export const manageBatchStudents = async (req, res) => {
           reason: error.message,
         });
       }
-    }
+    }    await t.commit();
 
-    await t.commit();
-
-    res.json({
-      status: true,
-      message: `Batch ${role}s ${action} operation completed`,
-      data: results,
-    });
+    return sendSuccess(res, 200, `Batch ${role}s ${action} operation completed`, results);
   } catch (error) {
     await t.rollback();
     console.error("Manage batch students error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to manage batch students",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -752,15 +637,12 @@ export const createBatchSchedule = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { batchId } = req.params;
-    const { sessions, recurringPattern } = req.body;
-
-    // Check if batch exists
+    const { sessions, recurringPattern } = req.body;    // Check if batch exists
     const batch = await Batch.findByPk(batchId, { transaction: t });
     if (!batch) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
+      return sendNotFound(res, "Batch not found", {
+        batchId: "Batch not found"
       });
     }
 
@@ -834,27 +716,17 @@ export const createBatchSchedule = async (req, res) => {
           currentDate.setMonth(currentDate.getMonth() + interval);
         }
       }
-    }
+    }    await t.commit();
 
-    await t.commit();
-
-    res.status(201).json({
-      status: true,
-      message: "Batch schedule created successfully",
-      data: {
-        batchId,
-        sessionsCreated: createdSessions.length,
-        sessions: createdSessions,
-      },
+    return sendSuccess(res, 200, "Batch schedule created successfully", {
+      batchId,
+      sessionsCreated: createdSessions.length,
+      sessions: createdSessions,
     });
   } catch (error) {
     await t.rollback();
     console.error("Create batch schedule error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to create batch schedule",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -865,9 +737,7 @@ export const createBatchSchedule = async (req, res) => {
 export const getBatchAnalytics = async (req, res) => {
   try {
     const { batchId } = req.params;
-    const { dateRange } = req.query;
-
-    // Get batch with all related data
+    const { dateRange } = req.query;    // Get batch with all related data
     const batch = await Batch.findByPk(batchId, {
       include: [
         {
@@ -902,9 +772,8 @@ export const getBatchAnalytics = async (req, res) => {
     });
 
     if (!batch) {
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
+      return sendNotFound(res, "Batch not found", {
+        batchId: "Batch not found"
       });
     }
 
@@ -947,48 +816,39 @@ export const getBatchAnalytics = async (req, res) => {
           }, 0) /
           completedSessions.length /
           (1000 * 60) // Convert to minutes
-        : 0;
-
-    res.json({
-      status: true,
-      data: {
-        batch: {
-          batchId: batch.batchId,
-          title: batch.title,
-          status: batch.status,
-          startTime: batch.startTime,
-          endTime: batch.endTime,
+        : 0;    return sendSuccess(res, 200, "Batch analytics retrieved successfully", {
+      batch: {
+        batchId: batch.batchId,
+        title: batch.title,
+        status: batch.status,
+        startTime: batch.startTime,
+        endTime: batch.endTime,
+      },
+      course: batch.course,
+      statistics: {
+        enrollment: {
+          totalStudents: students.length,
+          totalTeachers: teachers.length,
+          maxStudents: batch.maxStudents,
+          minStudents: batch.minStudents,
+          enrollmentRate:
+            batch.maxStudents > 0
+              ? (students.length / batch.maxStudents) * 100
+              : 0,
         },
-        course: batch.course,
-        statistics: {
-          enrollment: {
-            totalStudents: students.length,
-            totalTeachers: teachers.length,
-            maxStudents: batch.maxStudents,
-            minStudents: batch.minStudents,
-            enrollmentRate:
-              batch.maxStudents > 0
-                ? (students.length / batch.maxStudents) * 100
-                : 0,
-          },
-          sessions: {
-            ...sessionStats,
-            completionRate: Math.round(completionRate * 100) / 100,
-            averageDuration: Math.round(avgSessionDuration * 100) / 100,
-          },
-          trends: {
-            enrollmentByDate: enrollmentTrend,
-          },
+        sessions: {
+          ...sessionStats,
+          completionRate: Math.round(completionRate * 100) / 100,
+          averageDuration: Math.round(avgSessionDuration * 100) / 100,
+        },
+        trends: {
+          enrollmentByDate: enrollmentTrend,
         },
       },
     });
   } catch (error) {
     console.error("Get batch analytics error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to fetch batch analytics",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -999,20 +859,15 @@ export const getBatchAnalytics = async (req, res) => {
 export const bulkBatchOperations = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { action, batchIds, data } = req.body;
-
-    if (!["activate", "deactivate", "delete", "update"].includes(action)) {
-      return res.status(400).json({
-        status: false,
-        message:
-          "Invalid action. Supported actions: activate, deactivate, delete, update",
+    const { action, batchIds, data } = req.body;    if (!["activate", "deactivate", "delete", "update"].includes(action)) {
+      return sendValidationError(res, "Invalid action. Supported actions: activate, deactivate, delete, update", {
+        action: "Must be one of: activate, deactivate, delete, update"
       });
     }
 
     if (!batchIds || !Array.isArray(batchIds) || batchIds.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "batchIds must be a non-empty array",
+      return sendValidationError(res, "batchIds must be a non-empty array", {
+        batchIds: "Must be a non-empty array"
       });
     }
 
@@ -1062,23 +917,13 @@ export const bulkBatchOperations = async (req, res) => {
           reason: error.message,
         });
       }
-    }
+    }    await t.commit();
 
-    await t.commit();
-
-    res.json({
-      status: true,
-      message: `Bulk ${action} operation completed`,
-      data: results,
-    });
+    return sendSuccess(res, 200, `Bulk ${action} operation completed`, results);
   } catch (error) {
     await t.rollback();
     console.error("Bulk batch operations error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to perform bulk batch operations",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1086,8 +931,7 @@ export const bulkBatchOperations = async (req, res) => {
  * Get Batch Management Data (Admin/Owner only)
  * Comprehensive batch management dashboard data
  */
-export const getBatchManagementData = async (req, res) => {
-  try {
+export const getBatchManagementData = async (req, res) => {  try {
     const { batchId } = req.params;
 
     // Get batch with complete related data
@@ -1125,9 +969,8 @@ export const getBatchManagementData = async (req, res) => {
     });
 
     if (!batch) {
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
+      return sendNotFound(res, "Batch not found", {
+        batchId: "Batch not found"
       });
     }
 
@@ -1184,10 +1027,6 @@ export const getBatchManagementData = async (req, res) => {
     });
   } catch (error) {
     console.error("Get batch management data error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to fetch batch management data",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };

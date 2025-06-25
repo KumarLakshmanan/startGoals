@@ -1,9 +1,16 @@
-// controllers/sectionController.js
 import Section from "../model/section.js";
 import Lesson from "../model/lesson.js";
 import sequelize from "../config/db.js";
 import Resource from "../model/resource.js";
 import Course from "../model/course.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 //create section
 export const createSection = async (req, res) => {
@@ -11,10 +18,10 @@ export const createSection = async (req, res) => {
 
   // Basic validation
   if (!courseId || !title || !Array.isArray(lessons)) {
-    return res.status(400).json({
-      status: false,
-      message:
-        "Missing required fields: courseId, title, or lessons must be provided",
+    return sendValidationError(res, "Missing required fields", {
+      courseId: !courseId ? "Required field" : undefined,
+      title: !title ? "Required field" : undefined,
+      lessons: !Array.isArray(lessons) ? "Must be an array" : undefined
     });
   }
 
@@ -25,10 +32,7 @@ export const createSection = async (req, res) => {
     const course = await Course.findByPk(courseId);
     if (!course) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
-      });
+      return sendNotFound(res, "Course not found");
     }
 
     // Create Section
@@ -58,11 +62,7 @@ export const createSection = async (req, res) => {
       // Lesson validation
       if (!title || !type || !["video", "article", "quiz"].includes(type)) {
         await transaction.rollback();
-        return res.status(400).json({
-          status: false,
-          message:
-            "Each lesson must have a valid title and type (video, article, quiz)",
-        });
+        return sendValidationError(res, "Each lesson must have a valid title and type (video, article, quiz)");
       }
 
       const newLesson = await Lesson.create(
@@ -91,11 +91,7 @@ export const createSection = async (req, res) => {
             )
           ) {
             await transaction.rollback();
-            return res.status(400).json({
-              status: false,
-              message:
-                "Each resource must have a valid title, fileUrl, and allowed type",
-            });
+            return sendValidationError(res, "Each resource must have a valid title, fileUrl, and allowed type");
           }
 
           await Resource.create(
@@ -113,18 +109,11 @@ export const createSection = async (req, res) => {
 
     await transaction.commit();
 
-    return res.status(201).json({
-      status: true,
-      message: "Section, lessons, and resources created successfully",
-      sectionId: section.sectionId,
-    });
+    return sendSuccess(res, 201, "Section, lessons, and resources created successfully", { sectionId: section.sectionId });
   } catch (error) {
     console.error("Error creating section with lessons/resources:", error);
     await transaction.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -135,31 +124,19 @@ export const updateSectionById = async (req, res) => {
 
   // Validation
   if (!sectionId) {
-    return res.status(400).json({
-      status: false,
-      message: "Section ID is required in the URL.",
-    });
+    return sendValidationError(res, "Section ID is required in the URL.");
   }
 
   if (title !== undefined && typeof title !== "string") {
-    return res.status(400).json({
-      status: false,
-      message: "Title must be a string.",
-    });
+    return sendValidationError(res, "Title must be a string.");
   }
 
   if (description !== undefined && typeof description !== "string") {
-    return res.status(400).json({
-      status: false,
-      message: "Description must be a string.",
-    });
+    return sendValidationError(res, "Description must be a string.");
   }
 
   if (order !== undefined && (typeof order !== "number" || order < 0)) {
-    return res.status(400).json({
-      status: false,
-      message: "Order must be a non-negative number.",
-    });
+    return sendValidationError(res, "Order must be a non-negative number.");
   }
 
   const transaction = await sequelize.transaction();
@@ -169,10 +146,7 @@ export const updateSectionById = async (req, res) => {
 
     if (!section) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Section not found",
-      });
+      return sendNotFound(res, "Section not found");
     }
 
     section.title = title !== undefined ? title : section.title;
@@ -183,18 +157,11 @@ export const updateSectionById = async (req, res) => {
     await section.save({ transaction });
     await transaction.commit();
 
-    return res.status(200).json({
-      status: true,
-      message: "Section updated successfully!",
-      section,
-    });
+    return sendSuccess(res, 200, "Section updated successfully!", { section });
   } catch (error) {
     console.error("Error updating section:", error);
     await transaction.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -203,20 +170,14 @@ export const getSectionsByCourseId = async (req, res) => {
   const { courseId } = req.params;
 
   if (!courseId) {
-    return res.status(400).json({
-      status: false,
-      message: "courseId parameter is required",
-    });
+    return sendValidationError(res, "courseId parameter is required");
   }
 
   try {
     // Ensure course exists
     const course = await Course.findByPk(courseId);
     if (!course) {
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
-      });
+      return sendNotFound(res, "Course not found");
     }
 
     const sections = await Section.findAll({
@@ -253,17 +214,10 @@ export const getSectionsByCourseId = async (req, res) => {
       });
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Sections fetched successfully",
-      sections,
-    });
+    return sendSuccess(res, 200, "Sections fetched successfully", { sections });
   } catch (error) {
     console.error("Error fetching sections:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -282,19 +236,16 @@ export const getSectionById = async (req, res) => {
             {
               model: Resource,
               as: "resources",
-              order: [["order", "ASC"]], // ordering resources within a lesson
+              order: [["order", "ASC"]],
             },
           ],
-          order: [["order", "ASC"]], // ordering lessons within section
+          order: [["order", "ASC"]],
         },
       ],
     });
 
     if (!section) {
-      return res.status(404).json({
-        status: false,
-        message: "Section not found",
-      });
+      return sendNotFound(res, "Section not found");
     }
 
     // Force nested sorting if Sequelize didn't fully sort nested arrays
@@ -305,16 +256,10 @@ export const getSectionById = async (req, res) => {
       }
     });
 
-    return res.status(200).json({
-      status: true,
-      section,
-    });
+    return sendSuccess(res, 200, "Section fetched successfully", { section });
   } catch (error) {
     console.error("Error fetching section by ID:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -322,10 +267,6 @@ export const getSectionById = async (req, res) => {
  * ===================== ADMIN/OWNER SECTION MANAGEMENT =====================
  */
 
-/**
- * Create Section with Lessons (Admin/Owner only)
- * Comprehensive section creation with video uploads and resources
- */
 export const createSectionAdmin = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
@@ -340,9 +281,9 @@ export const createSectionAdmin = async (req, res) => {
 
     // Validate required fields
     if (!courseId || !title) {
-      return res.status(400).json({
-        status: false,
-        message: "Missing required fields: courseId, title",
+      return sendValidationError(res, "Missing required fields", {
+        courseId: !courseId ? "Required field" : undefined,
+        title: !title ? "Required field" : undefined,
       });
     }
 
@@ -350,10 +291,7 @@ export const createSectionAdmin = async (req, res) => {
     const course = await Course.findByPk(courseId, { transaction });
     if (!course) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
-      });
+      return sendNotFound(res, "Course not found");
     }
 
     // Get next order if not provided
@@ -399,10 +337,7 @@ export const createSectionAdmin = async (req, res) => {
 
       if (!lessonTitle) {
         await transaction.rollback();
-        return res.status(400).json({
-          status: false,
-          message: `Lesson ${i + 1} is missing title`,
-        });
+        return sendValidationError(res, `Lesson ${i + 1} is missing title`);
       }
 
       // Create lesson
@@ -458,30 +393,18 @@ export const createSectionAdmin = async (req, res) => {
 
     await transaction.commit();
 
-    res.status(201).json({
-      status: true,
-      message: "Section created successfully with lessons",
-      data: {
-        section: section.toJSON(),
-        lessons: createdLessons,
-        totalLessons: createdLessons.length,
-      },
+    return sendSuccess(res, 201, "Section created successfully with lessons", {
+      section: section.toJSON(),
+      lessons: createdLessons,
+      totalLessons: createdLessons.length,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Create section admin error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to create section",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
-/**
- * Update Section (Admin/Owner only)
- * Update section details and reorder lessons
- */
 export const updateSectionAdmin = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
@@ -498,10 +421,7 @@ export const updateSectionAdmin = async (req, res) => {
     const section = await Section.findByPk(sectionId, { transaction });
     if (!section) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Section not found",
-      });
+      return sendNotFound(res, "Section not found");
     }
 
     // Update section
@@ -529,30 +449,18 @@ export const updateSectionAdmin = async (req, res) => {
 
     await transaction.commit();
 
-    res.json({
-      status: true,
-      message: "Section updated successfully",
-      data: {
-        section: section.toJSON(),
-        updatedLessons: updatedLessons.length,
-        lessonDetails: updatedLessons.map((l) => l.toJSON()),
-      },
+    return sendSuccess(res, 200, "Section updated successfully", {
+      section: section.toJSON(),
+      updatedLessons: updatedLessons.length,
+      lessonDetails: updatedLessons.map((l) => l.toJSON()),
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Update section admin error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to update section",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
-/**
- * Delete Section (Admin/Owner only)
- * Delete section and all associated lessons and resources
- */
 export const deleteSectionAdmin = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
@@ -577,10 +485,7 @@ export const deleteSectionAdmin = async (req, res) => {
 
     if (!section) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Section not found",
-      });
+      return sendNotFound(res, "Section not found");
     }
 
     // Count items to be deleted
@@ -595,33 +500,21 @@ export const deleteSectionAdmin = async (req, res) => {
 
     await transaction.commit();
 
-    res.json({
-      status: true,
-      message: "Section deleted successfully",
-      data: {
-        deletedSection: {
-          sectionId: section.sectionId,
-          title: section.title,
-        },
-        deletedLessons: lessonCount,
-        deletedResources: resourceCount,
+    return sendSuccess(res, 200, "Section deleted successfully", {
+      deletedSection: {
+        sectionId: section.sectionId,
+        title: section.title,
       },
+      deletedLessons: lessonCount,
+      deletedResources: resourceCount,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Delete section admin error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to delete section",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
-/**
- * Reorder Sections (Admin/Owner only)
- * Bulk reorder sections within a course
- */
 export const reorderSections = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
@@ -629,10 +522,7 @@ export const reorderSections = async (req, res) => {
     const { sectionOrders } = req.body; // Array of { sectionId, order }
 
     if (!Array.isArray(sectionOrders)) {
-      return res.status(400).json({
-        status: false,
-        message: "sectionOrders must be an array",
-      });
+      return sendValidationError(res, "sectionOrders must be an array");
     }
 
     // Verify all sections belong to the course
@@ -647,10 +537,7 @@ export const reorderSections = async (req, res) => {
 
     if (sections.length !== sectionIds.length) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Some sections do not belong to this course",
-      });
+      return sendConflict(res, "Some sections do not belong to this course");
     }
 
     // Update section orders
@@ -665,29 +552,17 @@ export const reorderSections = async (req, res) => {
 
     await transaction.commit();
 
-    res.json({
-      status: true,
-      message: "Sections reordered successfully",
-      data: {
-        courseId,
-        reorderedSections: updates,
-      },
+    return sendSuccess(res, 200, "Sections reordered successfully", {
+      courseId,
+      reorderedSections: updates,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Reorder sections error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to reorder sections",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
-/**
- * Get Course Content Management Data (Admin/Owner only)
- * Comprehensive course content overview for management
- */
 export const getCourseContentManagement = async (req, res) => {
   try {
     const { courseId } = req.params;
@@ -733,10 +608,7 @@ export const getCourseContentManagement = async (req, res) => {
     });
 
     if (!course) {
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
-      });
+      return sendNotFound(res, "Course not found");
     }
 
     // Calculate content statistics
@@ -802,33 +674,22 @@ export const getCourseContentManagement = async (req, res) => {
       })),
     }));
 
-    res.json({
-      status: true,
-      data: {
-        course: {
-          courseId: course.courseId,
-          title: course.title,
-          type: course.type,
-          status: course.status,
-        },
-        statistics: stats,
-        content: contentStructure,
+    return sendSuccess(res, 200, "Course content management data fetched successfully", {
+      course: {
+        courseId: course.courseId,
+        title: course.title,
+        type: course.type,
+        status: course.status,
       },
+      statistics: stats,
+      content: contentStructure,
     });
   } catch (error) {
     console.error("Get course content management error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to fetch course content management data",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
-/**
- * Bulk Publish/Unpublish Content (Admin/Owner only)
- * Publish or unpublish multiple sections and lessons at once
- */
 export const bulkPublishContent = async (req, res) => {
   const transaction = await sequelize.transaction();
   try {
@@ -836,10 +697,7 @@ export const bulkPublishContent = async (req, res) => {
     const { action, sectionIds = [], lessonIds = [] } = req.body;
 
     if (!["publish", "unpublish"].includes(action)) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid action. Use 'publish' or 'unpublish'",
-      });
+      return sendValidationError(res, "Invalid action. Use 'publish' or 'unpublish'");
     }
 
     const results = {
@@ -897,18 +755,10 @@ export const bulkPublishContent = async (req, res) => {
 
     await transaction.commit();
 
-    res.json({
-      status: true,
-      message: `Content ${action}ed successfully`,
-      data: results,
-    });
+    return sendSuccess(res, 200, `Content ${action}ed successfully`, results);
   } catch (error) {
     await transaction.rollback();
     console.error("Bulk publish content error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to bulk publish content",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };

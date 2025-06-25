@@ -1,5 +1,6 @@
 import Banner from "../model/banner.js";
 import { Op } from "sequelize";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError } from "../utils/responseHelper.js";
 
 // Get all banners with pagination and filtering
 export const getAllBanners = async (req, res) => {
@@ -45,27 +46,20 @@ export const getAllBanners = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return res.status(200).json({
-      success: true,
-      message: "Banners fetched successfully",
-      data: {
-        banners,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalItems: count,
-          itemsPerPage: parseInt(limit),
-          hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1,
-        },
+    return sendSuccess(res, 200, "Banners fetched successfully", {
+      banners,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
       },
     });
   } catch (error) {
     console.error("Get all banners error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -75,10 +69,7 @@ export const getBannerById = async (req, res) => {
     const { id } = req.params;
 
     if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({
-        success: false,
-        message: "Valid banner ID is required",
-      });
+      return sendValidationError(res, "Valid banner ID is required", { id: "Valid banner ID is required" });
     }
 
     const banner = await Banner.findByPk(id, {
@@ -96,102 +87,131 @@ export const getBannerById = async (req, res) => {
     });
 
     if (!banner) {
-      return res.status(404).json({
-        success: false,
-        message: "Banner not found",
-      });
+      return sendNotFound(res, "Banner not found", { id: "Banner not found" });
     }
 
-    return res.status(200).json({
-      success: true,
-      message: "Banner fetched successfully",
-      data: banner,
-    });
+    return sendSuccess(res, 200, "Banner fetched successfully", banner);
   } catch (error) {
     console.error("Get banner by ID error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
 // Create new banner
 export const createBanner = async (req, res) => {
+  console.log("Starting banner creation process");
   try {
-    const {
-      title,
-      description,
-      imageUrl,
-      isActive = true,
-      order = 1,
-      image,
-    } = req.body;
+    console.log("Request body:", req.body);
+    console.log("Request file:", req.file);
 
-    // Validation
-    if (!title) {
-      return res.status(400).json({
-        success: false,
-        message: "Title is required",
-      });
+    // Handle multipart/form-data with image
+    const title = req.body.title;
+    const description = req.body.description;
+    let isActive = req.body.isActive !== undefined ? req.body.isActive : true;
+    const order = parseInt(req.body.order || 1, 10);
+
+    console.log("Parsed form data:", { title, description, isActive, order });
+
+    // If image file is uploaded directly
+    let imageUrl = null;
+
+    // Convert isActive to boolean if it's a string
+    if (typeof isActive === "string") {
+      isActive = isActive === "true";
     }
 
-    if (!imageUrl && !image) {
-      return res.status(400).json({
-        success: false,
-        message: "Image URL is required",
+    // Validation      if (!title) {
+    console.log("Validation failed: Title is required");
+    return sendValidationError(res, "Title is required", { title: "Title is required" });
+
+    // Check if image was uploaded through fileUploadMiddleware
+    if (req.file) {
+      // Standard fileUploadMiddleware puts the URL in location property
+      imageUrl = req.file.location;
+      // Log the file info for debugging
+      console.log("Image file uploaded:", {
+        fieldname: req.file.fieldname,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        location: req.file.location
+      });
+    } else if (req.body.imageUrl) {
+      // Image URL provided directly in request body
+      imageUrl = req.body.imageUrl;
+      console.log("Using imageUrl from request body:", imageUrl);
+    } else if (req.body.image) {
+      // Legacy field support
+      imageUrl = req.body.image;
+      console.log("Using image from request body:", imageUrl);
+    } else {
+      console.log("Validation failed: Banner image is required");
+      return sendValidationError(res, "Banner image is required", {
+        image: "Banner image is required"
       });
     }
 
     if (title && typeof title !== "string") {
-      return res.status(400).json({
-        success: false,
-        message: "Title must be a string",
+      console.log("Validation failed: Title must be a string");
+      return sendValidationError(res, "Title must be a string", {
+        title: "Title must be a string"
       });
     }
 
     if (description && typeof description !== "string") {
-      return res.status(400).json({
-        success: false,
-        message: "Description must be a string",
+      console.log("Validation failed: Description must be a string");
+      return sendValidationError(res, "Description must be a string", {
+        description: "Description must be a string"
       });
     }
 
+    // Convert isActive to boolean if it's a string
+    if (typeof isActive === "string") {
+      isActive = isActive === "true";
+    }
+
     if (typeof isActive !== "boolean") {
-      return res.status(400).json({
-        success: false,
-        message: "isActive must be a boolean",
+      console.log("Validation failed: isActive must be a boolean");
+      return sendValidationError(res, "isActive must be a boolean", {
+        isActive: "isActive must be a boolean"
       });
     }
 
     if (order && (!Number.isInteger(order) || order < 0)) {
-      return res.status(400).json({
-        success: false,
-        message: "Order must be a positive integer",
-      });
+      console.log("Validation failed: Order must be a positive integer");
+      return sendValidationError(res, "Order must be a positive integer", { order: "Order must be a positive integer" });
     }
 
-    // Create banner
-    const banner = await Banner.create({
+    // Create banner data object
+    const bannerData = {
       title,
       description: description || null,
-      imageUrl: imageUrl || image, // Use imageUrl if provided, fallback to image for backward compatibility
+      imageUrl, // Use the determined imageUrl from above
       isActive,
       order,
-      image: image || imageUrl, // Keep for backward compatibility
-    });
+      image: imageUrl, // Keep for backward compatibility
+    };
 
-    return res.status(201).json({
-      success: true,
-      message: "Banner created successfully",
-      data: banner,
-    });
+    console.log("Attempting to create banner with data:", bannerData);
+
+    // Create banner in a try/catch block to catch any database errors
+    let banner;
+    try {
+      banner = await Banner.create(bannerData);
+      console.log("Banner created successfully:", banner.id);
+    } catch (dbError) {
+      console.error("Database error creating banner:", dbError);
+      return sendError(res, 500, "Database error: " + dbError.message, { database: dbError.message });
+    }
+
+    // Explicitly flush response to client
+    console.log("Sending success response");
+    return sendSuccess(res, 201, "Banner created successfully", banner);
   } catch (error) {
     console.error("Create banner error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    // Ensure we send a response even if there's an error
+    if (!res.headersSent) {
+      return sendServerError(res, error);
+    }
   }
 };
 
@@ -199,74 +219,99 @@ export const createBanner = async (req, res) => {
 export const updateBanner = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, imageUrl, isActive, order, image } = req.body;
+
+    // Handle multipart/form-data with possible image
+    const title = req.body.title;
+    const description = req.body.description;
+    let isActive = req.body.isActive;
+    const order = req.body.order ? parseInt(req.body.order, 10) : undefined;
+
+    // Convert isActive to boolean if it's a string
+    if (isActive !== undefined && typeof isActive === "string") {
+      isActive = isActive === "true";
+    }
+
+    // Check if image was uploaded
+    let imageUrl = null;
+    let hasNewImage = false;
+
+    // Check for uploaded file through fileUploadMiddleware
+    if (req.file) {
+      // Standard fileUploadMiddleware puts the URL in location property
+      imageUrl = req.file.location;
+      hasNewImage = true;
+
+      // Log the file info for debugging
+      console.log("Update - Image file uploaded:", {
+        fieldname: req.file.fieldname,
+        filename: req.file.filename,
+        mimetype: req.file.mimetype,
+        location: req.file.location
+      });
+    } else if (req.body.imageUrl) {
+      // Image URL provided directly in request body
+      imageUrl = req.body.imageUrl;
+      hasNewImage = true;
+    } else if (req.body.image) {
+      // Legacy field support
+      imageUrl = req.body.image;
+      hasNewImage = true;
+    }
 
     // Validation
     if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({
-        success: false,
-        message: "Valid banner ID is required",
-      });
+      return sendValidationError(res, "Valid banner ID is required", { id: "Valid banner ID is required" });
     }
 
     if (
       !title &&
       !description &&
-      !imageUrl &&
-      !image &&
+      !hasNewImage &&
       isActive === undefined &&
       order === undefined
     ) {
-      return res.status(400).json({
-        success: false,
-        message: "At least one field is required to update",
+      return sendValidationError(res, "At least one field is required to update", {
+        general: "At least one field is required to update"
       });
     }
 
     if (title && typeof title !== "string") {
-      return res.status(400).json({
-        success: false,
-        message: "Title must be a string",
+      return sendValidationError(res, "Title must be a string", {
+        title: "Title must be a string"
       });
     }
 
     if (description && typeof description !== "string") {
-      return res.status(400).json({
-        success: false,
-        message: "Description must be a string",
+      return sendValidationError(res, "Description must be a string", {
+        description: "Description must be a string"
       });
     }
 
-    if (
-      (imageUrl && typeof imageUrl !== "string") ||
-      (image && typeof image !== "string")
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Image URL must be a valid string",
-      });
+    // Convert isActive to boolean if it's a string
+    if (isActive !== undefined && typeof isActive === "string") {
+      isActive = isActive === "true";
     }
 
     if (isActive !== undefined && typeof isActive !== "boolean") {
-      return res.status(400).json({
-        success: false,
-        message: "isActive must be a boolean",
+      return sendValidationError(res, "isActive must be a boolean", {
+        isActive: "isActive must be a boolean"
       });
     }
 
-    if (order !== undefined && (!Number.isInteger(order) || order < 0)) {
-      return res.status(400).json({
-        success: false,
-        message: "Order must be a positive integer",
+    // Parse order as integer if provided as string
+    const parsedOrder = order !== undefined ? parseInt(order, 10) : undefined;
+
+    if (parsedOrder !== undefined && (isNaN(parsedOrder) || parsedOrder < 0)) {
+      return sendValidationError(res, "Order must be a positive integer", {
+        order: "Order must be a positive integer"
       });
     }
 
     // Find banner
     const banner = await Banner.findByPk(id);
     if (!banner) {
-      return res.status(404).json({
-        success: false,
-        message: "Banner not found",
+      return sendNotFound(res, "Banner not found", {
+        id: "Banner not found"
       });
     }
 
@@ -274,30 +319,19 @@ export const updateBanner = async (req, res) => {
     const updateData = {};
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
-    if (imageUrl !== undefined) {
+    if (hasNewImage && imageUrl) {
       updateData.imageUrl = imageUrl;
       updateData.image = imageUrl; // Keep for backward compatibility
     }
-    if (image !== undefined && !imageUrl) {
-      updateData.imageUrl = image;
-      updateData.image = image;
-    }
     if (isActive !== undefined) updateData.isActive = isActive;
-    if (order !== undefined) updateData.order = order;
+    if (parsedOrder !== undefined) updateData.order = parsedOrder;
 
     await banner.update(updateData);
 
-    return res.status(200).json({
-      success: true,
-      message: "Banner updated successfully",
-      data: banner,
-    });
+    return sendSuccess(res, 200, "Banner updated successfully", banner);
   } catch (error) {
     console.error("Update banner error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -308,34 +342,24 @@ export const deleteBanner = async (req, res) => {
 
     // Validation
     if (!id || isNaN(parseInt(id))) {
-      return res.status(400).json({
-        success: false,
-        message: "Valid banner ID is required",
+      return sendValidationError(res, "Valid banner ID is required", {
+        id: "Valid banner ID is required"
       });
     }
 
     // Find banner
     const banner = await Banner.findByPk(id);
     if (!banner) {
-      return res.status(404).json({
-        success: false,
-        message: "Banner not found",
-      });
+      return sendNotFound(res, "Banner not found", { id: "Banner not found" });
     }
 
     // Soft delete (if paranoid is enabled) or hard delete
     await banner.destroy();
 
-    return res.status(200).json({
-      success: true,
-      message: "Banner deleted successfully",
-    });
+    return sendSuccess(res, 200, "Banner deleted successfully");
   } catch (error) {
     console.error("Delete banner error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -346,69 +370,47 @@ export const bulkCreateBanners = async (req, res) => {
 
     // Validation
     if (!Array.isArray(banners) || banners.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Request body must be a non-empty array of banners",
-      });
+      return sendValidationError(res, "Request body must be a non-empty array of banners", { banners: "Request body must be a non-empty array of banners" });
     }
 
     // Validate each banner
     for (const [index, banner] of banners.entries()) {
       if (!banner.title) {
-        return res.status(400).json({
-          success: false,
-          message: `Banner at index ${index} is missing required field: title`,
-        });
+        return sendValidationError(res, `Banner at index ${index} is missing required field: title`, { [`banners[${index}].title`]: "Title is required" });
       }
 
       if (!banner.imageUrl && !banner.image) {
-        return res.status(400).json({
-          success: false,
-          message: `Banner at index ${index} is missing required field: imageUrl or image`,
-        });
+        return sendValidationError(res, `Banner at index ${index} is missing required field: imageUrl or image`, { [`banners[${index}].image`]: "Image URL is required" });
       }
 
       if (banner.title && typeof banner.title !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: `Banner at index ${index} has invalid title (must be string)`,
-        });
+        return sendValidationError(res, `Banner at index ${index} has invalid title (must be string)`, { [`banners[${index}].title`]: "Title must be a string" });
       }
 
       if (banner.description && typeof banner.description !== "string") {
-        return res.status(400).json({
-          success: false,
-          message: `Banner at index ${index} has invalid description (must be string)`,
-        });
+        return sendValidationError(res, `Banner at index ${index} has invalid description (must be string)`, { [`banners[${index}].description`]: "Description must be a string" });
       }
 
       if (
         (banner.imageUrl && typeof banner.imageUrl !== "string") ||
         (banner.image && typeof banner.image !== "string")
       ) {
-        return res.status(400).json({
-          success: false,
-          message: `Banner at index ${index} has invalid image URL (must be string)`,
-        });
+        return sendValidationError(res, `Banner at index ${index} has invalid image URL (must be string)`, { [`banners[${index}].image`]: "Image URL must be a string" });
       }
 
       if (
         banner.isActive !== undefined &&
         typeof banner.isActive !== "boolean"
       ) {
-        return res.status(400).json({
-          success: false,
-          message: `Banner at index ${index} has invalid isActive (must be boolean)`,
-        });
+        return sendValidationError(res, `Banner at index ${index} has invalid isActive (must be boolean)`, { [`banners[${index}].isActive`]: "isActive must be a boolean" });
       }
 
       if (
         banner.order !== undefined &&
         (!Number.isInteger(banner.order) || banner.order < 0)
       ) {
-        return res.status(400).json({
-          success: false,
-          message: `Banner at index ${index} has invalid order (must be positive integer)`,
+        return sendValidationError(res, `Banner at index ${index} has invalid order (must be positive integer)`, {
+          [`banners[${index}].order`]: "Order must be a positive integer"
         });
       }
     }
@@ -429,17 +431,10 @@ export const bulkCreateBanners = async (req, res) => {
       returning: true,
     });
 
-    return res.status(201).json({
-      success: true,
-      message: `${createdBanners.length} banners created successfully`,
-      data: createdBanners,
-    });
+    return sendSuccess(res, 201, `${createdBanners.length} banners created successfully`, createdBanners);
   } catch (error) {
     console.error("Bulk create banners error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -458,16 +453,55 @@ export const getActiveBanners = async (req, res) => {
       ],
     });
 
-    return res.status(200).json({
-      success: true,
-      message: "Active banners fetched successfully",
-      data: banners,
-    });
+    return sendSuccess(res, 200, "Active banners fetched successfully", banners);
   } catch (error) {
     console.error("Get active banners error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
+    return sendServerError(res, error);
+  }
+};
+
+// Bulk delete banners
+export const bulkDeleteBanners = async (req, res) => {
+  try {
+    const { bannerIds } = req.body;
+
+    // Validation
+    if (!Array.isArray(bannerIds) || bannerIds.length === 0) {
+      return sendValidationError(res, "Request body must contain a non-empty array of banner IDs", { bannerIds: "Request body must contain a non-empty array of banner IDs" });
+    }
+
+    // Check if all IDs are valid
+    for (const id of bannerIds) {
+      if (isNaN(parseInt(id))) {
+        return sendValidationError(res, `Invalid banner ID: ${id}`, { bannerIds: `Invalid banner ID: ${id}` });
+      }
+    }
+
+    // Find all banners to delete
+    const banners = await Banner.findAll({
+      where: {
+        id: bannerIds,
+      },
     });
+
+    // Check if all banners were found
+    if (banners.length !== bannerIds.length) {
+      const foundIds = banners.map(banner => banner.id);
+      const missingIds = bannerIds.filter(id => !foundIds.includes(parseInt(id)));
+
+      return sendNotFound(res, `Some banners were not found`, { missingIds: `Banner IDs not found: ${missingIds.join(', ')}` });
+    }
+
+    // Delete all banners
+    const deletedCount = await Banner.destroy({
+      where: {
+        id: bannerIds,
+      },
+    });
+
+    return sendSuccess(res, 200, `${deletedCount} banners deleted successfully`, { deletedCount });
+  } catch (error) {
+    console.error("Bulk delete banners error:", error);
+    return sendServerError(res, error);
   }
 };

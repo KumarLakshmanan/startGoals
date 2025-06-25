@@ -2,6 +2,7 @@ import { Op } from "sequelize";
 import Language from "../model/language.js";
 import { validateLanguageInput } from "../utils/commonUtils.js";
 import sequelize from "../config/db.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 // ❌ DELETE: Soft delete
 export const deleteCourseLanguage = async (req, res) => {
@@ -9,15 +10,13 @@ export const deleteCourseLanguage = async (req, res) => {
     const { id } = req.params;
     const language = await CourseLanguage.findByPk(id);
     if (!language) {
-      return res.status(404).json({ message: "Language not found." });
+      return sendNotFound(res, "Language not found");
     }
 
     await language.destroy(); // Soft delete via `paranoid: true`
-    return res.status(200).json({ message: "Language deleted (soft)." });
+    return sendSuccess(res, 200, "Language deleted (soft)");
   } catch (error) {
-    return res
-      .status(500)
-      .json({ message: "Error deleting language.", error: error.message });
+    return sendServerError(res, error);
   }
 };
 
@@ -33,10 +32,7 @@ export const uploadLanguagesBulk = async (req, res) => {
     } = options;
 
     if (!Array.isArray(languages) || languages.length === 0) {
-      return res.status(400).json({
-        message: "Languages data should be a non-empty array",
-        status: false,
-      });
+      return sendError(res, 400, "Languages data should be a non-empty array");
     } // Validate all languages if validateAll is true
     if (validateAll) {
       const validationErrors = [];
@@ -48,11 +44,7 @@ export const uploadLanguagesBulk = async (req, res) => {
       });
 
       if (validationErrors.length > 0) {
-        return res.status(400).json({
-          message: "Validation failed for one or more languages",
-          validationErrors,
-          status: false,
-        });
+        return sendValidationError(res, validationErrors);
       }
     }
 
@@ -98,10 +90,7 @@ export const uploadLanguagesBulk = async (req, res) => {
         } else if (skipDuplicates) {
           skippedLanguages.push(lang);
         } else {
-          return res.status(409).json({
-            message: `Duplicate language found: ${lang.language} (${lang.languageCode})`,
-            status: false,
-          });
+          return sendConflict(res, `Duplicate language found: ${lang.language} (${lang.languageCode})`);
         }
       } else {
         languagesToProcess.push({
@@ -144,14 +133,10 @@ export const uploadLanguagesBulk = async (req, res) => {
       response.skipped = skippedLanguages;
     }
 
-    return res.status(201).json(response);
+    return sendSuccess(res, 200, response);
   } catch (error) {
     console.error("Bulk upload error:", error);
-    return res.status(500).json({
-      message: "Server error while uploading languages",
-      status: false,
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -207,14 +192,10 @@ export const getAllLanguages = async (req, res) => {
       response.stats = stats;
     }
 
-    return res.status(200).json(response);
+    return sendSuccess(res, 200, response);
   } catch (error) {
     console.error("Error fetching languages:", error);
-    return res.status(500).json({
-      message: "Failed to fetch languages",
-      error: error.message,
-      status: false,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -224,11 +205,7 @@ export const getLanguagesByType = async (req, res) => {
     const validTypes = ["user_preference", "course_language", "both"];
 
     if (!validTypes.includes(type)) {
-      return res.status(400).json({
-        message:
-          "Invalid language type. Must be one of: user_preference, course_language, both",
-        status: false,
-      });
+      return sendError(res, 400, "Invalid language type. Must be one of: user_preference, course_language, both");
     }
 
     const languages = await Language.findAll({
@@ -247,18 +224,14 @@ export const getLanguagesByType = async (req, res) => {
       order: [["language", "ASC"]],
     });
 
-    return res.status(200).json({
+    return sendSuccess(res, 200, {
       message: "Languages fetched successfully",
       data: languages,
       status: true,
     });
   } catch (error) {
     console.error("Error fetching languages by type:", error);
-    return res.status(500).json({
-      message: "Failed to fetch languages by type",
-      error: error.message,
-      status: false,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -274,7 +247,7 @@ export const getLanguageStats = async (req, res) => {
 
     const totalCount = await Language.count();
 
-    return res.status(200).json({
+    return sendSuccess(res, 200, {
       message: "Language statistics fetched successfully",
       data: {
         total: totalCount,
@@ -287,11 +260,7 @@ export const getLanguageStats = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching language statistics:", error);
-    return res.status(500).json({
-      message: "Failed to fetch language statistics",
-      error: error.message,
-      status: false,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -308,18 +277,12 @@ export const saveAllLanguages = async (req, res) => {
     } else if (requestBody.languages && Array.isArray(requestBody.languages)) {
       languages = requestBody.languages;
     } else {
-      return res.status(400).json({
-        status: false,
-        message: "Request body must be an array of languages or an object with a 'languages' array property"
-      });
+      return sendError(res, 400, "Request body must be an array of languages or an object with a 'languages' array property");
     }
     
     if (languages.length === 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Languages array cannot be empty"
-      });
+      return sendError(res, 400, "Languages array cannot be empty");
     }
     
     // Ensure the languages table exists
@@ -328,11 +291,7 @@ export const saveAllLanguages = async (req, res) => {
     } catch (error) {
       console.error("Error with languages table:", error);
       await transaction.rollback();
-      return res.status(500).json({
-        status: false,
-        message: "Database error: Languages table might not exist",
-        error: error.message
-      });
+      return sendServerError(res, error);
     }
     
     // Process languages
@@ -388,11 +347,7 @@ export const saveAllLanguages = async (req, res) => {
     // Return validation errors if any
     if (validationErrors.length > 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Validation failed for one or more languages.",
-        validationErrors
-      });
+      return sendValidationError(res, validationErrors);
     }
     
     // Create languages in bulk
@@ -403,7 +358,7 @@ export const saveAllLanguages = async (req, res) => {
     
     await transaction.commit();
     
-    return res.status(201).json({
+    return sendSuccess(res, 200, {
       status: true,
       message: "Languages created successfully",
       data: createdLanguages
@@ -412,10 +367,6 @@ export const saveAllLanguages = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("Bulk language upload error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to upload languages",
-      error: error.message
-    });
+    return sendServerError(res, error);
   }
 };

@@ -9,6 +9,7 @@ import UserSkills from "../model/userSkills.js";
 import UserExams from "../model/userExams.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 // Select Languages
 export const selectLanguages = async (req, res) => {
@@ -17,34 +18,30 @@ export const selectLanguages = async (req, res) => {
     const { languageIds, proficiencyLevels } = req.body;
 
     if (!languageIds || !Array.isArray(languageIds) || languageIds.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "languageIds is required and must be a non-empty array",
+      return sendValidationError(res, "Invalid language selection", {
+        languageIds: "Required and must be a non-empty array"
       });
     }
 
     for (const languageId of languageIds) {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(languageId)) {
-        return res.status(400).json({
-          status: false,
-          message: `Invalid languageId format: ${languageId}. Must be a valid UUID.`,
+        return sendValidationError(res, "Invalid language ID format", {
+          languageId: `Invalid format: ${languageId}. Must be a valid UUID.`
         });
       }
     }
 
     if (proficiencyLevels) {
       if (!Array.isArray(proficiencyLevels) || proficiencyLevels.length !== languageIds.length) {
-        return res.status(400).json({
-          status: false,
-          message: "proficiencyLevels must be an array with the same length as languageIds",
+        return sendValidationError(res, "Invalid proficiency levels", {
+          proficiencyLevels: "Must be an array with the same length as languageIds"
         });
       }
       const validLevels = ["beginner", "intermediate", "advanced", "native"];
       for (const level of proficiencyLevels) {
         if (!validLevels.includes(level)) {
-          return res.status(400).json({
-            status: false,
-            message: `Invalid proficiency level: ${level}. Must be one of: ${validLevels.join(', ')}`,
+          return sendValidationError(res, "Invalid proficiency level", {
+            level: `Must be one of: ${validLevels.join(', ')}`
           });
         }
       }
@@ -52,10 +49,7 @@ export const selectLanguages = async (req, res) => {
 
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).json({
-        status: false,
-        message: "User not found",
-      });
+      return sendNotFound(res, "User not found");
     }
 
     const languages = await Language.findAll({
@@ -65,10 +59,8 @@ export const selectLanguages = async (req, res) => {
     if (languages.length !== languageIds.length) {
       const foundLanguageIds = languages.map(lang => lang.languageId);
       const missingLanguageIds = languageIds.filter(id => !foundLanguageIds.includes(id));
-      return res.status(400).json({
-        status: false,
-        message: "Some language IDs are invalid",
-        details: { missingLanguageIds }
+      return sendValidationError(res, "Some language IDs are invalid", {
+        missingLanguageIds
       });
     }
 
@@ -109,17 +101,10 @@ export const selectLanguages = async (req, res) => {
       throw error;
     }
 
-    return res.status(200).json({
-      status: true,
-      message: "Languages selected successfully",
-    });
+    return sendSuccess(res, "Languages selected successfully");
   } catch (error) {
     console.error("Error selecting languages:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred",
-      error: error.message,
-    });
+    return sendServerError(res, "An error occurred", error.message);
   }
 };
 
@@ -130,27 +115,22 @@ export const selectGoals = async (req, res) => {
     const { goalIds } = req.body;
 
     if (!goalIds || !Array.isArray(goalIds) || goalIds.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "goalIds is required and must be a non-empty array",
+      return sendValidationError(res, "Invalid goal selection", {
+        goalIds: "Required and must be a non-empty array"
       });
     }
 
     for (const goalId of goalIds) {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(goalId)) {
-        return res.status(400).json({
-          status: false,
-          message: `Invalid goalId format: ${goalId}. Must be a valid UUID.`,
+        return sendValidationError(res, "Invalid goal ID format", {
+          goalId: `Invalid format: ${goalId}. Must be a valid UUID.`
         });
       }
     }
 
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).json({
-        status: false,
-        message: "User not found",
-      });
+      return sendNotFound(res, "User not found");
     }
 
     // Remove duplicate goalIds to avoid unique constraint violation
@@ -163,10 +143,8 @@ export const selectGoals = async (req, res) => {
     if (goals.length !== uniqueGoalIds.length) {
       const foundGoalIds = goals.map(goal => goal.goalId);
       const missingGoalIds = uniqueGoalIds.filter(id => !foundGoalIds.includes(id));
-      return res.status(400).json({
-        status: false,
-        message: "Some goal IDs are invalid",
-        details: { missingGoalIds }
+      return sendValidationError(res, "Some goal IDs are invalid", {
+        missingGoalIds
       });
     }
 
@@ -192,17 +170,10 @@ export const selectGoals = async (req, res) => {
       await transaction.rollback();
       throw error;
     }
-    return res.status(200).json({
-      status: true,
-      message: "Goals selected successfully",
-    });
+    return sendSuccess(res, "Goals selected successfully");
   } catch (error) {
     console.error("Error selecting goals:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred",
-      error: error.message,
-    });
+    return sendServerError(res, "An error occurred", error.message);
   }
 };
 
@@ -213,34 +184,30 @@ export const selectSkills = async (req, res) => {
     const { skillIds, proficiencyLevels } = req.body;
 
     if (!skillIds || !Array.isArray(skillIds) || skillIds.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "skillIds is required and must be a non-empty array",
+      return sendValidationError(res, "Invalid skill selection", {
+        skillIds: "Required and must be a non-empty array"
       });
     }
 
     for (const skillId of skillIds) {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(skillId)) {
-        return res.status(400).json({
-          status: false,
-          message: `Invalid skillId format: ${skillId}. Must be a valid UUID.`,
+        return sendValidationError(res, "Invalid skill ID format", {
+          skillId: `Invalid format: ${skillId}. Must be a valid UUID.`
         });
       }
     }
 
     if (proficiencyLevels) {
       if (!Array.isArray(proficiencyLevels) || proficiencyLevels.length !== skillIds.length) {
-        return res.status(400).json({
-          status: false,
-          message: "proficiencyLevels must be an array with the same length as skillIds",
+        return sendValidationError(res, "Invalid proficiency levels", {
+          proficiencyLevels: "Must be an array with the same length as skillIds"
         });
       }
       const validLevels = ["beginner", "intermediate", "advanced", "expert"];
       for (const level of proficiencyLevels) {
         if (!validLevels.includes(level)) {
-          return res.status(400).json({
-            status: false,
-            message: `Invalid proficiency level: ${level}. Must be one of: ${validLevels.join(', ')}`,
+          return sendValidationError(res, "Invalid proficiency level", {
+            level: `Must be one of: ${validLevels.join(', ')}`
           });
         }
       }
@@ -248,10 +215,7 @@ export const selectSkills = async (req, res) => {
 
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).json({
-        status: false,
-        message: "User not found",
-      });
+      return sendNotFound(res, "User not found");
     }
 
     // Remove duplicate skillIds to avoid unique constraint violation
@@ -264,10 +228,8 @@ export const selectSkills = async (req, res) => {
     if (skills.length !== uniqueSkillIds.length) {
       const foundSkillIds = skills.map(skill => skill.skillId);
       const missingSkillIds = uniqueSkillIds.filter(id => !foundSkillIds.includes(id));
-      return res.status(400).json({
-        status: false,
-        message: "Some skill IDs are invalid or not related to the selected goals",
-        details: { missingSkillIds }
+      return sendValidationError(res, "Some skill IDs are invalid or not related to the selected goals", {
+        missingSkillIds
       });
     }
 
@@ -311,17 +273,10 @@ export const selectSkills = async (req, res) => {
       throw error;
     }
 
-    return res.status(200).json({
-      status: true,
-      message: "Skills selected successfully",
-    });
+    return sendSuccess(res, "Skills selected successfully");
   } catch (error) {
     console.error("Error selecting skills:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred",
-      error: error.message,
-    });
+    return sendServerError(res, "An error occurred", error.message);
   }
 };
 
@@ -332,27 +287,22 @@ export const selectExams = async (req, res) => {
     const { examIds } = req.body;
 
     if (!examIds || !Array.isArray(examIds) || examIds.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "examIds is required and must be a non-empty array",
+      return sendValidationError(res, "Invalid exam selection", {
+        examIds: "Required and must be a non-empty array"
       });
     }
 
     for (const examId of examIds) {
       if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(examId)) {
-        return res.status(400).json({
-          status: false,
-          message: `Invalid examId format: ${examId}. Must be a valid UUID.`,
+        return sendValidationError(res, "Invalid exam ID format", {
+          examId: `Invalid format: ${examId}. Must be a valid UUID.`
         });
       }
     }
 
     const user = await User.findByPk(userId);
     if (!user) {
-      return res.status(404).json({
-        status: false,
-        message: "User not found",
-      });
+      return sendNotFound(res, "User not found");
     }
 
     // Remove duplicate examIds to avoid unique constraint violation
@@ -365,10 +315,8 @@ export const selectExams = async (req, res) => {
     if (exams.length !== uniqueExamIds.length) {
       const foundExamIds = exams.map(exam => exam.examId);
       const missingExamIds = uniqueExamIds.filter(id => !foundExamIds.includes(id));
-      return res.status(400).json({
-        status: false,
-        message: "Some exam IDs are invalid",
-        details: { missingExamIds }
+      return sendValidationError(res, "Some exam IDs are invalid", {
+        missingExamIds
       });
     }
 
@@ -394,16 +342,9 @@ export const selectExams = async (req, res) => {
       await transaction.rollback();
       throw error;
     }
-    return res.status(200).json({
-      status: true,
-      message: "Exams selected successfully",
-    });
+    return sendSuccess(res, "Exams selected successfully");
   } catch (error) {
     console.error("Error selecting exams:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred",
-      error: error.message,
-    });
+    return sendServerError(res, "An error occurred", error.message);
   }
 };

@@ -14,6 +14,7 @@ import Enrollment from "../model/enrollment.js";
 import ProjectPurchase from "../model/projectPurchase.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 // Create or update course rating
 export const rateCourse = async (req, res) => {
@@ -24,26 +25,17 @@ export const rateCourse = async (req, res) => {
 
     // Validation
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
+      return sendError(res, 401, "Authentication required");
     }
 
     if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Rating must be between 1 and 5",
-      });
+      return sendValidationError(res, "Rating must be between 1 and 5");
     }
 
     // Check if course exists
     const course = await Course.findByPk(courseId);
     if (!course) {
-      return res.status(404).json({
-        success: false,
-        message: "Course not found",
-      });
+      return sendNotFound(res, "Course not found");
     }
 
     // Check if user is enrolled (for verified rating)
@@ -71,26 +63,19 @@ export const rateCourse = async (req, res) => {
     // Recalculate course average rating
     await updateCourseAverageRating(courseId);
 
-    return res.status(created ? 201 : 200).json({
-      success: true,
-      message: created
+    return sendSuccess(res, created ? 201 : 200, created
         ? "Rating submitted successfully"
-        : "Rating updated successfully",
-      data: {
-        ratingId: courseRating.ratingId,
-        rating: courseRating.rating,
-        review: courseRating.review,
-        isVerified: courseRating.isVerified,
-        moderationStatus: courseRating.moderationStatus,
-        createdAt: courseRating.createdAt,
-      },
+        : "Rating updated successfully", {
+      ratingId: courseRating.ratingId,
+      rating: courseRating.rating,
+      review: courseRating.review,
+      isVerified: courseRating.isVerified,
+      moderationStatus: courseRating.moderationStatus,
+      createdAt: courseRating.createdAt,
     });
   } catch (error) {
     console.error("Rate course error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error.message || "Internal server error");
   }
 };
 
@@ -186,43 +171,36 @@ export const getCourseRatings = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return res.status(200).json({
-      success: true,
-      message: "Course ratings fetched successfully",
-      data: {
-        ratings: ratings.map((rating) => ({
-          ratingId: rating.ratingId,
-          rating: rating.rating,
-          review: rating.review,
-          isVerified: rating.isVerified,
-          isHelpful: rating.isHelpful,
-          createdAt: rating.createdAt,
-          user: rating.user,
+    return sendSuccess(res, 200, "Course ratings fetched successfully", {
+      ratings: ratings.map((rating) => ({
+        ratingId: rating.ratingId,
+        rating: rating.rating,
+        review: rating.review,
+        isVerified: rating.isVerified,
+        isHelpful: rating.isHelpful,
+        createdAt: rating.createdAt,
+        user: rating.user,
+      })),
+      summary: {
+        averageRating: parseFloat(avgRating?.dataValues?.avgRating || 0),
+        totalRatings,
+        distribution: ratingSummary.map((item) => ({
+          rating: item.rating,
+          count: parseInt(item.dataValues.count),
         })),
-        summary: {
-          averageRating: parseFloat(avgRating?.dataValues?.avgRating || 0),
-          totalRatings,
-          distribution: ratingSummary.map((item) => ({
-            rating: item.rating,
-            count: parseInt(item.dataValues.count),
-          })),
-        },
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalItems: count,
-          itemsPerPage: parseInt(limit),
-          hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1,
-        },
+      },
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
       },
     });
   } catch (error) {
     console.error("Get course ratings error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error.message || "Internal server error");
   }
 };
 
@@ -235,17 +213,11 @@ export const rateInstructor = async (req, res) => {
 
     // Validation
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
+      return sendError(res, 401, "Authentication required");
     }
 
     if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({
-        success: false,
-        message: "Rating must be between 1 and 5",
-      });
+      return sendValidationError(res, "Rating must be between 1 and 5");
     }
 
     // Check if instructor exists and is actually a teacher
@@ -254,10 +226,7 @@ export const rateInstructor = async (req, res) => {
     });
 
     if (!instructor) {
-      return res.status(404).json({
-        success: false,
-        message: "Instructor not found",
-      });
+      return sendNotFound(res, "Instructor not found");
     }
 
     // Check verification status
@@ -295,27 +264,20 @@ export const rateInstructor = async (req, res) => {
     // Update instructor average rating
     await updateInstructorAverageRating(instructorId);
 
-    return res.status(created ? 201 : 200).json({
-      success: true,
-      message: created
+    return sendSuccess(res, created ? 201 : 200, created
         ? "Instructor rating submitted successfully"
-        : "Instructor rating updated successfully",
-      data: {
-        ratingId: instructorRating.ratingId,
-        rating: instructorRating.rating,
-        review: instructorRating.review,
-        criteria: instructorRating.criteria,
-        isVerified: instructorRating.isVerified,
-        moderationStatus: instructorRating.moderationStatus,
-        createdAt: instructorRating.createdAt,
-      },
+        : "Instructor rating updated successfully", {
+      ratingId: instructorRating.ratingId,
+      rating: instructorRating.rating,
+      review: instructorRating.review,
+      criteria: instructorRating.criteria,
+      isVerified: instructorRating.isVerified,
+      moderationStatus: instructorRating.moderationStatus,
+      createdAt: instructorRating.createdAt,
     });
   } catch (error) {
     console.error("Rate instructor error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error.message || "Internal server error");
   }
 };
 
@@ -399,40 +361,33 @@ export const getInstructorRatings = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return res.status(200).json({
-      success: true,
-      message: "Instructor ratings fetched successfully",
-      data: {
-        ratings: ratings.map((rating) => ({
-          ratingId: rating.ratingId,
-          rating: rating.rating,
-          review: rating.review,
-          criteria: rating.criteria,
-          isVerified: rating.isVerified,
-          createdAt: rating.createdAt,
-          user: rating.user,
-          course: rating.course,
-        })),
-        summary: {
-          averageRating: parseFloat(avgRating?.dataValues?.avgRating || 0),
-          totalRatings,
-        },
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalItems: count,
-          itemsPerPage: parseInt(limit),
-          hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1,
-        },
+    return sendSuccess(res, 200, "Instructor ratings fetched successfully", {
+      ratings: ratings.map((rating) => ({
+        ratingId: rating.ratingId,
+        rating: rating.rating,
+        review: rating.review,
+        criteria: rating.criteria,
+        isVerified: rating.isVerified,
+        createdAt: rating.createdAt,
+        user: rating.user,
+        course: rating.course,
+      })),
+      summary: {
+        averageRating: parseFloat(avgRating?.dataValues?.avgRating || 0),
+        totalRatings,
+      },
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
       },
     });
   } catch (error) {
     console.error("Get instructor ratings error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error.message || "Internal server error");
   }
 };
 
@@ -450,28 +405,18 @@ export const markReviewHelpful = async (req, res) => {
     }
 
     if (!rating) {
-      return res.status(404).json({
-        success: false,
-        message: "Rating not found",
-      });
+      return sendNotFound(res, "Rating not found");
     }
 
     // Increment helpful count
     await rating.increment("isHelpful");
 
-    return res.status(200).json({
-      success: true,
-      message: "Review marked as helpful",
-      data: {
-        helpfulCount: rating.isHelpful + 1,
-      },
+    return sendSuccess(res, 200, "Review marked as helpful", {
+      helpfulCount: rating.isHelpful + 1,
     });
   } catch (error) {
     console.error("Mark review helpful error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error.message || "Internal server error");
   }
 };
 
@@ -737,27 +682,22 @@ export const getAllReviews = async (req, res) => {
         allReviews.reduce((sum, r) => sum + r.rating, 0) / totalReviews || 0,
     };
 
-    res.status(200).json({
-      success: true,
-      data: {
-        reviews: paginatedReviews,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalReviews / parseInt(limit)),
-          totalReviews,
-          hasNext: offset + parseInt(limit) < totalReviews,
-          hasPrev: parseInt(page) > 1,
-        },
-        stats,
+    const responseData = {
+      reviews: paginatedReviews,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalReviews / parseInt(limit)),
+        totalReviews,
+        hasNext: offset + parseInt(limit) < totalReviews,
+        hasPrev: parseInt(page) > 1,
       },
-    });
+      stats,
+    };
+
+    return sendSuccess(res, 200, "Reviews fetched successfully", responseData);
   } catch (error) {
     console.error("Get all reviews error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch reviews",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -772,10 +712,7 @@ export const moderateReview = async (req, res) => {
     const adminId = req.user?.userId;
 
     if (!["approve", "reject", "hide"].includes(action)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid moderation action",
-      });
+      return sendValidationError(res, "Invalid moderation action");
     }
 
     let review = null;
@@ -800,10 +737,7 @@ export const moderateReview = async (req, res) => {
       });
 
       if (updatedRows === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Course review not found",
-        });
+        return sendNotFound(res, "Course review not found");
       }
 
       review = await CourseRating.findByPk(id, {
@@ -825,10 +759,7 @@ export const moderateReview = async (req, res) => {
       });
 
       if (updatedRows === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Instructor review not found",
-        });
+        return sendNotFound(res, "Instructor review not found");
       }
 
       review = await InstructorRating.findByPk(id, {
@@ -852,18 +783,10 @@ export const moderateReview = async (req, res) => {
       }
     }
 
-    res.status(200).json({
-      success: true,
-      message: `Review ${action}d successfully`,
-      data: { review, action, moderatedBy: adminId },
-    });
+    return sendSuccess(res, 200, `Review ${action}d successfully`, { review, action, moderatedBy: adminId });
   } catch (error) {
     console.error("Moderate review error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to moderate review",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1026,17 +949,10 @@ export const getReviewAnalytics = async (req, res) => {
       status: review.status,
     }));
 
-    res.status(200).json({
-      success: true,
-      data: analytics,
-    });
+    return sendSuccess(res, 200, "Review analytics fetched successfully", analytics);
   } catch (error) {
     console.error("Get review analytics error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch review analytics",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 

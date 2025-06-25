@@ -11,9 +11,16 @@ import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import path from "path";
 import fs from "fs";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendServerError,
+  sendConflict,
+} from "../utils/responseHelper.js";
 
 // ===================== COMPREHENSIVE PROJECT MANAGEMENT =====================
-// This file combines both user-facing and admin project management functionality
 
 // Create new project (Admin only)
 export const createProject = async (req, res) => {
@@ -50,85 +57,60 @@ export const createProject = async (req, res) => {
     // Validate required fields
     if (!title || !description || !price || !categoryId) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Title, description, price and category are required",
-        details: {
-          missingFields: [
-            !title ? 'title' : null,
-            !description ? 'description' : null,
-            !price ? 'price' : null,
-            !categoryId ? 'categoryId' : null
-          ].filter(Boolean)
-        }
+      return sendValidationError(res, "Title, description, price and category are required", {
+        missingFields: [
+          !title ? 'title' : null,
+          !description ? 'description' : null,
+          !price ? 'price' : null,
+          !categoryId ? 'categoryId' : null
+        ].filter(Boolean)
       });
     }
 
     // Validate title length
     if (title.length < 3 || title.length > 100) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Title must be between 3 and 100 characters",
-      });
+      return sendValidationError(res, "Title must be between 3 and 100 characters");
     }
-    
+
     // Validate description length
     if (description.length < 10) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Description must be at least 10 characters",
-      });
+      return sendValidationError(res, "Description must be at least 10 characters");
     }
-    
+
     // Validate price
     const priceValue = parseFloat(price);
     if (isNaN(priceValue) || priceValue < 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Price must be a valid positive number",
-      });
+      return sendValidationError(res, "Price must be a valid positive number");
     }
-    
+
     // Validate sale price if provided
     if (salePrice !== undefined && salePrice !== null) {
       const salePriceValue = parseFloat(salePrice);
       if (isNaN(salePriceValue) || salePriceValue < 0) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Sale price must be a valid positive number",
-        });
+        return sendValidationError(res, "Sale price must be a valid positive number");
       }
-      
+
       if (salePriceValue >= priceValue) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Sale price must be less than regular price",
-        });
+        return sendValidationError(res, "Sale price must be less than regular price");
       }
     }
-    
+
     // Validate categoryId UUID format
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`,
-      });
+      return sendValidationError(res, `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`);
     }
 
     // Check if category exists
     const category = await CourseCategory.findByPk(categoryId);
     if (!category) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
+      return sendNotFound(res, "Category not found");
     }
 
     // Create project
@@ -193,19 +175,11 @@ export const createProject = async (req, res) => {
       ],
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Project created successfully",
-      data: completeProject,
-    });
+    return sendSuccess(res, 200, "Project created successfully", completeProject);
   } catch (error) {
     await transaction.rollback();
     console.error("Create project error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create project",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -329,9 +303,8 @@ export const getAllProjects = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    res.json({
-      success: true,
-      data: formattedProjects,
+    return sendSuccess(res, 200, "Projects fetched successfully", {
+      projects: formattedProjects,
       pagination: {
         currentPage: parseInt(page),
         totalPages,
@@ -341,11 +314,7 @@ export const getAllProjects = async (req, res) => {
     });
   } catch (error) {
     console.error("Get all projects error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch projects",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -405,18 +374,12 @@ export const getProjectById = async (req, res) => {
     });
 
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+      return sendNotFound(res, "Project not found");
     }
 
     // Check if project is published or user is the creator
     if (project.status !== "published" && project.createdBy !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: "Project not available",
-      });
+      return sendError(res, 400, "Project not available");
     }
 
     const projectData = project.toJSON();
@@ -450,17 +413,10 @@ export const getProjectById = async (req, res) => {
     await project.increment("views");
     projectData.views = project.views + 1;
 
-    res.json({
-      success: true,
-      data: projectData,
-    });
+    return sendSuccess(res, 200, "Project fetched successfully", projectData);
   } catch (error) {
     console.error("Get project by ID error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch project",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -476,19 +432,13 @@ export const updateProject = async (req, res) => {
     const project = await Project.findByPk(id);
     if (!project) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+      return sendNotFound(res, "Project not found");
     }
 
     // Check if user is creator or admin
     if (project.createdBy !== userId && req.user.role !== "admin") {
       await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to update this project",
-      });
+      return sendError(res, 403, "Not authorized to update this project");
     }
 
     // Update project
@@ -526,19 +476,11 @@ export const updateProject = async (req, res) => {
       ],
     });
 
-    res.json({
-      success: true,
-      message: "Project updated successfully",
-      data: updatedProject,
-    });
+    return sendSuccess(res, 200, "Project updated successfully", updatedProject);
   } catch (error) {
     await transaction.rollback();
     console.error("Update project error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update project",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -553,19 +495,13 @@ export const deleteProject = async (req, res) => {
     const project = await Project.findByPk(id);
     if (!project) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+      return sendNotFound(res, "Project not found");
     }
 
     // Check if user is creator or admin
     if (project.createdBy !== userId && req.user.role !== "admin") {
       await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to delete this project",
-      });
+      return sendError(res, 403, "Not authorized to delete this project");
     }
 
     // Check if project has purchases (prevent deletion)
@@ -575,31 +511,19 @@ export const deleteProject = async (req, res) => {
 
     if (purchaseCount > 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message:
-          "Cannot delete project with existing purchases. Consider setting status to 'inactive' instead.",
-      });
+      return sendConflict(res, "project", "Cannot delete project with existing purchases. Consider setting status to 'inactive' instead.");
     }
 
     await project.destroy({ transaction });
     await transaction.commit();
 
-    res.json({
-      success: true,
-      message: "Project deleted successfully",
-    });
+    return sendSuccess(res, 200, "Project deleted successfully");
   } catch (error) {
     await transaction.rollback();
     console.error("Delete project error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete project",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
-
 // ===================== PROJECT PURCHASE MANAGEMENT =====================
 
 // Initiate project purchase
@@ -614,18 +538,12 @@ export const initiateProjectPurchase = async (req, res) => {
     const project = await Project.findByPk(projectId);
     if (!project) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+      return sendNotFound(res, "Project not found");
     }
 
     if (project.status !== "published") {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Project is not available for purchase",
-      });
+      return sendError(res, 400, "Project is not available for purchase");
     }
 
     // Check if user already purchased
@@ -639,10 +557,7 @@ export const initiateProjectPurchase = async (req, res) => {
 
     if (existingPurchase) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "You have already purchased this project",
-      });
+      return sendError(res, 400, "You have already purchased this project");
     }
 
     let finalPrice = project.salePrice || project.price;
@@ -662,19 +577,13 @@ export const initiateProjectPurchase = async (req, res) => {
 
       if (!discount) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Invalid or expired discount code",
-        });
+        return sendError(res, 400, "Invalid or expired discount code");
       }
 
       // Check usage limits
       if (discount.maxUses && discount.currentUses >= discount.maxUses) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: "Discount code usage limit exceeded",
-        });
+        return sendError(res, 400, "Discount code usage limit exceeded");
       }
 
       if (discount.maxUsesPerUser) {
@@ -684,10 +593,7 @@ export const initiateProjectPurchase = async (req, res) => {
 
         if (userUsages >= discount.maxUsesPerUser) {
           await transaction.rollback();
-          return res.status(400).json({
-            success: false,
-            message: "You have reached the usage limit for this discount code",
-          });
+          return sendError(res, 400, "You have reached the usage limit for this discount code");
         }
       }
 
@@ -697,10 +603,7 @@ export const initiateProjectPurchase = async (req, res) => {
         finalPrice < discount.minPurchaseAmount
       ) {
         await transaction.rollback();
-        return res.status(400).json({
-          success: false,
-          message: `Minimum purchase amount of $${discount.minPurchaseAmount} required for this discount`,
-        });
+        return sendError(res, 400, `Minimum purchase amount of $${discount.minPurchaseAmount} required for this discount`);
       }
 
       // Apply discount
@@ -732,30 +635,22 @@ export const initiateProjectPurchase = async (req, res) => {
 
     await transaction.commit();
 
-    res.status(201).json({
-      success: true,
-      message: "Purchase initiated successfully",
-      data: {
-        purchaseId: purchase.id,
-        orderNumber: purchase.orderNumber,
-        originalPrice: purchase.originalPrice,
-        discountAmount: purchase.discountAmount,
-        finalPrice: purchase.finalPrice,
-        project: {
-          id: project.id,
-          title: project.title,
-          previewImages: project.previewImages,
-        },
+    return sendSuccess(res, 201, "Purchase initiated successfully", {
+      purchaseId: purchase.id,
+      orderNumber: purchase.orderNumber,
+      originalPrice: purchase.originalPrice,
+      discountAmount: purchase.discountAmount,
+      finalPrice: purchase.finalPrice,
+      project: {
+        id: project.id,
+        title: project.title,
+        previewImages: project.previewImages,
       },
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Initiate purchase error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to initiate purchase",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -776,10 +671,7 @@ export const completeProjectPurchase = async (req, res) => {
 
     if (!purchase) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Purchase not found",
-      });
+      return sendNotFound(res, "Purchase not found");
     }
 
     // Update purchase status
@@ -818,19 +710,11 @@ export const completeProjectPurchase = async (req, res) => {
 
     await transaction.commit();
 
-    res.json({
-      success: true,
-      message: "Purchase status updated successfully",
-      data: purchase,
-    });
+    return sendSuccess(res, 200, "Purchase status updated successfully", purchase);
   } catch (error) {
     await transaction.rollback();
     console.error("Complete purchase error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update purchase status",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -880,9 +764,8 @@ export const getUserPurchases = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    res.json({
-      success: true,
-      data: purchases,
+    return sendSuccess(res, 200, "Purchases fetched successfully", {
+      purchases,
       pagination: {
         currentPage: parseInt(page),
         totalPages,
@@ -892,11 +775,7 @@ export const getUserPurchases = async (req, res) => {
     });
   } catch (error) {
     console.error("Get user purchases error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch purchases",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1019,29 +898,22 @@ export const getProjectStatistics = async (req, res) => {
       order: [[sequelize.fn("COUNT", sequelize.col("Project.id")), "DESC"]],
     });
 
-    res.json({
-      success: true,
-      data: {
-        overview: {
-          totalProjects,
-          publishedProjects,
-          totalSales,
-          totalRevenue,
-          periodSales,
-          periodRevenue,
-        },
-        topProjects,
-        categoryDistribution: categoryStats,
-        period,
+    return sendSuccess(res, 200, "Project statistics fetched successfully", {
+      overview: {
+        totalProjects,
+        publishedProjects,
+        totalSales,
+        totalRevenue,
+        periodSales,
+        periodRevenue,
       },
+      topProjects,
+      categoryDistribution: categoryStats,
+      period,
     });
   } catch (error) {
     console.error("Get project statistics error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch project statistics",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1209,35 +1081,27 @@ export const getAllProjectsAdmin = async (req, res) => {
       avgRating:
         projects.length > 0
           ? (
-              projects.reduce(
-                (sum, p) => sum + parseFloat(p.ratings?.[0]?.avgRating || 0),
-                0,
-              ) / projects.length
-            ).toFixed(1)
+            projects.reduce(
+              (sum, p) => sum + parseFloat(p.ratings?.[0]?.avgRating || 0),
+              0,
+            ) / projects.length
+          ).toFixed(1)
           : 0,
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Projects retrieved successfully",
-      data: {
-        projects,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(count / parseInt(limit)),
-          totalRecords: count,
-          recordsPerPage: parseInt(limit),
-        },
-        overallStatistics: overallStats,
+    return sendSuccess(res, 200, "Projects retrieved successfully", {
+      projects,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / parseInt(limit)),
+        totalRecords: count,
+        recordsPerPage: parseInt(limit),
       },
+      overallStatistics: overallStats,
     });
   } catch (error) {
     console.error("Get all projects admin error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve projects",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1289,10 +1153,7 @@ export const getProjectDetailsAdmin = async (req, res) => {
     });
 
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+      return sendNotFound(res, "Project not found");
     }
 
     // Get purchase history with user details
@@ -1348,27 +1209,19 @@ export const getProjectDetailsAdmin = async (req, res) => {
         averageOrderValue:
           purchaseHistory.length > 0
             ? (
-                purchaseHistory.reduce(
-                  (sum, purchase) => sum + purchase.finalPrice,
-                  0,
-                ) / purchaseHistory.length
-              ).toFixed(2)
+              purchaseHistory.reduce(
+                (sum, purchase) => sum + purchase.finalPrice,
+                0,
+              ) / purchaseHistory.length
+            ).toFixed(2)
             : 0,
       },
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Project details retrieved successfully",
-      data: detailedData,
-    });
+    return sendSuccess(res, 200, "Project details retrieved successfully", detailedData);
   } catch (error) {
     console.error("Get project details admin error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve project details",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1444,34 +1297,26 @@ export const getProjectBuyers = async (req, res) => {
       averageOrderValue:
         count > 0
           ? (
-              buyers.reduce((sum, buyer) => sum + buyer.finalPrice, 0) / count
-            ).toFixed(2)
+            buyers.reduce((sum, buyer) => sum + buyer.finalPrice, 0) / count
+          ).toFixed(2)
           : 0,
       discountUsage: buyers.filter((buyer) => buyer.discountAmount > 0).length,
       returningCustomers: 0, // Would need additional query to calculate
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Project buyers retrieved successfully",
-      data: {
-        buyers,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(count / parseInt(limit)),
-          totalRecords: count,
-          recordsPerPage: parseInt(limit),
-        },
-        statistics: buyerStats,
+    return sendSuccess(res, 200, "Project buyers retrieved successfully", {
+      buyers,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / parseInt(limit)),
+        totalRecords: count,
+        recordsPerPage: parseInt(limit),
       },
+      statistics: buyerStats,
     });
   } catch (error) {
     console.error("Get project buyers error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve project buyers",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1527,9 +1372,9 @@ export const getProjectDownloads = async (req, res) => {
       averageDownloadsPerFile:
         files.length > 0
           ? (
-              files.reduce((sum, file) => sum + file.downloadCount, 0) /
-              files.length
-            ).toFixed(1)
+            files.reduce((sum, file) => sum + file.downloadCount, 0) /
+            files.length
+          ).toFixed(1)
           : 0,
       mostPopularFile: files.reduce(
         (max, file) => (file.downloadCount > max.downloadCount ? file : max),
@@ -1542,21 +1387,13 @@ export const getProjectDownloads = async (req, res) => {
       }, {}),
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Download tracking retrieved successfully",
-      data: {
-        downloadTracking,
-        statistics: downloadStats,
-      },
+    return sendSuccess(res, 200, "Download tracking retrieved successfully", {
+      downloadTracking,
+      statistics: downloadStats,
     });
   } catch (error) {
     console.error("Get project downloads error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve download tracking",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1578,10 +1415,7 @@ export const applyDiscountToProject = async (req, res) => {
     // Validate project exists
     const project = await Project.findByPk(projectId);
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+      return sendNotFound(res, "Project not found");
     }
 
     // Create or update discount code
@@ -1604,10 +1438,7 @@ export const applyDiscountToProject = async (req, res) => {
     });
 
     if (!created && discount.applicableCategories.includes(projectId)) {
-      return res.status(400).json({
-        success: false,
-        message: "Discount code already applied to this project",
-      });
+      return sendError(res, 400, "Discount code already applied to this project");
     }
 
     // If discount exists but not applied to this project, add it
@@ -1616,31 +1447,23 @@ export const applyDiscountToProject = async (req, res) => {
       await discount.update({ applicableCategories: updatedCategories });
     }
 
-    res.status(200).json({
-      success: true,
-      message: created
-        ? "Discount code created and applied successfully"
-        : "Discount code applied to project successfully",
-      data: {
-        discountCode: discount,
-        project: {
-          id: project.id,
-          title: project.title,
-          originalPrice: project.price,
-          discountedPrice:
-            discountType === "percentage"
-              ? (project.price * (1 - discountValue / 100)).toFixed(2)
-              : (project.price - discountValue).toFixed(2),
-        },
+    return sendSuccess(res, 200, created
+      ? "Discount code created and applied successfully"
+      : "Discount code applied to project successfully", {
+      discountCode: discount,
+      project: {
+        id: project.id,
+        title: project.title,
+        originalPrice: project.price,
+        discountedPrice:
+          discountType === "percentage"
+            ? (project.price * (1 - discountValue / 100)).toFixed(2)
+            : (project.price - discountValue).toFixed(2),
       },
     });
   } catch (error) {
     console.error("Apply discount to project error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to apply discount to project",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 

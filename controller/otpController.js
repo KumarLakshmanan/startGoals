@@ -8,6 +8,7 @@ import {
   sendOtp,
 } from "../utils/sendOtp.js";
 import User from "../model/user.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 import { Op } from "sequelize";
 import bcrypt from "bcryptjs";
 import { generateOtp } from "../utils/commonUtils.js";
@@ -20,9 +21,9 @@ export const sendOtpApi = async (req, res) => {
     const { identifier } = req.body;
 
     if (!identifier) {
-      return res
-        .status(400)
-        .json({ status: false, message: "Identifier is required" });
+      return sendValidationError(res, "Identifier is required", {
+        identifier: "Required field"
+      });
     }
 
     // Determine delivery method based on identifier format
@@ -64,69 +65,12 @@ export const sendOtpApi = async (req, res) => {
     if (deliveryMethod === "email") await sendEmailOtp(identifier, otp);
     else await sendSmsOtp(identifier, otp);
 
-    res.json({ status: true, message: `OTP sent via ${method}` });
+    return sendSuccess(res, 200, `OTP sent via ${method}`);
   } catch (err) {
     console.error("Error sending OTP:", err);
-    res.status(500).json({ status: false, error: "Failed to send OTP" });
+    return sendServerError(res, err);
   }
 };
-
-// // ✅ Validate OTP (for verification)
-// export async function validateOtp(req, res) {
-//   try {
-//     const { identifier, otp } = req.body;
-
-//     const isValid = await verifyOtp(identifier, otp);
-//     if (!isValid) {
-//       return res.status(400).json({
-//         error: "Invalid or expired OTP",
-//         status: false,
-//       });
-//     }
-
-//     const user = await User.findOne({
-//       where: {
-//         [Op.or]: [{ email: identifier }, { mobile: identifier }],
-//       },
-//     });
-
-//     if (!user) {
-//       return res.status(404).json({
-//         error: "User not found",
-//         status: false,
-//       });
-//     }
-
-//     if (user.isVerified) {
-//       return res.json({
-//         message: "Account already verified",
-//         status: true,
-//       });
-//     }
-
-//     user.isVerified = true;
-//     await user.save();
-
-//     return res.json({
-//       message: "Login successful",
-//       status: true,
-//       user: {
-//         id: user.id,
-//         username: user.username,
-//         email: user.email,
-//         mobile: user.mobile,
-//         isVerified: user.isVerified,
-//       },
-//     });
-//   } catch (err) {
-//     console.error("Error validating OTP:", err);
-//     res.status(500).json({
-//       error: "Internal server error during OTP verification",
-//       status: false,
-//     });
-//   }
-// }
-
 // ✅ Resend OTP
 export async function resendOtp(req, res) {
   const { identifier, method } = req.body;
@@ -137,24 +81,15 @@ export async function resendOtp(req, res) {
       const now = new Date();
       const diff = (now - lastSent) / 1000;
       if (diff < 60) {
-        return res.status(429).json({
-          status: false,
-          error: `Please wait ${
-            60 - Math.floor(diff)
-          } seconds before resending`,
-        });
+        return sendError(res, 429, `Please wait ${60 - Math.floor(diff)} seconds before resending`);
       }
     }
 
     await sendOtp(identifier);
-    res.json({
-      success: true,
-      message: `OTP sent to ${identifier}`,
-      status: true,
-    });
+    return sendSuccess(res, 200, `OTP sent to ${identifier}`);
   } catch (err) {
     console.error("Error resending OTP:", err);
-    res.status(500).json({ status: false, error: "Failed to resend OTP" });
+    return sendServerError(res, err);
   }
 }
 
@@ -170,7 +105,7 @@ export async function sendResetOtp(req, res) {
     });
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return sendNotFound(res, "User not found");
     }
 
     const lastSent = await getLastSentTime(identifier);
@@ -178,9 +113,7 @@ export async function sendResetOtp(req, res) {
       const now = new Date();
       const diff = (now - lastSent) / 1000;
       if (diff < 60) {
-        return res.status(429).json({
-          error: `Please wait ${60 - Math.floor(diff)} seconds before retrying`,
-        });
+        return sendError(res, 429, `Please wait ${60 - Math.floor(diff)} seconds before retrying`);
       }
     }
 
@@ -190,13 +123,10 @@ export async function sendResetOtp(req, res) {
     if (method === "email") await sendEmailOtp(identifier, otp);
     else await sendSmsOtp(identifier, otp);
 
-    res.json({
-      message: `Password reset OTP sent via ${method}`,
-      success: true,
-    });
+    return sendSuccess(res, 200, `Password reset OTP sent via ${method}`);
   } catch (err) {
     console.error("Error sending reset OTP:", err);
-    res.status(500).json({ error: "Failed to send password reset OTP" });
+    return sendServerError(res, err);
   }
 }
 
@@ -208,7 +138,7 @@ export async function verifyResetOtp(req, res) {
   try {
     const isValid = await verifyOtp(identifier, otp);
     if (!isValid) {
-      return res.status(400).json({ error: "Invalid or expired OTP" });
+      return sendValidationError(res, "Invalid or expired OTP");
     }
 
     const user = await User.findOne({
@@ -218,17 +148,17 @@ export async function verifyResetOtp(req, res) {
     });
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return sendNotFound(res, "User not found");
     }
 
     // ✅ Mark user eligible for password reset
     user.passwordResetVerified = true;
     await user.save();
 
-    res.json({ success: true, message: "OTP verified for password reset" });
+    return sendSuccess(res, 200, "OTP verified for password reset");
   } catch (err) {
     console.error("Error verifying reset OTP:", err);
-    res.status(500).json({ error: "Internal server error" });
+    return sendServerError(res, err);
   }
 }
 
@@ -243,14 +173,12 @@ export async function resetPassword(req, res) {
     });
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return sendNotFound(res, "User not found");
     }
 
     // ❌ Block reset if OTP not verified
     if (!user.passwordResetVerified) {
-      return res
-        .status(403)
-        .json({ error: "OTP verification required before resetting password" });
+      return sendError(res, 403, "OTP verification required before resetting password");
     }
 
     // ✅ Proceed with reset
@@ -259,10 +187,10 @@ export async function resetPassword(req, res) {
     user.passwordResetVerified = false; // Invalidate OTP use
     await user.save();
 
-    return res.json({ success: true, message: "Password reset successfully" });
+    return sendSuccess(res, 200, "Password reset successfully");
   } catch (err) {
     console.error("Error resetting password:", err);
-    res.status(500).json({ error: "Failed to reset password" });
+    return sendServerError(res, err);
   }
 }
 
@@ -272,12 +200,7 @@ export async function validateOtp(req, res) {
 
     const isValid = await verifyOtp(identifier, otp);
     if (!isValid) {
-      return res.status(400).json({
-        message: "Invalid or expired OTP",
-        status: false,
-        success: false,
-        data: null,
-      });
+      return sendValidationError(res, "Invalid or expired OTP");
     }
 
     // ✅ OTP valid: now fetch user
@@ -288,12 +211,7 @@ export async function validateOtp(req, res) {
     });
 
     if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-        status: false,
-        success: false,
-        data: null,
-      });
+      return sendNotFound(res, "User not found");
     }
 
     // ✅ Update user verification if needed
@@ -305,33 +223,21 @@ export async function validateOtp(req, res) {
     // ✅ Generate token
     const token = generateToken(user);
 
-    return res.status(200).json({
-      message: "OTP verification successful",
-      status: true,
-      success: true,
-      data: {
-        userId: user.userId,
-        name: user.username || user.firstName || user.email,
-        email: user.email,
-        mobile: user.mobile,
-        profileImage: user.profileImage,
-        role: user.role,
-        isVerified: user.isVerified,
-        firstTimeLogin: user.firstLogin,
-        token,
-      },
-    });
+    const responseData = {
+      userId: user.userId,
+      name: user.username || user.firstName || user.email,
+      email: user.email,
+      mobile: user.mobile,
+      profileImage: user.profileImage,
+      role: user.role,
+      isVerified: user.isVerified,
+      firstTimeLogin: user.firstLogin,
+      token,
+    };
+
+    return sendSuccess(res, 200, "OTP verification successful", responseData);
   } catch (err) {
     console.error("Error validating OTP:", err);
-    return res.status(500).json({
-      message: "Internal server error during OTP verification",
-      status: false,
-      success: false,
-      data: null,
-      error:
-        process.env.NODE_ENV === "development"
-          ? err.message
-          : "Internal Server Error",
-    });
+    return sendServerError(res, err);
   }
 }

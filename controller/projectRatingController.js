@@ -4,6 +4,7 @@ import ProjectPurchase from "../model/projectPurchase.js";
 import User from "../model/user.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 // ===================== PROJECT RATING MANAGEMENT =====================
 
@@ -18,20 +19,14 @@ export const addProjectRating = async (req, res) => {
     // Validate rating value
     if (rating < 1 || rating > 5) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Rating must be between 1 and 5",
-      });
+      return sendValidationError(res, "Rating must be between 1 and 5");
     }
 
     // Check if project exists
     const project = await Project.findByPk(projectId);
     if (!project) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+      return sendNotFound(res, "Project not found");
     }
 
     // Check if user has purchased the project
@@ -45,10 +40,7 @@ export const addProjectRating = async (req, res) => {
 
     if (!purchase) {
       await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "You can only rate projects you have purchased",
-      });
+      return sendError(res, "You can only rate projects you have purchased", 403);
     }
 
     // Check if user has already rated this project
@@ -58,10 +50,7 @@ export const addProjectRating = async (req, res) => {
 
     if (existingRating) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "You have already rated this project",
-      });
+      return sendConflict(res, "You have already rated this project");
     }
 
     // Create rating
@@ -98,19 +87,11 @@ export const addProjectRating = async (req, res) => {
       ],
     });
 
-    res.status(201).json({
-      success: true,
-      message: "Rating added successfully",
-      data: completeRating,
-    });
+    sendSuccess(res, "Rating added successfully", completeRating);
   } catch (error) {
     await transaction.rollback();
     console.error("Add project rating error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to add rating",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to add rating", error.message);
   }
 };
 
@@ -129,10 +110,7 @@ export const getProjectRatings = async (req, res) => {
     // Check if project exists
     const project = await Project.findByPk(projectId);
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+      return sendNotFound(res, "Project not found");
     }
 
     // Build where conditions
@@ -192,11 +170,7 @@ export const getProjectRatings = async (req, res) => {
     });
   } catch (error) {
     console.error("Get project ratings error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch ratings",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to fetch ratings", error.message);
   }
 };
 
@@ -213,28 +187,19 @@ export const updateProjectRating = async (req, res) => {
     const projectRating = await ProjectRating.findByPk(ratingId);
     if (!projectRating) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Rating not found",
-      });
+      return sendNotFound(res, "Rating not found");
     }
 
     // Check if user owns this rating
     if (projectRating.userId !== userId) {
       await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "You can only update your own ratings",
-      });
+      return sendError(res, "You can only update your own ratings", 403);
     }
 
     // Validate rating value if provided
     if (rating !== undefined && (rating < 1 || rating > 5)) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Rating must be between 1 and 5",
-      });
+      return sendValidationError(res, "Rating must be between 1 and 5");
     }
 
     // Update rating
@@ -274,11 +239,7 @@ export const updateProjectRating = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("Update project rating error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update rating",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to update rating", error.message);
   }
 };
 
@@ -295,19 +256,13 @@ export const deleteProjectRating = async (req, res) => {
     const projectRating = await ProjectRating.findByPk(ratingId);
     if (!projectRating) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Rating not found",
-      });
+      return sendNotFound(res, "Rating not found");
     }
 
     // Check permissions
     if (projectRating.userId !== userId && userRole !== "admin") {
       await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to delete this rating",
-      });
+      return sendError(res, "Not authorized to delete this rating", 403);
     }
 
     const projectId = projectRating.projectId;
@@ -327,11 +282,7 @@ export const deleteProjectRating = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("Delete project rating error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete rating",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to delete rating", error.message);
   }
 };
 
@@ -371,11 +322,7 @@ export const getUserProjectRatings = async (req, res) => {
     });
   } catch (error) {
     console.error("Get user project ratings error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch user ratings",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to fetch user ratings", error.message);
   }
 };
 
@@ -451,11 +398,7 @@ export const getAllRatingsForModeration = async (req, res) => {
     });
   } catch (error) {
     console.error("Get all ratings for moderation error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch ratings for moderation",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to fetch ratings for moderation", error.message);
   }
 };
 
@@ -471,20 +414,14 @@ export const moderateProjectRating = async (req, res) => {
     // Validate status
     if (!["approved", "rejected", "pending"].includes(status)) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status. Must be 'approved', 'rejected', or 'pending'",
-      });
+      return sendValidationError(res, "Invalid status. Must be 'approved', 'rejected', or 'pending'");
     }
 
     // Find rating
     const projectRating = await ProjectRating.findByPk(ratingId);
     if (!projectRating) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Rating not found",
-      });
+      return sendNotFound(res, "Rating not found");
     }
 
     // Update rating
@@ -532,11 +469,7 @@ export const moderateProjectRating = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("Moderate project rating error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to moderate rating",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to moderate rating", error.message);
   }
 };
 

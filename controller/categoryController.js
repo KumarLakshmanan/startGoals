@@ -3,6 +3,7 @@ import Skill from "../model/skill.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
 import Goal from "../model/goal.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 // Create a new category with skills
 export const createCategory = async (req, res) => {
@@ -20,35 +21,32 @@ export const createCategory = async (req, res) => {
     // Validate required fields
     if (!categoryName || !categoryCode) {
       await transaction.rollback();
-      return res.status(400).json({
-        message: "categoryName and categoryCode are required.",
-        status: false,
+      return sendValidationError(res, "Missing required fields", {
+        categoryName: !categoryName ? "Category name is required" : undefined,
+        categoryCode: !categoryCode ? "Category code is required" : undefined
       });
     }
     
     // Validate length constraints
     if (categoryName.length < 2 || categoryName.length > 100) {
       await transaction.rollback();
-      return res.status(400).json({
-        message: "Category name must be between 2 and 100 characters.",
-        status: false,
+      return sendValidationError(res, "Invalid category name length", {
+        categoryName: "Category name must be between 2 and 100 characters"
       });
     }
     
     if (categoryCode.length < 2 || categoryCode.length > 20) {
       await transaction.rollback();
-      return res.status(400).json({
-        message: "Category code must be between 2 and 20 characters.",
-        status: false,
+      return sendValidationError(res, "Invalid category code length", {
+        categoryCode: "Category code must be between 2 and 20 characters"
       });
     }
     
     // Validate parentCategoryId format if provided
     if (parentCategoryId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentCategoryId)) {
       await transaction.rollback();
-      return res.status(400).json({
-        message: "Invalid parent category ID format. Must be a valid UUID.",
-        status: false,
+      return sendValidationError(res, "Invalid parent category ID format", {
+        parentCategoryId: "Invalid parent category ID format. Must be a valid UUID"
       });
     }
     
@@ -57,10 +55,7 @@ export const createCategory = async (req, res) => {
       const parentCategory = await Category.findByPk(parentCategoryId, { transaction });
       if (!parentCategory) {
         await transaction.rollback();
-        return res.status(404).json({
-          message: "Parent category not found.",
-          status: false,
-        });
+        return sendNotFound(res, "Parent category not found", { parentCategoryId });
       }
     }
 
@@ -76,13 +71,10 @@ export const createCategory = async (req, res) => {
 
     if (existing) {
       await transaction.rollback();
-      return res.status(409).json({
-        message:
-          existing.categoryName === categoryName
-            ? "Category with this name already exists."
-            : "Category with this code already exists.",
-        status: false,
-      });
+      return sendConflict(res, 
+        existing.categoryName === categoryName ? "categoryName" : "categoryCode", 
+        existing.categoryName === categoryName ? categoryName : categoryCode
+      );
     }
 
     // Create the category
@@ -136,28 +128,19 @@ export const createCategory = async (req, res) => {
       if (newSkills.length > 0) {
         // Don't create missing skills, show error message instead
         await transaction.rollback();
-        return res.status(400).json({
-          message: "Some skills are not available in the system.",
-          status: false,
-          unavailableSkills: newSkills,
+        return sendValidationError(res, "Some skills are not available in the system", {
+          skills: "Some skills are not available in the system",
+          unavailableSkills: newSkills
         });
       }
     }
 
     await transaction.commit();
 
-    return res.status(201).json({
-      message: "Category created successfully.",
-      status: true,
-      data: newCategory,
-    });
+    return sendSuccess(res, 201, "Category created successfully", newCategory);
   } catch (error) {
     await transaction.rollback();
-    return res.status(500).json({
-      message: "Internal server error.",
-      status: false,
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -165,17 +148,9 @@ export const createCategory = async (req, res) => {
 export const getAllCategories = async (req, res) => {
   try {
     const categories = await Category.findAll();
-    return res.status(200).json({
-      message: "Categories fetched successfully.",
-      status: true,
-      data: categories,
-    });
+    return sendSuccess(res, 200, "Categories fetched successfully", categories);
   } catch (error) {
-    return res.status(500).json({
-      message: "Failed to fetch categories.",
-      status: false,
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -188,9 +163,8 @@ export const bulkCreateCategories = async (req, res) => {
 
     if (!Array.isArray(categories) || categories.length === 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        message: "Please send a non-empty array of categories.",
-        status: false,
+      return sendValidationError(res, "Please send a non-empty array of categories", {
+        categories: "Please send a non-empty array of categories"
       });
     }
 
@@ -240,10 +214,8 @@ export const bulkCreateCategories = async (req, res) => {
     if (newSkills.length > 0) {
       // Don't create missing skills, show error message instead
       await transaction.rollback();
-      return res.status(400).json({
-        message: "Some skills are not available in the system.",
-        status: false,
-        unavailableSkills: newSkills,
+      return sendValidationError(res, "Some skills are not available in the system.", {
+        unavailableSkills: newSkills
       });
     }
 
@@ -263,22 +235,14 @@ export const bulkCreateCategories = async (req, res) => {
 
     await transaction.commit();
 
-    return res.status(201).json({
-      message: "Categories and skills uploaded successfully.",
-      status: true,
-      data: {
-        categories: insertedCategories,
-        newSkillsCreated: newSkills.length,
-        totalSkillsProcessed: allSkills.length,
-      },
+    return sendSuccess(res, 200, "Categories and skills uploaded successfully.", {
+      categories: insertedCategories,
+      newSkillsCreated: newSkills.length,
+      totalSkillsProcessed: allSkills.length,
     });
   } catch (error) {
     await transaction.rollback();
-    return res.status(500).json({
-      message: "Bulk insert failed.",
-      status: false,
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -289,23 +253,12 @@ export const getCategoryById = async (req, res) => {
     const category = await Category.findByPk(id);
 
     if (!category) {
-      return res.status(404).json({
-        message: "Category not found.",
-        status: false,
-      });
+      return sendNotFound(res, "Category not found.", { id });
     }
 
-    return res.status(200).json({
-      message: "Category fetched.",
-      status: true,
-      data: category,
-    });
+    return sendSuccess(res, 200, "Category fetched.", category);
   } catch (error) {
-    return res.status(500).json({
-      message: "Failed to fetch category.",
-      status: false,
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -319,23 +272,12 @@ export const getCategoryByCode = async (req, res) => {
     });
 
     if (!category) {
-      return res.status(404).json({
-        message: "Category not found.",
-        status: false,
-      });
+      return sendNotFound(res, "Category not found.", { code });
     }
 
-    return res.status(200).json({
-      message: "Category fetched.",
-      status: true,
-      data: category,
-    });
+    return sendSuccess(res, 200, "Category fetched.", category);
   } catch (error) {
-    return res.status(500).json({
-      message: "Failed to fetch category.",
-      status: false,
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -347,27 +289,16 @@ export const deleteCategoryById = async (req, res) => {
     const category = await Category.findByPk(id);
 
     if (!category) {
-      return res.status(404).json({
-        message: "Category not found.",
-        status: false,
-      });
+      return sendNotFound(res, "Category not found.", { id });
     }
 
     await category.destroy(); // Soft deletes (sets deletedAt)
 
-    return res.status(200).json({
-      message: "Category deleted successfully (soft delete).",
-      status: true,
-    });
+    return sendSuccess(res, 200, "Category deleted successfully (soft delete).");
   } catch (error) {
-    return res.status(500).json({
-      message: "Failed to delete category.",
-      status: false,
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
-
 
 export const saveAllCategories = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -382,30 +313,21 @@ export const saveAllCategories = async (req, res) => {
     } else if (requestBody.categories && Array.isArray(requestBody.categories)) {
       categories = requestBody.categories;
     } else {
-      return res.status(400).json({
-        status: false,
-        message: "Request body must be an array of categories or an object with a 'categories' array property"
-      });
+      await transaction.rollback();
+      return sendValidationError(res, "Request body must be an array of categories or an object with a 'categories' array property");
     }
     
     if (categories.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "Categories array cannot be empty"
-      });
+      await transaction.rollback();
+      return sendValidationError(res, "Categories array cannot be empty");
     }
     
     // Ensure the categories table exists
     try {
       await Category.sync({ alter: false });
     } catch (error) {
-      console.error("Error with categories table:", error);
       await transaction.rollback();
-      return res.status(500).json({
-        status: false,
-        message: "Database error: Categories table might not exist",
-        error: error.message
-      });
+      return sendServerError(res, error);
     }
     
     // Process categories
@@ -463,11 +385,7 @@ export const saveAllCategories = async (req, res) => {
     // Return validation errors if any
     if (validationErrors.length > 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Validation failed for one or more categories.",
-        validationErrors
-      });
+      return sendValidationError(res, "Validation failed for one or more categories.", { validationErrors });
     }
     
     // Create categories in bulk
@@ -478,19 +396,10 @@ export const saveAllCategories = async (req, res) => {
     
     await transaction.commit();
     
-    return res.status(201).json({
-      status: true,
-      message: "Categories created successfully",
-      data: createdCategories
-    });
+    return sendSuccess(res, 200, "Categories created successfully", createdCategories);
     
   } catch (error) {
     await transaction.rollback();
-    console.error("Bulk category upload error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to upload categories",
-      error: error.message
-    });
+    return sendServerError(res, error);
   }
 };

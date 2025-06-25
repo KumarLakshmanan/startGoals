@@ -1,5 +1,6 @@
 // controllers/uploadController.js
 import crypto from "crypto";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 // Helper function to construct public S3 URL
 const constructS3PublicUrl = (bucketName, key, region = "us-east-1") => {
@@ -10,11 +11,7 @@ export const uploadFiles = async (req, res) => {
   try {
     // Check if files were uploaded
     if (!req.files || req.files.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No files uploaded",
-        data: null,
-      });
+      return sendValidationError(res, "No files uploaded");
     }
 
     // Validate file size limits (optional additional check)
@@ -36,24 +33,16 @@ export const uploadFiles = async (req, res) => {
     }
 
     if (totalSize > MAX_TOTAL_SIZE) {
-      return res.status(400).json({
-        success: false,
-        message: "Total upload size exceeds the maximum allowed limit",
-        data: {
-          totalSize,
-          maxAllowed: MAX_TOTAL_SIZE,
-        },
+      return sendValidationError(res, "Total upload size exceeds the maximum allowed limit", {
+        totalSize,
+        maxAllowed: MAX_TOTAL_SIZE
       });
     }
 
     if (oversizedFiles.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "One or more files exceed the maximum allowed file size",
-        data: {
-          oversizedFiles,
-          maxAllowedPerFile: MAX_SINGLE_FILE_SIZE,
-        },
+      return sendValidationError(res, "One or more files exceed the maximum allowed file size", {
+        oversizedFiles,
+        maxAllowedPerFile: MAX_SINGLE_FILE_SIZE
       });
     }
 
@@ -109,31 +98,21 @@ export const uploadFiles = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
-      success: true,
-      message:
-        successful > 0
-          ? "Files uploaded successfully"
-          : "No files were uploaded successfully",
-      data: {
-        uploadedFiles: uploadedFiles,
-        totalFiles: uploadedFiles.length,
-        totalSize: totalSize,
-        uploadStats: {
-          successful: successful,
-          failed: failed,
-          skipped: skipped,
-        },
+    const responseData = {
+      uploadedFiles: uploadedFiles,
+      totalFiles: uploadedFiles.length,
+      totalSize: totalSize,
+      uploadStats: {
+        successful: successful,
+        failed: failed,
+        skipped: skipped,
       },
-    });
+    };
+
+    return sendSuccess(res, 200, successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully", responseData);
   } catch (error) {
     console.error("Upload error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Upload failed",
-      data: null,
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -142,25 +121,17 @@ export const uploadSingleFile = async (req, res) => {
   try {
     // Check if a file was uploaded
     if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        message: "No file uploaded",
-        data: null,
-      });
+      return sendValidationError(res, "No file uploaded");
     }
 
     // Validate file size (optional additional check)
     const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
 
     if (req.file.size > MAX_FILE_SIZE) {
-      return res.status(400).json({
-        success: false,
-        message: "File size exceeds the maximum allowed limit",
-        data: {
-          fileName: req.file.originalname,
-          fileSize: req.file.size,
-          maxAllowed: MAX_FILE_SIZE,
-        },
+      return sendValidationError(res, "File size exceeds the maximum allowed limit", {
+        fileName: req.file.originalname,
+        fileSize: req.file.size,
+        maxAllowed: MAX_FILE_SIZE,
       });
     }
 
@@ -201,28 +172,21 @@ export const uploadSingleFile = async (req, res) => {
       uploadedBy: req.user?.id || req.userId || null,
     };
 
-    return res.status(200).json({
-      success: true,
-      message: "File uploaded successfully",
-      data: {
-        uploadedFiles: [fileData],
-        totalFiles: 1,
-        totalSize: file.size,
-        uploadStats: {
-          successful: 1,
-          failed: 0,
-          skipped: 0,
-        },
+    const responseData = {
+      uploadedFiles: [fileData],
+      totalFiles: 1,
+      totalSize: file.size,
+      uploadStats: {
+        successful: 1,
+        failed: 0,
+        skipped: 0,
       },
-    });
+    };
+
+    return sendSuccess(res, 200, "File uploaded successfully", responseData);
   } catch (error) {
     console.error("Upload error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Upload failed",
-      data: null,
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -231,11 +195,7 @@ export const uploadFieldFiles = async (req, res) => {
   try {
     // Check if files were uploaded
     if (!req.files || Object.keys(req.files).length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "No files uploaded",
-        data: null,
-      });
+      return sendValidationError(res, "No files uploaded");
     }
 
     // Validate file size limits
@@ -279,35 +239,23 @@ export const uploadFieldFiles = async (req, res) => {
 
     // Report validation errors
     if (invalidFields.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid field names detected",
-        data: {
-          invalidFields,
-          validFieldNames
-        },
+      return sendValidationError(res, "Invalid field names detected", {
+        invalidFields,
+        validFieldNames
       });
     }
 
     if (totalSize > MAX_TOTAL_SIZE) {
-      return res.status(400).json({
-        success: false,
-        message: "Total upload size exceeds the maximum allowed limit",
-        data: {
-          totalSize,
-          maxAllowed: MAX_TOTAL_SIZE,
-        },
+      return sendValidationError(res, "Total upload size exceeds the maximum allowed limit", {
+        totalSize,
+        maxAllowed: MAX_TOTAL_SIZE,
       });
     }
 
     if (oversizedFiles.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "One or more files exceed the maximum allowed file size",
-        data: {
-          oversizedFiles,
-          maxAllowedPerFile: MAX_SINGLE_FILE_SIZE,
-        },
+      return sendValidationError(res, "One or more files exceed the maximum allowed file size", {
+        oversizedFiles,
+        maxAllowedPerFile: MAX_SINGLE_FILE_SIZE,
       });
     }
 
@@ -369,30 +317,20 @@ export const uploadFieldFiles = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
-      success: true,
-      message:
-        successful > 0
-          ? "Files uploaded successfully"
-          : "No files were uploaded successfully",
-      data: {
-        uploadedFiles: uploadedFiles,
-        totalFiles: uploadedFiles.length,
-        totalSize: totalSize,
-        uploadStats: {
-          successful: successful,
-          failed: failed,
-          skipped: skipped,
-        },
+    const responseData = {
+      uploadedFiles: uploadedFiles,
+      totalFiles: uploadedFiles.length,
+      totalSize: totalSize,
+      uploadStats: {
+        successful: successful,
+        failed: failed,
+        skipped: skipped,
       },
-    });
+    };
+
+    return sendSuccess(res, 200, successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully", responseData);
   } catch (error) {
     console.error("Upload error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Upload failed",
-      data: null,
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };

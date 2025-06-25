@@ -1,15 +1,15 @@
 import CourseLevel from "../model/courseLevel.js";
 import { validateCourseLevelInput } from "../utils/commonUtils.js";
 import sequelize from "../config/db.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 // Controller for Bulk Upload of Course Levels
 export const bulkUploadCourseLevels = async (req, res) => {
   const { courseLevels, overwriteExisting = false } = req.body;
 
   if (!Array.isArray(courseLevels) || courseLevels.length === 0) {
-    return res.status(400).json({
-      status: false,
-      message: "No levels provided or levels array is empty.",
+    return sendValidationError(res, "No levels provided or levels array is empty", {
+      courseLevels: "Must be a non-empty array"
     });
   }
 
@@ -28,10 +28,8 @@ export const bulkUploadCourseLevels = async (req, res) => {
 
     if (validationErrors.length > 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Validation failed for one or more levels.",
-        validationErrors,
+      return sendValidationError(res, "Validation failed for one or more levels", {
+        validationErrors
       });
     }
 
@@ -59,19 +57,11 @@ export const bulkUploadCourseLevels = async (req, res) => {
 
     await transaction.commit();
 
-    return res.status(201).json({
-      status: true,
-      message: "Course levels uploaded successfully!",
-      data: newLevels,
-    });
+    return sendSuccess(res, 200, "Course levels uploaded successfully!", newLevels);
   } catch (error) {
     await transaction.rollback();
     console.error("Error during course levels upload:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Error during course levels upload.",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -95,35 +85,10 @@ export const getAllCourseLevels = async (req, res) => {
       order: [[sortField, order]],
     });
 
-      return res.status(200).json({
-        status: true,
-        message: "No course levels found.",
-        data: courseLevels,
-      });
-
-    // Add statistics if requested
-    let responseData = courseLevels;
-    if (includeStats === "true") {
-      responseData = courseLevels.map((level) => ({
-        ...level.toJSON(),
-        stats: {
-          courseCount: 0, // You'll need to implement actual count logic
-          enrollmentCount: 0, // You'll need to implement actual enrollment logic
-        },
-      }));
-    }
-
-    return res.status(200).json({
-      status: true,
-      data: responseData,
-    });
+    return sendSuccess(res, 200, "Course levels retrieved successfully", courseLevels);
   } catch (error) {
     console.error("Error fetching course levels:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Error fetching course levels.",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -136,22 +101,12 @@ export const getCourseLevelById = async (req, res) => {
       where: { levelId: levelId },
     });
     if (!courseLevel) {
-      return res.status(404).json({
-        status: false,
-        message: `Course level with ID ${levelId} not found.`,
-      });
+      return sendNotFound(res, `Course level with ID ${levelId} not found`);
     }
 
-    return res.status(200).json({
-      status: true,
-      data: courseLevel,
-    });
+    return sendSuccess(res, 200, "Course level retrieved successfully", courseLevel);
   } catch (error) {
     console.error("Error fetching course level by ID:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Error fetching course level.",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };

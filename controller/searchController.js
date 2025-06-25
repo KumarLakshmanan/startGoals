@@ -14,6 +14,14 @@ import Enrollment from "../model/enrollment.js";
 import ProjectPurchase from "../model/projectPurchase.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendServerError,
+  sendConflict,
+} from "../utils/responseHelper.js";
 
 // Enhanced autocomplete suggestions with intelligent ranking
 export const getSearchSuggestions = async (req, res) => {
@@ -27,35 +35,28 @@ export const getSearchSuggestions = async (req, res) => {
 
     // Validate query parameter
     if (!query || query.length < 2) {
-      return res.status(200).json({
-        success: true,
-        message: "Query too short",
-        data: {
-          suggestions: [],
-          recent_searches:
-            include_recent === "true"
-              ? await getRecentSearches(req.user?.userId)
-              : [],
-        },
+      return sendSuccess(res, 200, "Query too short", {
+        suggestions: [],
+        recent_searches:
+          include_recent === "true"
+            ? await getRecentSearches(req.user?.userId)
+            : [],
       });
     }
 
     // Validate limit parameter
     const limitNum = parseInt(limit);
     if (isNaN(limitNum) || limitNum < 1 || limitNum > 50) {
-      return res.status(400).json({
-        success: false,
-        message: "Limit must be a number between 1 and 50",
-      });
+      return sendValidationError(res, "Limit must be a number between 1 and 50");
     }
 
     // Validate type parameter
-    const validTypes = ['all', 'courses', 'projects', 'instructors'];
+    const validTypes = ["all", "courses", "projects", "instructors"];
     if (!validTypes.includes(type)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid type parameter. Must be one of: ${validTypes.join(', ')}`,
-      });
+      return sendValidationError(
+        res,
+        `Invalid type parameter. Must be one of: ${validTypes.join(", ")}`
+      );
     }
 
     const searchTerm = `%${query}%`;
@@ -89,7 +90,7 @@ export const getSearchSuggestions = async (req, res) => {
         order: [
           [
             sequelize.literal(
-              `CASE WHEN title ILIKE '${query}%' THEN 1 ELSE 2 END`,
+              `CASE WHEN title ILIKE '${query}%' THEN 1 ELSE 2 END`
             ),
           ],
           ["title", "ASC"],
@@ -108,7 +109,7 @@ export const getSearchSuggestions = async (req, res) => {
           category: course.category?.categoryName,
           url: `/courses/${course.courseId}`,
           relevance_score: calculateBasicRelevance(course.title, query),
-        })),
+        }))
       );
     }
 
@@ -139,7 +140,7 @@ export const getSearchSuggestions = async (req, res) => {
         order: [
           [
             sequelize.literal(
-              `CASE WHEN title ILIKE '${query}%' THEN 1 ELSE 2 END`,
+              `CASE WHEN title ILIKE '${query}%' THEN 1 ELSE 2 END`
             ),
           ],
           ["title", "ASC"],
@@ -158,7 +159,7 @@ export const getSearchSuggestions = async (req, res) => {
           category: project.category?.categoryName,
           url: `/projects/${project.id}`,
           relevance_score: calculateBasicRelevance(project.title, query),
-        })),
+        }))
       );
     }
 
@@ -185,7 +186,7 @@ export const getSearchSuggestions = async (req, res) => {
         order: [
           [
             sequelize.literal(
-              `CASE WHEN username ILIKE '${query}%' THEN 1 ELSE 2 END`,
+              `CASE WHEN username ILIKE '${query}%' THEN 1 ELSE 2 END`
             ),
           ],
           ["username", "ASC"],
@@ -204,9 +205,9 @@ export const getSearchSuggestions = async (req, res) => {
           url: `/instructors/${instructor.userId}`,
           relevance_score: calculateBasicRelevance(
             `${instructor.firstName} ${instructor.lastName} ${instructor.username}`,
-            query,
+            query
           ),
-        })),
+        }))
       );
     }
 
@@ -232,9 +233,9 @@ export const getSearchSuggestions = async (req, res) => {
           url: `/search?category=${category.categoryId}`,
           relevance_score: calculateBasicRelevance(
             category.categoryName,
-            query,
+            query
           ),
-        })),
+        }))
       );
     }
 
@@ -243,23 +244,16 @@ export const getSearchSuggestions = async (req, res) => {
       .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))
       .slice(0, parseInt(limit));
 
-    return res.status(200).json({
-      success: true,
-      message: "Search suggestions fetched successfully",
-      data: {
-        suggestions: sortedSuggestions,
-        recent_searches:
-          include_recent === "true"
-            ? await getRecentSearches(req.user?.userId)
-            : [],
-      },
+    return sendSuccess(res, 200, "Search suggestions fetched successfully", {
+      suggestions: sortedSuggestions,
+      recent_searches:
+        include_recent === "true"
+          ? await getRecentSearches(req.user?.userId)
+          : [],
     });
   } catch (error) {
     console.error("Search suggestions error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -411,7 +405,7 @@ export const searchCourses = async (req, res) => {
           ? [
               [
                 sequelize.literal(
-                  `CASE WHEN title ILIKE '%${query}%' THEN 1 ELSE 2 END`,
+                  `CASE WHEN title ILIKE '%${query}%' THEN 1 ELSE 2 END`
                 ),
                 "ASC",
               ],
@@ -439,7 +433,8 @@ export const searchCourses = async (req, res) => {
       offset,
       order: orderClause,
       distinct: true,
-    }); // Format response data
+    });
+    // Format response data
     const formattedCourses = courses.map((course) => ({
       id: course.courseId,
       title: course.title,
@@ -462,41 +457,34 @@ export const searchCourses = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return res.status(200).json({
-      success: true,
-      message: "Courses fetched successfully",
-      data: {
-        courses: formattedCourses,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalItems: count,
-          itemsPerPage: parseInt(limit),
-          hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1,
-        },
-        filters: {
-          query,
-          activeFilters: {
-            category,
-            tags,
-            courseType,
-            priceRange: { min: priceMin, max: priceMax },
-            level,
-            language,
-            accessType,
-            availability,
-            instructor,
-          },
+    return sendSuccess(res, 200, "Courses fetched successfully", {
+      courses: formattedCourses,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
+      },
+      filters: {
+        query,
+        activeFilters: {
+          category,
+          tags,
+          courseType,
+          priceRange: { min: priceMin, max: priceMax },
+          level,
+          language,
+          accessType,
+          availability,
+          instructor,
         },
       },
     });
   } catch (error) {
     console.error("Search courses error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -601,7 +589,7 @@ export const comprehensiveSearch = async (req, res) => {
         offset,
         limit,
         isAdmin,
-        includeInactive,
+        includeInactive
       );
       results.courses = courseResults.courses;
       results.total += courseResults.total;
@@ -614,7 +602,7 @@ export const comprehensiveSearch = async (req, res) => {
         offset,
         limit,
         isAdmin,
-        includeInactive,
+        includeInactive
       );
       results.projects = projectResults.projects;
       results.total += projectResults.total;
@@ -625,7 +613,7 @@ export const comprehensiveSearch = async (req, res) => {
       const instructorResults = await searchInstructorsComprehensive(
         filters,
         offset,
-        limit,
+        limit
       );
       results.instructors = instructorResults.instructors;
       results.total += instructorResults.total;
@@ -640,7 +628,7 @@ export const comprehensiveSearch = async (req, res) => {
         results.instructors,
         filters,
         offset,
-        limit,
+        limit
       );
     } else {
       combinedResults = [
@@ -662,44 +650,37 @@ export const comprehensiveSearch = async (req, res) => {
 
     const totalPages = Math.ceil(results.total / parseInt(limit));
 
-    return res.status(200).json({
-      success: true,
-      message: "Comprehensive search completed successfully",
-      data: {
-        results: combinedResults,
-        breakdown:
-          type === "all"
-            ? {
-                courses: results.courses.length,
-                projects: results.projects.length,
-                instructors: results.instructors.length,
-              }
-            : null,
-        pagination: {
-          current_page: parseInt(page),
-          total_pages: totalPages,
-          total_items: results.total,
-          per_page: parseInt(limit),
-          has_next_page: parseInt(page) < totalPages,
-          has_prev_page: parseInt(page) > 1,
-        },
-        filters: {
-          applied: filters,
-          view_mode,
-          search_type: type,
-        },
-        metadata: {
-          search_time: new Date().toISOString(),
-          user_id: req.user?.userId || "anonymous",
-        },
+    return sendSuccess(res, 200, "Comprehensive search completed successfully", {
+      results: combinedResults,
+      breakdown:
+        type === "all"
+          ? {
+              courses: results.courses.length,
+              projects: results.projects.length,
+              instructors: results.instructors.length,
+            }
+          : null,
+      pagination: {
+        current_page: parseInt(page),
+        total_pages: totalPages,
+        total_items: results.total,
+        per_page: parseInt(limit),
+        has_next_page: parseInt(page) < totalPages,
+        has_prev_page: parseInt(page) > 1,
+      },
+      filters: {
+        applied: filters,
+        view_mode,
+        search_type: type,
+      },
+      metadata: {
+        search_time: new Date().toISOString(),
+        user_id: req.user?.userId || "anonymous",
       },
     });
   } catch (error) {
     console.error("Comprehensive search error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -794,7 +775,7 @@ export const searchInstructors = async (req, res) => {
         orderClause = [
           [
             sequelize.literal(
-              '(SELECT COUNT(*) FROM courses WHERE courses.created_by = "User".user_id)',
+              '(SELECT COUNT(*) FROM courses WHERE courses.created_by = "User".user_id)'
             ),
             sortOrder.toUpperCase(),
           ],
@@ -815,7 +796,8 @@ export const searchInstructors = async (req, res) => {
       offset,
       order: orderClause,
       distinct: true,
-    }); // Format response data
+    });
+    // Format response data
     const formattedInstructors = instructors.map((instructor) => ({
       id: instructor.userId,
       username: instructor.username,
@@ -827,7 +809,7 @@ export const searchInstructors = async (req, res) => {
           ...new Set(
             instructor.courses
               ?.map((course) => course.category?.categoryName)
-              .filter(Boolean),
+              .filter(Boolean)
           ),
         ] || [],
       rating: parseFloat(instructor.averageRating) || 0,
@@ -837,721 +819,39 @@ export const searchInstructors = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return res.status(200).json({
-      success: true,
-      message: "Instructors fetched successfully",
-      data: {
-        instructors: formattedInstructors,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalItems: count,
-          itemsPerPage: parseInt(limit),
-          hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1,
-        },
-        filters: {
-          query,
-          activeFilters: {
-            subjects,
-            skillLevel,
-            language,
-            rating,
-          },
+    return sendSuccess(res, 200, "Instructors fetched successfully", {
+      instructors: formattedInstructors,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
+      },
+      filters: {
+        query,
+        activeFilters: {
+          subjects,
+          skillLevel,
+          language,
+          rating,
         },
       },
     });
   } catch (error) {
     console.error("Search instructors error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
-
-// =================== COMPREHENSIVE SEARCH HELPER FUNCTIONS ===================
-
-// Search courses with comprehensive filtering
-async function searchCoursesComprehensive(
-  filters,
-  offset,
-  limit,
-  isAdmin,
-  includeInactive,
-) {
-  const whereClause = {
-    isPublished: true,
-  };
-
-  // Admin can see inactive content
-  if (!isAdmin || !includeInactive) {
-    whereClause.status = "active";
-  }
-
-  // Text search
-  if (filters.query) {
-    whereClause[Op.or] = [
-      { title: { [Op.iLike]: `%${filters.query}%` } },
-      { description: { [Op.iLike]: `%${filters.query}%` } },
-    ];
-  }
-
-  // Category filter
-  if (filters.category && filters.category.length > 0) {
-    whereClause.categoryId = { [Op.in]: filters.category };
-  }
-
-  // Course type filter
-  if (filters.course_type && filters.course_type.length > 0) {
-    whereClause.type = { [Op.in]: filters.course_type };
-  }
-
-  // Price filters
-  if (filters.free_only) {
-    whereClause[Op.or] = [{ price: 0 }, { price: null }];
-  } else if (filters.premium_only) {
-    whereClause.price = { [Op.gt]: 0 };
-  } else if (
-    filters.price_range.min !== null ||
-    filters.price_range.max !== null
-  ) {
-    const priceCondition = {};
-    if (filters.price_range.min !== null)
-      priceCondition[Op.gte] = filters.price_range.min;
-    if (filters.price_range.max !== null)
-      priceCondition[Op.lte] = filters.price_range.max;
-    whereClause.price = priceCondition;
-  }
-
-  // Certification filter (remove since hasCertificate doesn't exist)
-  // if (filters.certification) {
-  //   whereClause.hasCertificate = true;
-  // }
-  const includes = [
-    {
-      model: User,
-      as: "instructor",
-      attributes: [
-        "userId",
-        "firstName",
-        "lastName",
-        "username",
-        "profileImage",
-        "bio",
-      ],
-    },
-    {
-      model: Category,
-      as: "category",
-      attributes: ["categoryId", "categoryName", "description"],
-    },
-    {
-      model: CourseLevel,
-      as: "level",
-      attributes: ["levelId", "level", "description"],
-    },
-    {
-      model: CourseTag,
-      as: "tags",
-      attributes: ["tagId", "tag"],
-    },
-    {
-      model: CourseRating,
-      as: "ratings",
-      attributes: [],
-      required: false,
-    },
-    {
-      model: Enrollment,
-      as: "enrollments",
-      attributes: [],
-      required: false,
-    },
-  ];
-
-  // Language filter
-  if (filters.language && filters.language.length > 0) {
-    includes.push({
-      model: Language,
-      through: { attributes: [] },
-      attributes: ["languageId", "language"],
-      where: { languageId: { [Op.in]: filters.language } },
-    });
-  } else {
-    includes.push({
-      model: Language,
-      through: { attributes: [] },
-      attributes: ["languageId", "language"],
-      required: false,
-    });
-  }
-
-  // Skill level filter
-  if (filters.skill_level && filters.skill_level.length > 0) {
-    includes.find((inc) => inc.as === "level").where = {
-      level: { [Op.in]: filters.skill_level },
-    };
-  }
-
-  // Tags filter
-  if (filters.tags && filters.tags.length > 0) {
-    includes.find((inc) => inc.as === "tags").where = {
-      tag: { [Op.in]: filters.tags },
-    };
-  }
-
-  // Instructor filter
-  if (filters.instructor && filters.instructor.length > 0) {
-    whereClause.instructorId = { [Op.in]: filters.instructor };
-  }
-
-  // Rating filter
-  const havingClause =
-    filters.rating_min > 0
-      ? {
-          avgRating: { [Op.gte]: filters.rating_min },
-        }
-      : {};
-
-  // Build order clause
-  const orderClause = buildOrderClause(filters.sort, filters.query, "course");
-
-  const courses = await Course.findAndCountAll({
-    where: whereClause,
-    include: includes,
-    attributes: [
-      "courseId",
-      "title",
-      "description",
-      "price",
-      "thumbnailUrl",
-      "type",
-      "status",
-      "createdAt",
-      "updatedAt",
-      [sequelize.fn("AVG", sequelize.col("ratings.rating")), "avgRating"],
-      [
-        sequelize.fn(
-          "COUNT",
-          sequelize.literal('DISTINCT "ratings"."ratingId"'),
-        ),
-        "totalRatings",
-      ],
-      [
-        sequelize.fn(
-          "COUNT",
-          sequelize.literal('DISTINCT "enrollments"."enrollmentId"'),
-        ),
-        "enrollmentCount",
-      ],
-    ],
-    group: [
-      "Course.courseId",
-      "instructor.userId",
-      "category.categoryId",
-      "level.levelId",
-      "tags.tagId",
-      "Languages.languageId",
-    ],
-    having: havingClause,
-    order: orderClause,
-    limit: parseInt(limit),
-    offset: offset,
-    distinct: true,
-    subQuery: false,
-  });
-
-  const formattedCourses = courses.rows.map((course) => ({
-    id: course.courseId,
-    title: course.title,
-    description: course.description,
-    price: course.price,
-    originalPrice: course.price,
-    salePrice: null,
-    thumbnail: course.thumbnailUrl,
-    type: course.type,
-    duration: 0, // Default since estimatedDuration doesn't exist
-    totalLessons: 0, // Default since totalLessons doesn't exist
-    rating: parseFloat(course.dataValues.avgRating || 0).toFixed(1),
-    totalRatings: parseInt(course.dataValues.totalRatings || 0),
-    enrollmentCount: parseInt(course.dataValues.enrollmentCount || 0),
-    instructor: course.instructor,
-    category: course.category,
-    level: course.level,
-    languages: course.Languages,
-    tags: course.tags,
-    url: `/courses/${course.courseId}`,
-    itemType: "course",
-    createdAt: course.createdAt,
-    updatedAt: course.updatedAt,
-    relevanceScore: calculateRelevanceScore(course, filters.query, "course"),
-  }));
-
-  return {
-    courses: formattedCourses,
-    total: courses.count.length || 0,
-  };
-}
-
-// Search projects with comprehensive filtering
-async function searchProjectsComprehensive(
-  filters,
-  offset,
-  limit,
-  isAdmin,
-  includeInactive,
-) {
-  const whereClause = {};
-
-  // Admin can see inactive content
-  if (!isAdmin || !includeInactive) {
-    whereClause.status = "active";
-  }
-
-  // Text search
-  if (filters.query) {
-    whereClause[Op.or] = [
-      { title: { [Op.iLike]: `%${filters.query}%` } },
-      { description: { [Op.iLike]: `%${filters.query}%` } },
-      { shortDescription: { [Op.iLike]: `%${filters.query}%` } },
-    ];
-  }
-
-  // Category filter
-  if (filters.category && filters.category.length > 0) {
-    whereClause.categoryId = { [Op.in]: filters.category };
-  }
-
-  // Price filters
-  if (filters.free_only) {
-    whereClause[Op.or] = [{ price: 0 }, { price: null }];
-  } else if (filters.premium_only) {
-    whereClause.price = { [Op.gt]: 0 };
-  } else if (
-    filters.price_range.min !== null ||
-    filters.price_range.max !== null
-  ) {
-    const priceCondition = {};
-    if (filters.price_range.min !== null)
-      priceCondition[Op.gte] = filters.price_range.min;
-    if (filters.price_range.max !== null)
-      priceCondition[Op.lte] = filters.price_range.max;
-    whereClause.price = priceCondition;
-  }
-
-  // Skill level filter (mapped to difficulty for projects)
-  if (filters.skill_level && filters.skill_level.length > 0) {
-    const difficultyMap = {
-      beginner: "beginner",
-      intermediate: "intermediate",
-      advanced: "advanced",
-      expert: "expert",
-    };
-    const mappedDifficulties = filters.skill_level
-      .map((level) => difficultyMap[level])
-      .filter(Boolean);
-    if (mappedDifficulties.length > 0) {
-      whereClause.difficulty = { [Op.in]: mappedDifficulties };
-    }
-  }
-
-  // Tags filter
-  if (filters.tags && filters.tags.length > 0) {
-    whereClause.tags = { [Op.overlap]: filters.tags };
-  }
-
-  // Rating filter
-  const havingClause =
-    filters.rating_min > 0
-      ? {
-          avgRating: { [Op.gte]: filters.rating_min },
-        }
-      : {};
-
-  //   Build includes
-  const includes = [
-    {
-      model: User,
-      as: "creator",
-      attributes: [
-        "userId",
-        "firstName",
-        "lastName",
-        "username",
-        "profileImage",
-        "bio",
-      ],
-    },
-    {
-      model: Category,
-      as: "category",
-      attributes: ["categoryId", "categoryName", "description"],
-    },
-    {
-      model: ProjectRating,
-      as: "ratings",
-      attributes: [],
-      required: false,
-    },
-    {
-      model: ProjectPurchase,
-      as: "purchases",
-      attributes: [],
-      required: false,
-    },
-  ];
-
-  // Build order clause
-  const orderClause = buildOrderClause(filters.sort, filters.query, "project");
-
-  const projects = await Project.findAndCountAll({
-    where: whereClause,
-    include: includes,
-    attributes: [
-      "id",
-      "title",
-      "description",
-      "shortDescription",
-      "price",
-      "previewImages",
-      "difficulty",
-      "tags",
-      "technologies",
-      "demoUrl",
-      "githubUrl",
-      "features",
-      "requirements",
-      "createdAt",
-      "updatedAt",
-      [sequelize.fn("AVG", sequelize.col("ratings.rating")), "avgRating"],
-      [
-        sequelize.fn(
-          "COUNT",
-          sequelize.literal('DISTINCT "ratings"."ratingId"'),
-        ),
-        "totalRatings",
-      ],
-      [
-        sequelize.fn(
-          "COUNT",
-          sequelize.literal('DISTINCT "purchases"."purchaseId"'),
-        ),
-        "salesCount",
-      ],
-    ],
-    group: ["Project.id", "creator.userId", "category.categoryId"],
-    having: havingClause,
-    order: orderClause,
-    limit: parseInt(limit),
-    offset: offset,
-    distinct: true,
-    subQuery: false,
-  });
-
-  const formattedProjects = projects.rows.map((project) => ({
-    id: project.id,
-    title: project.title,
-    description: project.description,
-    shortDescription: project.shortDescription,
-    price: project.price,
-    originalPrice: project.price,
-    salePrice: null,
-    thumbnail: project.previewImages?.[0] || null,
-    previewImages: project.previewImages || [],
-    difficulty: project.difficulty,
-    tags: project.tags || [],
-    technologies: project.technologies || [],
-    demoUrl: project.demoUrl,
-    githubUrl: project.githubUrl,
-    features: project.features || [],
-    requirements: project.requirements || [],
-    rating: parseFloat(project.dataValues.avgRating || 0).toFixed(1),
-    totalRatings: parseInt(project.dataValues.totalRatings || 0),
-    salesCount: parseInt(project.dataValues.salesCount || 0),
-    creator: project.creator,
-    category: project.category,
-    url: `/projects/${project.id}`,
-    itemType: "project",
-    createdAt: project.createdAt,
-    updatedAt: project.updatedAt,
-    relevanceScore: calculateRelevanceScore(project, filters.query, "project"),
-  }));
-
-  return {
-    projects: formattedProjects,
-    total: projects.count.length || 0,
-  };
-}
-
-// Search instructors with comprehensive filtering
-async function searchInstructorsComprehensive(filters, offset, limit) {
-  const whereClause = {
-    role: "teacher",
-  };
-
-  // Text search
-  if (filters.query) {
-    whereClause[Op.or] = [
-      { firstName: { [Op.iLike]: `%${filters.query}%` } },
-      { lastName: { [Op.iLike]: `%${filters.query}%` } },
-      { username: { [Op.iLike]: `%${filters.query}%` } },
-      { bio: { [Op.iLike]: `%${filters.query}%` } },
-    ];
-  }
-
-  // Rating filter
-  const havingClause =
-    filters.rating_min > 0
-      ? {
-          avgRating: { [Op.gte]: filters.rating_min },
-        }
-      : {};
-
-  const instructors = await User.findAndCountAll({
-    where: whereClause,
-    include: [
-      {
-        model: Course,
-        as: "courses",
-        attributes: [],
-        required: false,
-        where: { status: "active", isPublished: true },
-      },
-      {
-        model: Project,
-        as: "projects",
-        attributes: [],
-        required: false,
-        where: { status: "active" },
-      },
-    ],
-    attributes: [
-      "userId",
-      "firstName",
-      "lastName",
-      "username",
-      "email",
-      "profileImage",
-      "bio",
-      "createdAt",
-      [
-        sequelize.fn(
-          "COUNT",
-          sequelize.literal('DISTINCT "courses"."courseId"'),
-        ),
-        "courseCount",
-      ],
-      [
-        sequelize.fn("COUNT", sequelize.literal('DISTINCT "projects"."id"')),
-        "projectCount",
-      ],
-    ],
-    group: ["User.userId"],
-    having: havingClause,
-    order: [
-      [sequelize.literal("courseCount"), "DESC"],
-      ["createdAt", "DESC"],
-    ],
-    limit: parseInt(limit),
-    offset: offset,
-  });
-
-  const formattedInstructors = instructors.rows.map((instructor) => ({
-    id: instructor.userId,
-    firstName: instructor.firstName,
-    lastName: instructor.lastName,
-    fullName: `${instructor.firstName} ${instructor.lastName}`,
-    username: instructor.username,
-    email: instructor.email,
-    profileImage: instructor.profileImage,
-    bio: instructor.bio,
-    courseCount: parseInt(instructor.dataValues.courseCount || 0),
-    projectCount: parseInt(instructor.dataValues.projectCount || 0),
-    rating: 0, // TODO: Implement instructor ratings
-    totalRatings: 0,
-    url: `/instructors/${instructor.userId}`,
-    itemType: "instructor",
-    memberSince: instructor.createdAt,
-    relevanceScore: calculateRelevanceScore(
-      instructor,
-      filters.query,
-      "instructor",
-    ),
-  }));
-
-  return {
-    instructors: formattedInstructors,
-    total: instructors.count.length || 0,
-  };
-}
-
-// Build order clause based on sort parameter
-function buildOrderClause(sort, query, itemType) {
-  switch (sort) {
-    case "relevance":
-      return query && query.length > 0
-        ? [
-            [
-              sequelize.literal(
-                `CASE WHEN title ILIKE '${query}%' THEN 1 ELSE 2 END`,
-              ),
-            ],
-            ["createdAt", "DESC"],
-          ]
-        : [["createdAt", "DESC"]];
-    case "popular":
-      return itemType === "course"
-        ? [[sequelize.literal("enrollmentCount"), "DESC"]]
-        : itemType === "project"
-          ? [[sequelize.literal("salesCount"), "DESC"]]
-          : [["createdAt", "DESC"]];
-    case "newest":
-      return [["createdAt", "DESC"]];
-    case "price_low":
-      return [["price", "ASC"]];
-    case "price_high":
-      return [["price", "DESC"]];
-    case "rating":
-      return [[sequelize.literal("avgRating"), "DESC"]];
-    case "title":
-      return [["title", "ASC"]];
-    default:
-      return [["createdAt", "DESC"]];
-  }
-}
-
-// Calculate relevance score for search results
-function calculateRelevanceScore(item, query, itemType) {
-  if (!query || query.length === 0) return 0;
-
-  let score = 0;
-  const queryLower = query.toLowerCase();
-
-  // Title/name matching
-  const title =
-    itemType === "instructor"
-      ? `${item.firstName} ${item.lastName}`.toLowerCase()
-      : (item.title || "").toLowerCase();
-
-  if (title.includes(queryLower)) {
-    score += title.startsWith(queryLower) ? 10 : 5;
-  }
-
-  // Description matching
-  const description = (
-    item.description ||
-    item.shortDescription ||
-    item.bio ||
-    ""
-  ).toLowerCase();
-  if (description.includes(queryLower)) {
-    score += 3;
-  }
-
-  // Popularity boost
-  if (itemType === "course" && item.enrollmentCount > 100) score += 2;
-  if (itemType === "project" && item.salesCount > 50) score += 2;
-  if (itemType === "instructor" && item.courseCount > 5) score += 2;
-
-  // Rating boost
-  const rating = parseFloat(item.avgRating || item.rating || 0);
-  if (rating > 4) score += 1;
-
-  return score;
-}
-
-// Calculate basic relevance for simple suggestions
-function calculateBasicRelevance(text, query) {
-  if (!text || !query) return 0;
-
-  const textLower = text.toLowerCase();
-  const queryLower = query.toLowerCase();
-
-  if (textLower.startsWith(queryLower)) return 10;
-  if (textLower.includes(queryLower)) return 5;
-  return 0;
-}
-
-// Combine and sort results from different types
-function combineAndSortResults(
-  courses,
-  projects,
-  instructors,
-  filters,
-  offset,
-  limit,
-) {
-  const combined = [
-    ...courses.map((c) => ({ ...c, itemType: "course" })),
-    ...projects.map((p) => ({ ...p, itemType: "project" })),
-    ...instructors.map((i) => ({ ...i, itemType: "instructor" })),
-  ];
-
-  // Sort by relevance if query exists, otherwise by sort parameter
-  if (filters.query && filters.query.length > 0) {
-    combined.sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
-  } else {
-    // Sort by creation date as default
-    combined.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-  }
-
-  // Apply pagination
-  return combined.slice(offset, offset + limit);
-}
-
-// Save search analytics
-async function saveSearchAnalytics(query, userId, metadata = {}) {
-  try {
-    await SearchAnalytics.create({
-      userId: userId || null,
-      searchQuery: query,
-      searchType: metadata.search_type || "comprehensive",
-      filters: JSON.stringify(metadata.filters || {}),
-      resultsCount: metadata.results_count || 0,
-      ipAddress: metadata.ip_address || null,
-      userAgent: metadata.user_agent || null,
-      sessionId: metadata.session_id || null,
-      metadata: JSON.stringify(metadata),
-    });
-  } catch (error) {
-    console.error("Save search analytics error:", error);
-  }
-}
-
-// Get recent searches for user
-async function getRecentSearches(userId, limit = 5) {
-  if (!userId) return [];
-
-  try {
-    const recentSearches = await SearchAnalytics.findAll({
-      where: {
-        userId,
-        searchQuery: { [Op.ne]: null },
-      },
-      attributes: ["searchQuery", "searchType", "createdAt"],
-      order: [["createdAt", "DESC"]],
-      limit,
-      distinct: true,
-    });
-
-    return recentSearches.map((search) => ({
-      query: search.searchQuery,
-      type: search.searchType,
-      timestamp: search.createdAt,
-    }));
-  } catch (error) {
-    console.error("Get recent searches error:", error);
-    return [];
-  }
-}
 
 // Get comprehensive search filters for UI
 export const getSearchFilters = async (req, res) => {
   try {
     const { type = "all" } = req.query;
 
-    const filters = {}; // Categories (for both courses and projects)
+    const filters = {};
+    // Categories (for both courses and projects)
     if (type === "all" || type === "courses" || type === "projects") {
       const categories = await Category.findAll({
         attributes: ["categoryId", "categoryName", "description"],
@@ -1667,17 +967,10 @@ export const getSearchFilters = async (req, res) => {
       { id: "over_200", name: "Over $200", min: 200, max: null },
     ];
 
-    return res.status(200).json({
-      success: true,
-      message: "Search filters fetched successfully",
-      data: filters,
-    });
+    return sendSuccess(res, 200, "Search filters fetched successfully", filters);
   } catch (error) {
     console.error("Get search filters error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1776,38 +1069,31 @@ export const getSearchAnalytics = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return res.status(200).json({
-      success: true,
-      message: "Search analytics fetched successfully",
-      data: {
-        analytics,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalItems: count,
-          itemsPerPage: parseInt(limit),
-          hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1,
-        },
-        insights: {
-          popularSearches: popularSearches.map((search) => ({
-            query: search.searchQuery,
-            count: parseInt(search.dataValues.searchCount),
-            avgResults: parseFloat(search.dataValues.avgResults || 0),
-          })),
-          conversions: conversionStats.map((stat) => ({
-            type: stat.conversionType,
-            count: parseInt(stat.dataValues.count),
-          })),
-        },
+    return sendSuccess(res, 200, "Search analytics fetched successfully", {
+      analytics,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
+      },
+      insights: {
+        popularSearches: popularSearches.map((search) => ({
+          query: search.searchQuery,
+          count: parseInt(search.dataValues.searchCount),
+          avgResults: parseFloat(search.dataValues.avgResults || 0),
+        })),
+        conversions: conversionStats.map((stat) => ({
+          type: stat.conversionType,
+          count: parseInt(stat.dataValues.count),
+        })),
       },
     });
   } catch (error) {
     console.error("Get search analytics error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1867,28 +1153,29 @@ export const searchProjects = async (req, res) => {
       filteredProjects = placeholderProjects.filter(
         (project) =>
           project.title.toLowerCase().includes(query.toLowerCase()) ||
-          project.description.toLowerCase().includes(query.toLowerCase()),
+          project.description.toLowerCase().includes(query.toLowerCase())
       );
     }
 
     if (category) {
       filteredProjects = filteredProjects.filter((project) =>
-        project.category.toLowerCase().includes(category.toLowerCase()),
+        project.category.toLowerCase().includes(category.toLowerCase())
       );
     }
 
     if (difficulty) {
       filteredProjects = filteredProjects.filter(
-        (project) => project.difficulty === difficulty,
+        (project) => project.difficulty === difficulty
       );
     }
 
     const totalPages = Math.ceil(filteredProjects.length / parseInt(limit));
 
-    return res.status(200).json({
-      success: true,
-      message: "Projects search completed (placeholder implementation)",
-      data: {
+    return sendSuccess(
+      res,
+      200,
+      "Projects search completed (placeholder implementation)",
+      {
         projects: filteredProjects,
         pagination: {
           currentPage: parseInt(page),
@@ -1899,13 +1186,10 @@ export const searchProjects = async (req, res) => {
           hasPrevPage: parseInt(page) > 1,
         },
         note: "This is a placeholder implementation. Actual project search will be available when Project model is implemented.",
-      },
-    });
+      }
+    );
   } catch (error) {
     console.error("Search projects error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };

@@ -10,6 +10,7 @@ import Language from "../model/language.js";
 import SearchAnalytics from "../model/searchAnalytics.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 // ===================== UNIFIED SEARCH WITH PROJECTS =====================
 
@@ -19,11 +20,7 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
     const { query, limit = 10, type = "all" } = req.query;
 
     if (!query || query.length < 2) {
-      return res.status(200).json({
-        success: true,
-        message: "Query too short",
-        data: { suggestions: [] },
-      });
+      return sendSuccess(res, 200, "Query too short", { suggestions: [] });
     }
 
     const searchTerm = `%${query}%`;
@@ -141,11 +138,7 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
     });
   } catch (error) {
     console.error("Unified search suggestions error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch search suggestions",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -460,11 +453,7 @@ export const searchCoursesAndProjects = async (req, res) => {
     });
   } catch (error) {
     console.error("Search courses and projects error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Search failed",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -586,17 +575,10 @@ export const getUnifiedSearchFilters = async (req, res) => {
         .sort();
     }
 
-    res.json({
-      success: true,
-      data: filters,
-    });
+    return sendSuccess(res, 200, "Filters fetched successfully", filters);
   } catch (error) {
     console.error("Get unified search filters error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch search filters",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 

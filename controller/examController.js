@@ -2,6 +2,7 @@
 import Exam from "../model/exam.js";
 import CourseLevel from "../model/courseLevel.js";
 import { Op } from "sequelize";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 export const bulkUploadExams = async (req, res) => {
   try {
@@ -10,18 +11,14 @@ export const bulkUploadExams = async (req, res) => {
     if (Array.isArray(requestBody)) {
       exams = requestBody;
     } else if (requestBody.exams && Array.isArray(requestBody.exams)) {
-      exams = requestBody.exams;
-    } else {
-      return res.status(400).json({
-        status: false,
-        message:
-          "Request body must be an array of exams or an object with an 'exams' array property",
+      exams = requestBody.exams;    } else {
+      return sendValidationError(res, "Invalid request format", {
+        body: "Request body must be an array of exams or an object with an 'exams' array property"
       });
     }
     if (exams.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "Exams array cannot be empty",
+      return sendValidationError(res, "Empty exams array", {
+        exams: "Exams array cannot be empty"
       });
     }
     try {
@@ -76,29 +73,16 @@ export const bulkUploadExams = async (req, res) => {
         levelId: levelId,
       };
       examsToCreate.push(examData);
-    }
-    if (validationErrors.length > 0) {
-      return res.status(400).json({
-        status: false,
-        message: "Validation failed for one or more exams.",
-        validationErrors,
-      });
+    }    if (validationErrors.length > 0) {
+      return sendValidationError(res, "Validation failed for one or more exams.", { validationErrors });
     }
     const createdExams = await Exam.bulkCreate(examsToCreate, {
       ignoreDuplicates: true,
     });
-    return res.status(201).json({
-      status: true,
-      message: "Exams uploaded successfully",
-      data: createdExams,
-    });
+    return sendSuccess(res, 200, "Exams uploaded successfully", createdExams);
   } catch (error) {
     console.error("Bulk upload error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to upload exams",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -113,37 +97,21 @@ export const getAllExams = async (req, res) => {
         required: false,
       },
       order: [["createdAt", "ASC"]],
-    });
-    return res.status(200).json({
-      status: true,
-      message: "Exams fetched successfully",
-      data: exams,
-    });
+    });    return sendSuccess(res, 200, "Exams fetched successfully", exams);
   } catch (error) {
     console.error("Fetch error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch exams",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
 export const getExamsByLevel = async (req, res) => {
   try {
-    const { levelId } = req.params;
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
-      return res.status(400).json({
-        status: false,
-        message: `Invalid levelId format: ${levelId}. Must be a valid UUID.`,
-      });
+    const { levelId } = req.params;    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
+      return sendValidationError(res, `Invalid levelId format: ${levelId}. Must be a valid UUID.`);
     }
     const level = await CourseLevel.findByPk(levelId);
     if (!level) {
-      return res.status(404).json({
-        status: false,
-        message: "Level not found",
-      });
+      return sendNotFound(res, "Level not found");
     }
     const exams = await Exam.findAll({
       where: { levelId },
@@ -155,19 +123,10 @@ export const getExamsByLevel = async (req, res) => {
         required: false,
       },
       order: [["examName", "ASC"]],
-    });
-    return res.status(200).json({
-      status: true,
-      message: "Exams fetched successfully",
-      data: exams,
-    });
+    });    return sendSuccess(res, 200, "Exams fetched successfully", exams);
   } catch (error) {
     console.error("Error fetching exams by level:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch exams by level",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -176,18 +135,147 @@ export const getExamOptions = async (req, res) => {
     const levels = await CourseLevel.findAll({
       attributes: ["levelId", "name", "order"],
       order: [["order", "ASC"]],
-    });
-    return res.status(200).json({
-      status: true,
-      message: "Exam options fetched successfully",
-      data: { levels },
-    });
+    });    return sendSuccess(res, 200, "Exam options fetched successfully", { levels });
   } catch (error) {
     console.error("Error fetching exam options:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch exam options",
-      error: error.message,
+    return sendServerError(res, error);
+  }
+};
+
+export const createExam = async (req, res) => {
+  try {
+    const { examName, description, levelId } = req.body;
+
+    // Validate required fields
+    if (!examName) {
+      return sendValidationError(res, "Missing required fields", {
+        examName: "Exam name is required",
+      });
+    }
+
+    // Validate level ID if provided
+    if (levelId) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
+        return sendValidationError(res, "Invalid level ID format", {
+          levelId: "Level ID must be a valid UUID",
+        });
+      }
+
+      const level = await CourseLevel.findByPk(levelId);
+      if (!level) {
+        return sendNotFound(res, `Level with ID '${levelId}' not found`);
+      }
+    }
+
+    // Create the exam
+    const exam = await Exam.create({
+      examName,
+      description,
+      levelId,
     });
+
+    return sendSuccess(res, 201, "Exam created successfully", exam);
+  } catch (error) {
+    console.error("Error creating exam:", error);
+    return sendServerError(res, error);
+  }
+};
+
+export const getExamById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate exam ID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return sendValidationError(res, `Invalid exam ID format: ${id}. Must be a valid UUID.`);
+    }
+    
+    const exam = await Exam.findByPk(id, {
+      attributes: ["examId", "examName", "description", "levelId", "createdAt", "updatedAt"],
+      include: {
+        model: CourseLevel,
+        as: "level",
+        attributes: ["levelId", "name", "order"],
+        required: false,
+      },
+    });
+
+    if (!exam) {
+      return sendNotFound(res, "Exam not found");
+    }
+
+    return sendSuccess(res, 200, "Exam fetched successfully", exam);
+  } catch (error) {
+    console.error("Error fetching exam:", error);
+    return sendServerError(res, error);
+  }
+};
+
+export const updateExam = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { examName, description, levelId } = req.body;
+    
+    // Validate exam ID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return sendValidationError(res, `Invalid exam ID format: ${id}. Must be a valid UUID.`);
+    }
+    
+    // Check if exam exists
+    const exam = await Exam.findByPk(id);
+    if (!exam) {
+      return sendNotFound(res, "Exam not found");
+    }
+
+    // Validate level ID if provided
+    if (levelId) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
+        return sendValidationError(res, "Invalid level ID format", {
+          levelId: "Level ID must be a valid UUID",
+        });
+      }
+
+      const level = await CourseLevel.findByPk(levelId);
+      if (!level) {
+        return sendNotFound(res, `Level with ID '${levelId}' not found`);
+      }
+    }
+
+    // Update exam
+    const updatedExam = await exam.update({
+      examName: examName || exam.examName,
+      description: description !== undefined ? description : exam.description,
+      levelId: levelId || exam.levelId,
+    });
+
+    return sendSuccess(res, 200, "Exam updated successfully", updatedExam);
+  } catch (error) {
+    console.error("Error updating exam:", error);
+    return sendServerError(res, error);
+  }
+};
+
+export const deleteExam = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Validate exam ID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return sendValidationError(res, `Invalid exam ID format: ${id}. Must be a valid UUID.`);
+    }
+    
+    // Check if exam exists
+    const exam = await Exam.findByPk(id);
+    if (!exam) {
+      return sendNotFound(res, "Exam not found");
+    }
+
+    // Delete exam
+    await exam.destroy();
+
+    return sendSuccess(res, 200, "Exam deleted successfully");
+  } catch (error) {
+    console.error("Error deleting exam:", error);
+    return sendServerError(res, error);
   }
 };

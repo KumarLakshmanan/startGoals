@@ -7,6 +7,7 @@ import sequelize from "../config/db.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,28 +27,19 @@ export const uploadProjectFiles = async (req, res) => {
     const project = await Project.findByPk(projectId);
     if (!project) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+      return sendNotFound(res, "Project not found");
     }
 
     // Check if user is creator or admin
     if (project.createdBy !== userId && req.user.role !== "admin") {
       await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to upload files for this project",
-      });
+      return sendError(res, 403, "Not authorized to upload files for this project");
     }
 
     // Check if files were uploaded
     if (!req.files || req.files.length === 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "No files uploaded",
-      });
+      return sendValidationError(res, "No files uploaded");
     }
 
     const uploadedFiles = [];
@@ -135,19 +127,11 @@ export const uploadProjectFiles = async (req, res) => {
       ],
     });
 
-    res.status(201).json({
-      success: true,
-      message: `${uploadedFiles.length} file(s) uploaded successfully`,
-      data: filesWithDetails,
-    });
+    sendSuccess(res, `${uploadedFiles.length} file(s) uploaded successfully`, filesWithDetails);
   } catch (error) {
     await transaction.rollback();
     console.error("Upload project files error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to upload files",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to upload files", error.message);
   }
 };
 
@@ -161,10 +145,7 @@ export const getProjectFiles = async (req, res) => {
     // Validate project exists
     const project = await Project.findByPk(projectId);
     if (!project) {
-      return res.status(404).json({
-        success: false,
-        message: "Project not found",
-      });
+      return sendNotFound(res, "Project not found");
     }
 
     // Build where conditions
@@ -228,11 +209,7 @@ export const getProjectFiles = async (req, res) => {
     });
   } catch (error) {
     console.error("Get project files error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch project files",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to fetch project files", error.message);
   }
 };
 
@@ -254,10 +231,7 @@ export const downloadProjectFile = async (req, res) => {
     });
 
     if (!projectFile) {
-      return res.status(404).json({
-        success: false,
-        message: "File not found",
-      });
+      return sendNotFound(res, "File not found");
     }
 
     // Check if project is published or user is creator/admin
@@ -266,10 +240,7 @@ export const downloadProjectFile = async (req, res) => {
       projectFile.project.createdBy !== userId &&
       req.user?.role !== "admin"
     ) {
-      return res.status(403).json({
-        success: false,
-        message: "Project not available for download",
-      });
+      return sendError(res, 403, "Project not available for download");
     }
 
     const isCreatorOrAdmin =
@@ -288,10 +259,7 @@ export const downloadProjectFile = async (req, res) => {
       });
 
       if (!purchase) {
-        return res.status(403).json({
-          success: false,
-          message: "You need to purchase this project to download this file",
-        });
+        return sendError(res, 403, "You need to purchase this project to download this file");
       }
 
       // Check download limits if any (for purchased users)
@@ -299,10 +267,7 @@ export const downloadProjectFile = async (req, res) => {
         purchase.downloadLimit &&
         purchase.downloadCount >= purchase.downloadLimit
       ) {
-        return res.status(403).json({
-          success: false,
-          message: "Download limit exceeded for this purchase",
-        });
+        return sendError(res, 403, "Download limit exceeded for this purchase");
       }
 
       // Increment purchase download count
@@ -311,10 +276,7 @@ export const downloadProjectFile = async (req, res) => {
 
     // Check if file exists on disk
     if (!fs.existsSync(projectFile.filePath)) {
-      return res.status(404).json({
-        success: false,
-        message: "File not found on server",
-      });
+      return sendNotFound(res, "File not found on server");
     }
 
     // Increment file download count
@@ -337,10 +299,7 @@ export const downloadProjectFile = async (req, res) => {
     fileStream.on("error", (error) => {
       console.error("File stream error:", error);
       if (!res.headersSent) {
-        res.status(500).json({
-          success: false,
-          message: "Error reading file",
-        });
+        sendServerError(res, "Error reading file");
       }
     });
 
@@ -348,11 +307,7 @@ export const downloadProjectFile = async (req, res) => {
   } catch (error) {
     console.error("Download project file error:", error);
     if (!res.headersSent) {
-      res.status(500).json({
-        success: false,
-        message: "Failed to download file",
-        error: error.message,
-      });
+      sendServerError(res, "Failed to download file", error.message);
     }
   }
 };
@@ -376,18 +331,12 @@ export const updateProjectFile = async (req, res) => {
     });
 
     if (!projectFile) {
-      return res.status(404).json({
-        success: false,
-        message: "File not found",
-      });
+      return sendNotFound(res, "File not found");
     }
 
     // Check if user is creator or admin
     if (projectFile.project.createdBy !== userId && req.user.role !== "admin") {
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to update this file",
-      });
+      return sendError(res, 403, "Not authorized to update this file");
     }
 
     // Update file details
@@ -416,11 +365,7 @@ export const updateProjectFile = async (req, res) => {
     });
   } catch (error) {
     console.error("Update project file error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update file",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to update file", error.message);
   }
 };
 
@@ -445,19 +390,13 @@ export const deleteProjectFile = async (req, res) => {
 
     if (!projectFile) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "File not found",
-      });
+      return sendNotFound(res, "File not found");
     }
 
     // Check if user is creator or admin
     if (projectFile.project.createdBy !== userId && req.user.role !== "admin") {
       await transaction.rollback();
-      return res.status(403).json({
-        success: false,
-        message: "Not authorized to delete this file",
-      });
+      return sendError(res, 403, "Not authorized to delete this file");
     }
 
     // Delete file from database
@@ -482,11 +421,7 @@ export const deleteProjectFile = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("Delete project file error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete file",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to delete file", error.message);
   }
 };
 
@@ -581,11 +516,7 @@ export const getDownloadStatistics = async (req, res) => {
     });
   } catch (error) {
     console.error("Get download statistics error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch download statistics",
-      error: error.message,
-    });
+    sendServerError(res, "Failed to fetch download statistics", error.message);
   }
 };
 

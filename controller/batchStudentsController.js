@@ -5,6 +5,14 @@ import Batch from "../model/batch.js";
 import User from "../model/user.js";
 import Course from "../model/course.js";
 import { Op } from "sequelize";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendServerError,
+  sendConflict,
+} from "../utils/responseHelper.js";
 
 // Add student to batch
 export const addStudentToBatch = async (req, res) => {
@@ -15,9 +23,9 @@ export const addStudentToBatch = async (req, res) => {
     // Validate required fields
     if (!batchId || !userId) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "batchId and userId are required",
+      return sendValidationError(res, "batchId and userId are required", {
+        batchId: !batchId ? "Required field" : undefined,
+        userId: !userId ? "Required field" : undefined,
       });
     }
 
@@ -26,9 +34,9 @@ export const addStudentToBatch = async (req, res) => {
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(batchId) || !uuidRegex.test(userId)) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid UUID format for batchId or userId",
+      return sendValidationError(res, "Invalid UUID format for batchId or userId", {
+        batchId: !uuidRegex.test(batchId) ? "Invalid UUID format" : undefined,
+        userId: !uuidRegex.test(userId) ? "Invalid UUID format" : undefined,
       });
     }
 
@@ -36,9 +44,8 @@ export const addStudentToBatch = async (req, res) => {
     const batch = await Batch.findByPk(batchId, { transaction: t });
     if (!batch) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
+      return sendNotFound(res, "Batch not found", {
+        batchId: "Batch not found",
       });
     }
 
@@ -46,9 +53,8 @@ export const addStudentToBatch = async (req, res) => {
     const user = await User.findByPk(userId, { transaction: t });
     if (!user) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "User not found",
+      return sendNotFound(res, "User not found", {
+        userId: "User not found",
       });
     }
 
@@ -60,10 +66,7 @@ export const addStudentToBatch = async (req, res) => {
 
     if (existingEnrollment) {
       await t.rollback();
-      return res.status(409).json({
-        status: false,
-        message: "Student is already enrolled in this batch",
-      });
+      return sendConflict(res, "enrollment", "Student is already enrolled in this batch");
     }
 
     // Add student to batch
@@ -73,24 +76,16 @@ export const addStudentToBatch = async (req, res) => {
         userId,
         status: "active",
       },
-      { transaction: t },
+      { transaction: t }
     );
 
     await t.commit();
 
-    return res.status(201).json({
-      status: true,
-      message: "Student added to batch successfully",
-      data: batchStudent,
-    });
+    return sendSuccess(res, 201, "Student added to batch successfully", batchStudent);
   } catch (error) {
     await t.rollback();
     console.error("Error adding student to batch:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -105,9 +100,9 @@ export const removeStudentFromBatch = async (req, res) => {
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(batchId) || !uuidRegex.test(userId)) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid UUID format for batchId or userId",
+      return sendValidationError(res, "Invalid UUID format for batchId or userId", {
+        batchId: !uuidRegex.test(batchId) ? "Invalid UUID format" : undefined,
+        userId: !uuidRegex.test(userId) ? "Invalid UUID format" : undefined,
       });
     }
 
@@ -119,9 +114,8 @@ export const removeStudentFromBatch = async (req, res) => {
 
     if (!batchStudent) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Student not found in this batch",
+      return sendNotFound(res, "Student not found in this batch", {
+        enrollment: "Student not found in this batch",
       });
     }
 
@@ -130,18 +124,11 @@ export const removeStudentFromBatch = async (req, res) => {
 
     await t.commit();
 
-    return res.status(200).json({
-      status: true,
-      message: "Student removed from batch successfully",
-    });
+    return sendSuccess(res, 200, "Student removed from batch successfully");
   } catch (error) {
     await t.rollback();
     console.error("Error removing student from batch:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -155,9 +142,8 @@ export const getStudentsInBatch = async (req, res) => {
     const uuidRegex =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(batchId)) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid UUID format for batchId",
+      return sendValidationError(res, "Invalid UUID format for batchId", {
+        batchId: "Invalid UUID format",
       });
     }
 
@@ -194,26 +180,18 @@ export const getStudentsInBatch = async (req, res) => {
       order: [["enrollmentDate", "DESC"]],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Students fetched successfully",
-      data: {
-        students,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(count / parseInt(limit)),
-          totalItems: count,
-          itemsPerPage: parseInt(limit),
-        },
+    return sendSuccess(res, 200, "Students fetched successfully", {
+      students,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / parseInt(limit)),
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
       },
     });
   } catch (error) {
     console.error("Error fetching students in batch:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -227,9 +205,8 @@ export const getBatchesForStudent = async (req, res) => {
     const uuidRegex =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(userId)) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid UUID format for userId",
+      return sendValidationError(res, "Invalid UUID format for userId", {
+        userId: "Invalid UUID format",
       });
     }
 
@@ -262,26 +239,18 @@ export const getBatchesForStudent = async (req, res) => {
       order: [["enrollmentDate", "DESC"]],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Batches fetched successfully",
-      data: {
-        batches,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(count / parseInt(limit)),
-          totalItems: count,
-          itemsPerPage: parseInt(limit),
-        },
+    return sendSuccess(res, 200, "Batches fetched successfully", {
+      batches,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / parseInt(limit)),
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
       },
     });
   } catch (error) {
     console.error("Error fetching batches for student:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -296,10 +265,11 @@ export const updateStudentStatusInBatch = async (req, res) => {
     const validStatuses = ["active", "inactive", "dropped", "completed"];
     if (!status || !validStatuses.includes(status)) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
-      });
+      return sendValidationError(
+        res,
+        `Invalid status. Must be one of: ${validStatuses.join(", ")}`,
+        { status: "Invalid status" }
+      );
     }
 
     // Validate UUID format
@@ -307,9 +277,9 @@ export const updateStudentStatusInBatch = async (req, res) => {
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(batchId) || !uuidRegex.test(userId)) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid UUID format for batchId or userId",
+      return sendValidationError(res, "Invalid UUID format for batchId or userId", {
+        batchId: !uuidRegex.test(batchId) ? "Invalid UUID format" : undefined,
+        userId: !uuidRegex.test(userId) ? "Invalid UUID format" : undefined,
       });
     }
 
@@ -321,9 +291,8 @@ export const updateStudentStatusInBatch = async (req, res) => {
 
     if (!batchStudent) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Student not found in this batch",
+      return sendNotFound(res, "Student not found in this batch", {
+        enrollment: "Student not found in this batch",
       });
     }
 
@@ -332,19 +301,16 @@ export const updateStudentStatusInBatch = async (req, res) => {
 
     await t.commit();
 
-    return res.status(200).json({
-      status: true,
-      message: `Student status updated to ${status} successfully`,
-      data: batchStudent,
-    });
+    return sendSuccess(
+      res,
+      200,
+      `Student status updated to ${status} successfully`,
+      batchStudent
+    );
   } catch (error) {
     await t.rollback();
     console.error("Error updating student status in batch:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -357,9 +323,9 @@ export const bulkAddStudentsToBatch = async (req, res) => {
     // Validate required fields
     if (!batchId || !Array.isArray(userIds) || userIds.length === 0) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "batchId and userIds array are required",
+      return sendValidationError(res, "batchId and userIds array are required", {
+        batchId: !batchId ? "Required field" : undefined,
+        userIds: !Array.isArray(userIds) || userIds.length === 0 ? "Required field" : undefined,
       });
     }
 
@@ -368,9 +334,8 @@ export const bulkAddStudentsToBatch = async (req, res) => {
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(batchId)) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid UUID format for batchId",
+      return sendValidationError(res, "Invalid UUID format for batchId", {
+        batchId: "Invalid UUID format",
       });
     }
 
@@ -378,9 +343,8 @@ export const bulkAddStudentsToBatch = async (req, res) => {
     for (const userId of userIds) {
       if (!uuidRegex.test(userId)) {
         await t.rollback();
-        return res.status(400).json({
-          status: false,
-          message: `Invalid UUID format for userId: ${userId}`,
+        return sendValidationError(res, `Invalid UUID format for userId: ${userId}`, {
+          userId: "Invalid UUID format",
         });
       }
     }
@@ -389,9 +353,8 @@ export const bulkAddStudentsToBatch = async (req, res) => {
     const batch = await Batch.findByPk(batchId, { transaction: t });
     if (!batch) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
+      return sendNotFound(res, "Batch not found", {
+        batchId: "Batch not found",
       });
     }
 
@@ -403,9 +366,8 @@ export const bulkAddStudentsToBatch = async (req, res) => {
 
     if (users.length !== userIds.length) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "One or more users not found",
+      return sendNotFound(res, "One or more users not found", {
+        userIds: "One or more users not found",
       });
     }
 
@@ -419,18 +381,15 @@ export const bulkAddStudentsToBatch = async (req, res) => {
     });
 
     const existingUserIds = existingEnrollments.map(
-      (enrollment) => enrollment.userId,
+      (enrollment) => enrollment.userId
     );
     const newUserIds = userIds.filter(
-      (userId) => !existingUserIds.includes(userId),
+      (userId) => !existingUserIds.includes(userId)
     );
 
     if (newUserIds.length === 0) {
       await t.rollback();
-      return res.status(409).json({
-        status: false,
-        message: "All students are already enrolled in this batch",
-      });
+      return sendConflict(res, "enrollment", "All students are already enrolled in this batch");
     }
 
     // Create batch enrollments for new users
@@ -444,28 +403,20 @@ export const bulkAddStudentsToBatch = async (req, res) => {
       batchStudentRecords,
       {
         transaction: t,
-      },
+      }
     );
 
     await t.commit();
 
-    return res.status(201).json({
-      status: true,
-      message: `${newUserIds.length} students added to batch successfully`,
-      data: {
-        addedCount: newUserIds.length,
-        skippedCount: existingUserIds.length,
-        enrollments: createdEnrollments,
-      },
+    return sendSuccess(res, 200, `${newUserIds.length} students added to batch successfully`, {
+      addedCount: newUserIds.length,
+      skippedCount: existingUserIds.length,
+      enrollments: createdEnrollments,
     });
   } catch (error) {
     await t.rollback();
     console.error("Error bulk adding students to batch:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -478,9 +429,8 @@ export const getBatchStatistics = async (req, res) => {
     const uuidRegex =
       /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[4][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
     if (!uuidRegex.test(batchId)) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid UUID format for batchId",
+      return sendValidationError(res, "Invalid UUID format for batchId", {
+        batchId: "Invalid UUID format",
       });
     }
 
@@ -501,26 +451,18 @@ export const getBatchStatistics = async (req, res) => {
       totalCount,
     ] = stats;
 
-    return res.status(200).json({
-      status: true,
-      message: "Batch statistics fetched successfully",
-      data: {
-        batchId,
-        statistics: {
-          total: totalCount,
-          active: activeCount,
-          inactive: inactiveCount,
-          dropped: droppedCount,
-          completed: completedCount,
-        },
+    return sendSuccess(res, 200, "Batch statistics fetched successfully", {
+      batchId,
+      statistics: {
+        total: totalCount,
+        active: activeCount,
+        inactive: inactiveCount,
+        dropped: droppedCount,
+        completed: completedCount,
       },
     });
   } catch (error) {
     console.error("Error fetching batch statistics:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };

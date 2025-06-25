@@ -10,6 +10,14 @@ import CourseRating from "../model/courseRating.js";
 import CourseCategory from "../model/courseCategory.js";
 import { Op } from "sequelize";
 import bcrypt from "bcrypt";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendServerError,
+  sendConflict,
+} from "../utils/responseHelper.js";
 
 /**
  * ===================== TEACHER CRUD OPERATIONS =====================
@@ -152,25 +160,18 @@ export const getAllTeachers = async (req, res) => {
       }),
     );
 
-    res.json({
-      status: true,
-      data: {
-        teachers: teachersWithStats,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(teachers.count / parseInt(limit)),
-          totalItems: teachers.count,
-          itemsPerPage: parseInt(limit),
-        },
+    return sendSuccess(res, 200, "Teachers fetched successfully", {
+      teachers: teachersWithStats,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(teachers.count / parseInt(limit)),
+        totalItems: teachers.count,
+        itemsPerPage: parseInt(limit),
       },
     });
   } catch (error) {
     console.error("Get all teachers error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to fetch teachers",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -251,10 +252,7 @@ export const getTeacherById = async (req, res) => {
     });
 
     if (!teacher) {
-      return res.status(404).json({
-        status: false,
-        message: "Teacher not found",
-      });
+      return sendNotFound(res, "Teacher not found");
     }
 
     // Calculate comprehensive statistics
@@ -313,20 +311,13 @@ export const getTeacherById = async (req, res) => {
       },
     };
 
-    res.json({
-      status: true,
-      data: {
-        teacher: teacher.toJSON(),
-        statistics,
-      },
+    return sendSuccess(res, 200, "Teacher fetched successfully", {
+      teacher: teacher.toJSON(),
+      statistics,
     });
   } catch (error) {
     console.error("Get teacher by ID error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to fetch teacher details",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -352,11 +343,11 @@ export const createTeacher = async (req, res) => {
 
     // Validate required fields
     if (!firstName || !lastName || !username || !email || !password) {
-      return res.status(400).json({
-        status: false,
-        message:
-          "First name, last name, username, email, and password are required",
-      });
+      await transaction.rollback();
+      return sendValidationError(
+        res,
+        "First name, last name, username, email, and password are required"
+      );
     }
 
     // Check if username or email already exists
@@ -368,13 +359,11 @@ export const createTeacher = async (req, res) => {
 
     if (existingUser) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message:
-          existingUser.email === email
-            ? "Email already exists"
-            : "Username already exists",
-      });
+      if (existingUser.email === email) {
+        return sendConflict(res, "email", email);
+      } else {
+        return sendConflict(res, "username", username);
+      }
     }
 
     // Hash password
@@ -403,19 +392,13 @@ export const createTeacher = async (req, res) => {
     const teacherData = teacher.toJSON();
     delete teacherData.password;
 
-    res.status(201).json({
-      status: true,
-      message: "Teacher created successfully",
-      data: { teacher: teacherData },
+    return sendSuccess(res, 200, "Teacher created successfully", {
+      teacher: teacherData,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Create teacher error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to create teacher",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -449,10 +432,7 @@ export const updateTeacher = async (req, res) => {
 
     if (!teacher) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Teacher not found",
-      });
+      return sendNotFound(res, "Teacher not found");
     }
 
     // Check for unique constraints if username or email is being changed
@@ -462,10 +442,7 @@ export const updateTeacher = async (req, res) => {
       });
       if (existingUsername) {
         await transaction.rollback();
-        return res.status(400).json({
-          status: false,
-          message: "Username already exists",
-        });
+        return sendConflict(res, "username", username);
       }
     }
 
@@ -475,10 +452,7 @@ export const updateTeacher = async (req, res) => {
       });
       if (existingEmail) {
         await transaction.rollback();
-        return res.status(400).json({
-          status: false,
-          message: "Email already exists",
-        });
+        return sendConflict(res, "email", email);
       }
     }
 
@@ -506,19 +480,13 @@ export const updateTeacher = async (req, res) => {
     const updatedTeacher = teacher.toJSON();
     delete updatedTeacher.password;
 
-    res.json({
-      status: true,
-      message: "Teacher updated successfully",
-      data: { teacher: updatedTeacher },
+    return sendSuccess(res, 200, "Teacher updated successfully", {
+      teacher: updatedTeacher,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Update teacher error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to update teacher",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -542,10 +510,7 @@ export const deleteTeacher = async (req, res) => {
 
     if (!teacher) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Teacher not found",
-      });
+      return sendNotFound(res, "Teacher not found");
     }
 
     // Check if teacher has active courses or batches
@@ -565,15 +530,15 @@ export const deleteTeacher = async (req, res) => {
 
     if ((activeCourses > 0 || activeBatches > 0) && !reassignToTeacherId) {
       await transaction.rollback();
-      return res.status(400).json({
-        status: false,
-        message:
-          "Teacher has active courses or batches. Please provide reassignToTeacherId or deactivate all content first",
-        data: {
+      return sendError(
+        res,
+        400,
+        "Teacher has active courses or batches. Please provide reassignToTeacherId or deactivate all content first",
+        {
           activeCourses,
           activeBatches,
-        },
-      });
+        }
+      );
     }
 
     // Reassign courses and batches if specified
@@ -584,10 +549,7 @@ export const deleteTeacher = async (req, res) => {
 
       if (!newTeacher) {
         await transaction.rollback();
-        return res.status(400).json({
-          status: false,
-          message: "Reassignment teacher not found",
-        });
+        return sendNotFound(res, "Reassignment teacher not found");
       }
 
       await Course.update(
@@ -611,22 +573,19 @@ export const deleteTeacher = async (req, res) => {
 
     await transaction.commit();
 
-    res.json({
-      status: true,
-      message: `Teacher ${permanent === "true" ? "permanently deleted" : "deleted"} successfully`,
-      data: {
+    return sendSuccess(
+      res,
+      200,
+      `Teacher ${permanent === "true" ? "permanently deleted" : "deleted"} successfully`,
+      {
         reassignedCourses: reassignToTeacherId ? activeCourses : 0,
         reassignedBatches: reassignToTeacherId ? activeBatches : 0,
-      },
-    });
+      }
+    );
   } catch (error) {
     await transaction.rollback();
     console.error("Delete teacher error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to delete teacher",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -651,20 +610,14 @@ export const assignTeacherToCourse = async (req, res) => {
 
     if (!teacher) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Teacher not found",
-      });
+      return sendNotFound(res, "Teacher not found");
     }
 
     // Validate course exists
     const course = await Course.findByPk(courseId);
     if (!course) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
-      });
+      return sendNotFound(res, "Course not found");
     }
 
     // Update course assignment
@@ -673,28 +626,20 @@ export const assignTeacherToCourse = async (req, res) => {
 
     await transaction.commit();
 
-    res.json({
-      status: true,
-      message: "Teacher assigned to course successfully",
-      data: {
-        courseId,
-        courseTitle: course.title,
-        newTeacher: {
-          id: teacher.userId,
-          name: `${teacher.firstName} ${teacher.lastName}`,
-          email: teacher.email,
-        },
-        previousTeacherId,
+    return sendSuccess(res, 200, "Teacher assigned to course successfully", {
+      courseId,
+      courseTitle: course.title,
+      newTeacher: {
+        id: teacher.userId,
+        name: `${teacher.firstName} ${teacher.lastName}`,
+        email: teacher.email,
       },
+      previousTeacherId,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Assign teacher to course error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to assign teacher to course",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -715,20 +660,14 @@ export const assignTeacherToBatch = async (req, res) => {
 
     if (!teacher) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Teacher not found",
-      });
+      return sendNotFound(res, "Teacher not found");
     }
 
     // Validate batch exists
     const batch = await Batch.findByPk(batchId);
     if (!batch) {
       await transaction.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
-      });
+      return sendNotFound(res, "Batch not found");
     }
 
     // Update batch assignment
@@ -737,28 +676,20 @@ export const assignTeacherToBatch = async (req, res) => {
 
     await transaction.commit();
 
-    res.json({
-      status: true,
-      message: "Teacher assigned to batch successfully",
-      data: {
-        batchId,
-        batchTitle: batch.title,
-        newTeacher: {
-          id: teacher.userId,
-          name: `${teacher.firstName} ${teacher.lastName}`,
-          email: teacher.email,
-        },
-        previousTeacherId,
+    return sendSuccess(res, 200, "Teacher assigned to batch successfully", {
+      batchId,
+      batchTitle: batch.title,
+      newTeacher: {
+        id: teacher.userId,
+        name: `${teacher.firstName} ${teacher.lastName}`,
+        email: teacher.email,
       },
+      previousTeacherId,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Assign teacher to batch error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to assign teacher to batch",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -801,10 +732,7 @@ export const getTeacherPerformanceReport = async (req, res) => {
     });
 
     if (!teacher) {
-      return res.status(404).json({
-        status: false,
-        message: "Teacher not found",
-      });
+      return sendNotFound(res, "Teacher not found");
     }
 
     // Get courses with enrollment data
@@ -912,37 +840,30 @@ export const getTeacherPerformanceReport = async (req, res) => {
         return acc;
       }, {});
 
-    res.json({
-      status: true,
-      data: {
-        teacher: {
-          id: teacher.userId,
-          name: `${teacher.firstName} ${teacher.lastName}`,
-          email: teacher.email,
-        },
-        performance,
-        trends: {
-          enrollmentsByDay: Object.entries(enrollmentTrends).map(
-            ([date, count]) => ({
-              date,
-              enrollments: count,
-            }),
-          ),
-        },
-        period: {
-          startDate,
-          endDate,
-          duration: dateRange,
-        },
+    return sendSuccess(res, 200, "Teacher performance report fetched successfully", {
+      teacher: {
+        id: teacher.userId,
+        name: `${teacher.firstName} ${teacher.lastName}`,
+        email: teacher.email,
+      },
+      performance,
+      trends: {
+        enrollmentsByDay: Object.entries(enrollmentTrends).map(
+          ([date, count]) => ({
+            date,
+            enrollments: count,
+          }),
+        ),
+      },
+      period: {
+        startDate,
+        endDate,
+        duration: dateRange,
       },
     });
   } catch (error) {
     console.error("Get teacher performance report error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to fetch teacher performance report",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1008,26 +929,19 @@ export const getTeacherStudentFeedback = async (req, res) => {
       ),
     };
 
-    res.json({
-      status: true,
-      data: {
-        feedback: ratings.rows,
-        summary,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(ratings.count / parseInt(limit)),
-          totalItems: ratings.count,
-          itemsPerPage: parseInt(limit),
-        },
+    return sendSuccess(res, 200, "Teacher student feedback fetched successfully", {
+      feedback: ratings.rows,
+      summary,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(ratings.count / parseInt(limit)),
+        totalItems: ratings.count,
+        itemsPerPage: parseInt(limit),
       },
     });
   } catch (error) {
     console.error("Get teacher student feedback error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to fetch teacher student feedback",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1084,24 +998,17 @@ export const getTeacherAssignedCourses = async (req, res) => {
       return courseData;
     });
 
-    res.json({
-      status: true,
-      data: {
-        courses: coursesWithStats,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(courses.count / parseInt(limit)),
-          totalItems: courses.count,
-          itemsPerPage: parseInt(limit),
-        },
+    return sendSuccess(res, 200, "Teacher assigned courses fetched successfully", {
+      courses: coursesWithStats,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(courses.count / parseInt(limit)),
+        totalItems: courses.count,
+        itemsPerPage: parseInt(limit),
       },
     });
   } catch (error) {
     console.error("Get teacher assigned courses error:", error);
-    res.status(500).json({
-      status: false,
-      message: "Failed to fetch teacher assigned courses",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };

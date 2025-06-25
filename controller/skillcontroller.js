@@ -5,6 +5,8 @@ import CourseCategory from "../model/courseCategory.js";
 import CourseLevel from "../model/courseLevel.js";
 import { validateSkillInput } from "../utils/commonUtils.js";
 import { Op } from "sequelize";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+
 export const bulkUploadSkills = async (req, res) => {
   try {
     const requestBody = req.body;
@@ -16,16 +18,14 @@ export const bulkUploadSkills = async (req, res) => {
     } else if (requestBody.skills && Array.isArray(requestBody.skills)) {
       skills = requestBody.skills;
     } else {
-      return res.status(400).json({
-        status: false,
-        message: "Request body must be an array of skills or an object with a 'skills' array property",
+      return sendValidationError(res, "Invalid request format", {
+        body: "Request body must be an array of skills or an object with a 'skills' array property"
       });
     }
 
     if (skills.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "Request body must be a non-empty array of skills",
+      return sendValidationError(res, "Empty skills array", {
+        skills: "Request body must be a non-empty array of skills"
       });
     }
     
@@ -34,11 +34,7 @@ export const bulkUploadSkills = async (req, res) => {
       await Skill.sync({ alter: false });
     } catch (error) {
       console.error("Error checking skills table:", error);
-      return res.status(500).json({
-        status: false,
-        message: "Database error: Skills table might not exist",
-        error: error.message
-      });
+      return sendServerError(res, "Database error: Skills table might not exist", error.message);
     }
 
     // Process skills
@@ -111,10 +107,8 @@ export const bulkUploadSkills = async (req, res) => {
 
     // Return validation errors if any
     if (validationErrors.length > 0) {
-      return res.status(400).json({
-        status: false,
-        message: "Validation failed for one or more skills.",
-        validationErrors,
+      return sendValidationError(res, "Validation failed for one or more skills.", {
+        validationErrors
       });
     }
 
@@ -122,18 +116,12 @@ export const bulkUploadSkills = async (req, res) => {
       ignoreDuplicates: true, // Ignore duplicates instead of failing
     });
 
-    return res.status(201).json({
-      status: true,
-      message: "Skills uploaded successfully",
-      data: createdSkills,
+    return sendSuccess(res, "Skills uploaded successfully", {
+      data: createdSkills
     });
   } catch (error) {
     console.error("Bulk upload error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to upload skills",
-      error: error.message,
-    });
+    return sendServerError(res, "Failed to upload skills", error.message);
   }
 };
 
@@ -171,18 +159,12 @@ export const getAllSkills = async (req, res) => {
       order: [["createdAt", "ASC"]],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Skills fetched successfully",
-      data: skills,
+    return sendSuccess(res, "Skills fetched successfully", {
+      data: skills
     });
   } catch (error) {
     console.error("Fetch error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch skills",
-      error: error.message,
-    });
+    return sendServerError(res, "Failed to fetch skills", error.message);
   }
 };
 
@@ -192,19 +174,13 @@ export const getSkillsByGoal = async (req, res) => {
 
     // Validate UUID format
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(goalId)) {
-      return res.status(400).json({
-        status: false,
-        message: `Invalid goalId format: ${goalId}. Must be a valid UUID.`,
-      });
+      return sendValidationError(res, `Invalid goalId format: ${goalId}. Must be a valid UUID.`);
     }
 
     // ✅ Step 1: Validate if goal exists
     const goal = await Goal.findByPk(goalId);
     if (!goal) {
-      return res.status(404).json({
-        status: false,
-        message: "Goal not found",
-      });
+      return sendNotFound(res, "Goal not found");
     }// ✅ Step 2: Fetch all skills for that goal
     const skills = await Skill.findAll({
       where: { goalId },
@@ -232,18 +208,12 @@ export const getSkillsByGoal = async (req, res) => {
       order: [["createdAt", "ASC"]],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Skills fetched successfully",
-      data: skills,
+    return sendSuccess(res, "Skills fetched successfully", {
+      data: skills
     });
   } catch (error) {
     console.error("Error fetching skills by goal:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch skills by goal",
-      error: error.message,
-    });
+    return sendServerError(res, "Failed to fetch skills by goal", error.message);
   }
 };
 
@@ -254,37 +224,25 @@ export const getSkillsByCategory = async (req, res) => {
 
     // Validate UUID format for categoryId
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
-      return res.status(400).json({
-        status: false,
-        message: `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`,
-      });
+      return sendValidationError(res, `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`);
     }
 
     // Validate category exists
     const category = await CourseCategory.findByPk(categoryId);
     if (!category) {
-      return res.status(404).json({
-        status: false,
-        message: "Category not found",
-      });
+      return sendNotFound(res, "Category not found");
     }
 
     // Validate levelId if provided
     if (levelId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
-      return res.status(400).json({
-        status: false,
-        message: `Invalid levelId format: ${levelId}. Must be a valid UUID.`,
-      });
+      return sendValidationError(res, `Invalid levelId format: ${levelId}. Must be a valid UUID.`);
     }
     
     // If levelId is provided, validate it exists
     if (levelId) {
       const level = await CourseLevel.findByPk(levelId);
       if (!level) {
-        return res.status(404).json({
-          status: false,
-          message: "Level not found",
-        });
+        return sendNotFound(res, "Level not found");
       }
     }
 
@@ -329,18 +287,12 @@ export const getSkillsByCategory = async (req, res) => {
       ],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Skills fetched successfully",
-      data: skills,
+    return sendSuccess(res, "Skills fetched successfully", {
+      data: skills
     });
   } catch (error) {
     console.error("Error fetching skills by category:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch skills by category",
-      error: error.message,
-    });
+    return sendServerError(res, "Failed to fetch skills by category", error.message);
   }
 };
 
@@ -351,37 +303,25 @@ export const getSkillsByLevel = async (req, res) => {
 
     // Validate UUID format for levelId
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
-      return res.status(400).json({
-        status: false,
-        message: `Invalid levelId format: ${levelId}. Must be a valid UUID.`,
-      });
+      return sendValidationError(res, `Invalid levelId format: ${levelId}. Must be a valid UUID.`);
     }
 
     // Validate level exists
     const level = await CourseLevel.findByPk(levelId);
     if (!level) {
-      return res.status(404).json({
-        status: false,
-        message: "Level not found",
-      });
+      return sendNotFound(res, "Level not found");
     }
 
     // Validate categoryId if provided
     if (categoryId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
-      return res.status(400).json({
-        status: false,
-        message: `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`,
-      });
+      return sendValidationError(res, `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`);
     }
     
     // If categoryId is provided, validate it exists
     if (categoryId) {
       const category = await CourseCategory.findByPk(categoryId);
       if (!category) {
-        return res.status(404).json({
-          status: false,
-          message: "Category not found",
-        });
+        return sendNotFound(res, "Category not found");
       }
     }
 
@@ -423,18 +363,12 @@ export const getSkillsByLevel = async (req, res) => {
       order: [["skillName", "ASC"]],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Skills fetched successfully",
-      data: skills,
+    return sendSuccess(res, "Skills fetched successfully", {
+      data: skills
     });
   } catch (error) {
     console.error("Error fetching skills by level:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch skills by level",
-      error: error.message,
-    });
+    return sendServerError(res, "Failed to fetch skills by level", error.message);
   }
 };
 
@@ -458,21 +392,15 @@ export const getSkillOptions = async (req, res) => {
       order: [["goalName", "ASC"]],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Skill options fetched successfully",
+    return sendSuccess(res, "Skill options fetched successfully", {
       data: {
         categories,
         levels,
         goals,
-      },
+      }
     });
   } catch (error) {
     console.error("Error fetching skill options:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch skill options",
-      error: error.message,
-    });
+    return sendServerError(res, "Failed to fetch skill options", error.message);
   }
 };

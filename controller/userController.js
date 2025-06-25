@@ -19,6 +19,14 @@ import Course from "../model/course.js";
 import Settings from "../model/settings.js";
 import { Op } from "sequelize";
 import Exam from "../model/exam.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendServerError,
+  sendConflict,
+} from "../utils/responseHelper.js";
 
 export const userRegistration = async (req, res) => {
   const trans = await sequelize.transaction();
@@ -28,33 +36,23 @@ export const userRegistration = async (req, res) => {
 
     if (!email && !mobile) {
       await trans.rollback();
-      return res.status(400).json({
-        message: "Email or mobile number is required",
-        status: false,
-      });
+      return sendValidationError(res, "Email or mobile number is required");
     }
 
     // ✅ Password is required only if role is not 'student'
     if (role !== "student" && !password) {
       await trans.rollback();
-      return res.status(400).json({
-        message: "Password is required for non-student roles",
-        status: false,
-      });
+      return sendValidationError(res, "Password is required for non-student roles");
     }
 
     if (email && !validateEmail(email)) {
       await trans.rollback();
-      return res
-        .status(400)
-        .json({ message: "Invalid email format", status: false });
+      return sendValidationError(res, "Invalid email format");
     }
 
     if (mobile && !validateMobile(mobile)) {
       await trans.rollback();
-      return res
-        .status(400)
-        .json({ message: "Invalid mobile number format", status: false });
+      return sendValidationError(res, "Invalid mobile number format");
     }
     // Check for existing email
     if (email) {
@@ -65,26 +63,9 @@ export const userRegistration = async (req, res) => {
 
       if (existingEmail) {
         await trans.rollback();
-        return res
-          .status(409)
-          .json({ message: "This email is already registered", status: false });
+        return sendConflict(res, "email", email);
       }
     }
-
-    // Check for existing username
-    // if (username) {
-    //   const existingUsername = await User.findOne({
-    //     where: { username },
-    //     transaction: trans,
-    //   });
-
-    //   if (existingUsername) {
-    //     await trans.rollback();
-    //     return res
-    //       .status(409)
-    //       .json({ message: "This username is already taken", status: false });
-    //   }
-    // }
 
     // Check for existing mobile
     if (mobile) {
@@ -95,10 +76,7 @@ export const userRegistration = async (req, res) => {
 
       if (existingMobile) {
         await trans.rollback();
-        return res.status(409).json({
-          message: "This mobile number is already registered",
-          status: false,
-        });
+        return sendConflict(res, "mobile", mobile);
       }
     }
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
@@ -122,30 +100,18 @@ export const userRegistration = async (req, res) => {
       // Try to send OTP
       await sendOtp(identifier);
     } catch (otpError) {
-      // If OTP sending fails, rollback the transaction
       await trans.rollback();
       console.error("OTP sending error:", otpError);
-      return res.status(500).json({
-        message: "Failed to send OTP. Please try again.",
-        status: false,
-      });
+      return sendServerError(res, { message: "Failed to send OTP. Please try again." });
     }
 
-    // If everything succeeded, commit the transaction
     await trans.commit();
 
-    return res.status(201).json({
-      message: `OTP sent to ${identifier}`,
-      status: true,
-    });
+    return sendSuccess(res, 200, `OTP sent to ${identifier}`);
   } catch (error) {
     await trans.rollback();
     console.error("Registration error:", error);
-    return res.status(500).json({
-      message: "Server error during registration",
-      error: error.message,
-      status: false,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -154,194 +120,106 @@ export const userLogin = async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
-    // Validate required fields
     if (!identifier) {
-      return res.status(400).json({
-        message: "Email or mobile is required.",
-        status: false,
-        success: false,
-        data: null,
-      });
+      return sendValidationError(res, "Email or mobile is required.");
     }
 
     let user;
 
-    // Determine if identifier is email or mobile
     if (validateEmail(identifier)) {
       user = await User.findOne({ where: { email: identifier } });
     } else if (validateMobile(identifier)) {
       user = await User.findOne({ where: { mobile: identifier } });
     } else {
-      return res.status(400).json({
-        message: "Invalid email or mobile number format.",
-        status: false,
-        success: false,
-        data: null,
-      });
+      return sendValidationError(res, "Invalid email or mobile number format.");
     }
 
-    // Check if user exists
     if (!user) {
-      return res.status(401).json({
-        message:
-          "Invalid credentials. Please check your email/mobile and password.",
-        status: false,
-        success: false,
-        data: null,
-      });
+      return sendUnauthorized(res, "Invalid credentials. Please check your email/mobile and password.");
     }
 
-    // ✅ Check if the user is verified
     if (!user.isVerified) {
-      return res.status(403).json({
-        message:
-          "Account not verified. Please verify your account before logging in.",
-        status: false,
-        success: false,
-        data: null,
-      });
+      return sendForbidden(res, "Account not verified. Please verify your account before logging in.");
     }
 
     if (user.role === "student") {
-      // 🟰 For student, send OTP immediately instead of checking password
       try {
-        await sendOtp(identifier); // ✅ sending OTP via utils/sendOtp.js
-
-        return res.status(200).json({
-          message: `OTP sent to ${identifier}. Please verify OTP to continue.`,
-          status: true,
-          success: true,
-          needOtpVerification: true, // frontend can use this flag
-          data: {
-            userId: user.userId,
-            email: user.email,
-            mobile: user.mobile,
-            role: user.role,
-            needOtpVerification: true,
-          },
-        });
-      } catch (otpError) {
-        console.error("OTP sending error:", otpError);
-        return res.status(500).json({
-          message: "Failed to send OTP. Please try again.",
-          status: false,
-          success: false,
-          data: null,
-        });
-      }
-    } else {
-      // 🔒 Other roles require password
-
-      if (!password) {
-        return res.status(400).json({
-          message: "Password is required.",
-          status: false,
-          success: false,
-          data: null,
-        });
-      }
-
-      // Validate password length
-      if (password.length < 6) {
-        return res.status(400).json({
-          message: "Password must be at least 6 characters long.",
-          status: false,
-          success: false,
-          data: null,
-        });
-      }
-
-      // ✅ Check password match
-      const isPasswordCorrect = await bcrypt.compare(password, user.password);
-      if (!isPasswordCorrect) {
-        return res.status(401).json({
-          message:
-            "Invalid credentials. Please check your email/mobile and password.",
-          status: false,
-          success: false,
-          data: null,
-        });
-      }
-
-      // ✅ Generate and send token
-      const token = generateToken(user);
-
-      // Track first login status
-      const isFirstLogin = user.firstLogin;
-
-      if (isFirstLogin) {
-        await user.update({ firstLogin: false }); // Mark as logged in
-      }
-
-      return res.status(200).json({
-        message: "Login successful.",
-        status: true,
-        success: true,
-        data: {
+        await sendOtp(identifier);
+        return sendSuccess(res, 200, `OTP sent to ${identifier}. Please verify OTP to continue.`, {
           userId: user.userId,
-          name: user.username || user.firstName || user.email,
           email: user.email,
           mobile: user.mobile,
           role: user.role,
-          token,
-          isVerified: user.isVerified,
-          firstTimeLogin: isFirstLogin,
-        },
+          needOtpVerification: true,
+        });
+      } catch (otpError) {
+        console.error("OTP sending error:", otpError);
+        return sendServerError(res, { message: "Failed to send OTP. Please try again." });
+      }
+    } else {
+      if (!password) {
+        return sendValidationError(res, "Password is required.");
+      }
+
+      if (password.length < 6) {
+        return sendValidationError(res, "Password must be at least 6 characters long.");
+      }
+
+      const isPasswordCorrect = await bcrypt.compare(password, user.password);
+      if (!isPasswordCorrect) {
+        return sendUnauthorized(res, "Invalid credentials. Please check your email/mobile and password.");
+      }
+
+      const token = generateToken(user);
+
+      const isFirstLogin = user.firstLogin;
+
+      if (isFirstLogin) {
+        await user.update({ firstLogin: false });
+      }
+
+      return sendSuccess(res, 200, "Login successful.", {
+        userId: user.userId,
+        name: user.username || user.firstName || user.email,
+        email: user.email,
+        mobile: user.mobile,
+        role: user.role,
+        token,
+        isVerified: user.isVerified,
+        firstTimeLogin: isFirstLogin,
       });
     }
   } catch (error) {
     console.error("Login error:", error);
-    return res.status(500).json({
-      message: "An internal server error occurred during login.",
-      status: false,
-      success: false,
-      data: null,
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : "Internal Server Error",
-    });
+    return sendServerError(res, error);
   }
 };
 
 export const googleCallback = async (req, res) => {
   try {
-    // Validate if user data is present from Google
     if (!req.user || !req.user._json) {
-      return res.status(400).json({
-        status: false,
-        message: "Google login failed. No user info received.",
-      });
+      return sendValidationError(res, "Google login failed. No user info received.");
     }
 
     const profile = req.user._json;
 
-    console.log(profile);
-
-    // Validate necessary fields from profile
     if (!profile.email || !profile.name) {
-      return res.status(400).json({
-        status: false,
-        message: "Required Google profile information is missing.",
-      });
+      return sendValidationError(res, "Required Google profile information is missing.");
     }
 
-    // Check if user exists in DB
     let user = await User.findOne({ where: { email: profile.email } });
 
-    // If not, create the user
     if (!user) {
       user = await User.create({
         username: profile.name,
         email: profile.email,
         profileImage: profile.picture || null,
-        googleId: profile.sub, // Save Google user ID here
+        googleId: profile.sub,
         provider: "google",
         isVerified: true,
         role: "student",
         firstLogin: true,
       });
-      // Generate a JWT token for the user
       const token = generateToken(user);
 
       return res.redirect(
@@ -349,35 +227,14 @@ export const googleCallback = async (req, res) => {
       );
     }
 
-    // Generate a JWT token for the user
     const token = generateToken(user);
 
-    // Redirect or respond with token
-    // For redirect:
     return res.redirect(
       `http://localhost:3000/google-login-success?token=${token}&status=true`,
     );
-
-    // Or to send a direct response (if frontend expects JSON):
-    // return res.status(200).json({
-    //   status: true,
-    //   message: "Login successful",
-    //   token,
-    //   user: {
-    //     id: user.id,
-    //     username: user.username,
-    //     email: user.email,
-    //     profileImage: user.profileImage,
-    //     role: user.role,
-    //   },
-    // });
   } catch (error) {
     console.error("Google callback error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An internal error occurred during Google authentication",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -388,19 +245,13 @@ export const addUserSkills = async (req, res) => {
     const { skillIds } = req.body;
 
     if (!Array.isArray(skillIds) || skillIds.length === 0) {
-      return res.status(400).json({
-        message: "skillIds must be a non-empty array",
-        status: false,
-      });
+      return sendValidationError(res, "skillIds must be a non-empty array");
     }
 
     const skills = await Skill.findAll({ where: { id: skillIds } });
 
     if (skills.length !== skillIds.length) {
-      return res.status(404).json({
-        message: "One or more skills not found",
-        status: false,
-      });
+      return sendNotFound(res, "One or more skills not found");
     }
 
     const existingSkills = await user.getSkills({ attributes: ["id"] });
@@ -411,13 +262,10 @@ export const addUserSkills = async (req, res) => {
       await user.addSkills(newSkillIds);
     }
 
-    return res.status(200).json({
-      status: true,
-      message: "Skills updated successfully",
-    });
+    return sendSuccess(res, 200, "Skills updated successfully");
   } catch (err) {
     console.error("Add skills error:", err);
-    res.status(500).json({ status: false, message: "Server error" });
+    return sendServerError(res, err);
   }
 };
 
@@ -427,33 +275,25 @@ export const getUserSkills = async (req, res) => {
     const user = req.user;
 
     if (!user?.isVerified) {
-      return res.status(403).json({
-        message: "User not verified",
-        status: false,
-      });
+      return sendForbidden(res, "User not verified");
     }
 
-    // Reload user with associated skills (eager loading)
     const userWithSkills = await User.findOne({
       where: { id: user.id },
       include: [
         {
           model: Skill,
-          as: "skills", // 👈 Must match association alias
+          as: "skills",
           attributes: ["id", "skill"],
-          through: { attributes: [] }, // hide junction table
+          through: { attributes: [] },
         },
       ],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "User skills fetched successfully",
-      data: userWithSkills.skills,
-    });
+    return sendSuccess(res, 200, "User skills fetched successfully", userWithSkills.skills);
   } catch (err) {
     console.error("Get skills error:", err);
-    res.status(500).json({ status: false, message: "Server error" });
+    return sendServerError(res, err);
   }
 };
 
@@ -462,16 +302,12 @@ export const getUserDetails = async (req, res) => {
   try {
     let { userId } = req.params;
 
-    // If userId is not provided in params, get it from req.user
     if (!userId && req.user) {
       userId = req.user.userId;
     }
 
     if (!userId) {
-      return res.status(400).json({
-        status: false,
-        message: "User ID is required",
-      });
+      return sendValidationError(res, "User ID is required");
     }
     const userWithDetails = await User.findByPk(userId, {
       attributes: { exclude: ["password"] },
@@ -500,25 +336,13 @@ export const getUserDetails = async (req, res) => {
     });
 
     if (!userWithDetails) {
-      return res.status(404).json({
-        status: false,
-        message: "User not found",
-      });
+      return sendNotFound(res, "User not found");
     }
 
-    const user = userWithDetails;
-    return res.status(200).json({
-      status: true,
-      message: "User details fetched successfully",
-      data: user,
-    });
+    return sendSuccess(res, 200, "User details fetched successfully", userWithDetails);
   } catch (error) {
     console.error("Error fetching user details:", error);
-    return res.status(500).json({
-      status: false,
-      message: "An error occurred while fetching user details",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -526,12 +350,10 @@ export const getHomePage = async (req, res) => {
   try {
     let myClasses = [];
 
-    // Check if user is authenticated
     try {
-      const { userId } = req.user; // Assuming userId is passed in the request body
+      const { userId } = req.user;
       user = await User.findByPk(userId);
       if (user) {
-        // Get user's enrolled courses
         const enrollments = await Enrollment.findAll({
           where: { userId: userId },
           include: [
@@ -557,31 +379,29 @@ export const getHomePage = async (req, res) => {
             course_sub_title: null,
             course_description: course.description,
             category: course.category?.categoryName || null,
-            language: "English", // Default language for now
+            language: "English",
             course_price: parseFloat(course.price) || 0,
             image: course.thumbnailUrl,
-            reviews: 0, // You can implement review count later
-            rating: 0, // You can implement rating later
+            reviews: 0,
+            rating: 0,
             purchase_status: true,
           };
         });
       }
     } catch (err) {
-      // If token is invalid, continue without user data
       console.log("Invalid token:", err.message);
     }
 
-    // Get all banners
     const banners = await Banner.findAll({
       attributes: ["id", "title", "image"],
       order: [["createdAt", "DESC"]],
     });
 
-    // Get all categories
     const categories = await Category.findAll({
       attributes: ["categoryId", "categoryName"],
       order: [["categoryName", "ASC"]],
-    }); // Get recommended courses (published courses that user hasn't enrolled in)
+    });
+
     const enrolledCourseIds = myClasses.map((course) => course.id);
     const recommendedCourses = await Course.findAll({
       where: {
@@ -609,19 +429,19 @@ export const getHomePage = async (req, res) => {
       course_sub_title: null,
       course_description: course.description,
       category: course.category?.categoryName || null,
-      language: "English", // Default language for now
+      language: "English",
       course_price: parseFloat(course.price) || 0,
       image: course.thumbnailUrl,
-      reviews: 0, // You can implement review count later
-      rating: 0, // You can implement rating later
+      reviews: 0,
+      rating: 0,
       purchase_status: false,
-    })); // Get popular categories (first 2 categories for demo)
+    }));
+
     const popularCategories = categories.slice(0, 2).map((cat) => ({
       id: cat.categoryId,
       category_name: cat.categoryName,
     }));
 
-    // Get contact information from settings
     const contactSettings = await Settings.findAll({
       where: {
         key: {
@@ -632,16 +452,12 @@ export const getHomePage = async (req, res) => {
       attributes: ["key", "value"],
     });
 
-    // Convert settings array to object for easy access
     const settingsMap = {};
     contactSettings.forEach((setting) => {
       settingsMap[setting.key] = setting.value;
     });
 
-    // Format response according to demo structure
     const response = {
-      success: true,
-      message: "Success",
       banners: banners.map((banner) => ({
         id: banner.id,
         title: banner.title,
@@ -669,22 +485,15 @@ export const getHomePage = async (req, res) => {
       company_name: settingsMap.company_name || "StartGoals",
     };
 
-    res.json(response);
+    return sendSuccess(res, 200, "Success", response);
   } catch (error) {
     console.error("Homepage API Error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    return sendServerError(res, error);
   }
 };
 
 // ===================== COMPREHENSIVE STUDENT MANAGEMENT =====================
 
-/**
- * Get All Students (Admin/Owner only)
- * With filters, search, and pagination
- */
 export const getAllStudents = async (req, res) => {
   try {
     const {
@@ -700,7 +509,6 @@ export const getAllStudents = async (req, res) => {
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    // Build where conditions
     const whereConditions = {
       role: "student",
     };
@@ -717,7 +525,6 @@ export const getAllStudents = async (req, res) => {
 
     if (status) whereConditions.isVerified = status === "active";
 
-    // Include associations based on query params
     const include = [];
 
     if (includeStats === "true") {
@@ -746,13 +553,11 @@ export const getAllStudents = async (req, res) => {
       distinct: true,
     });
 
-    // Calculate stats for each student if requested
     const studentsWithStats = await Promise.all(
       students.map(async (student) => {
         const studentData = student.toJSON();
 
         if (includeStats === "true") {
-          // Calculate enrollment statistics
           const enrollmentCount = await Enrollment.count({
             where: { userId: student.userId },
           });
@@ -785,39 +590,28 @@ export const getAllStudents = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    res.status(200).json({
-      success: true,
-      message: "Students retrieved successfully",
-      data: {
-        students: studentsWithStats,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalStudents: count,
-          studentsPerPage: parseInt(limit),
-          hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1,
-        },
-        summary: {
-          totalStudents: count,
-          activeStudents: students.filter((s) => s.isVerified).length,
-          inactiveStudents: students.filter((s) => !s.isVerified).length,
-        },
+    return sendSuccess(res, 200, "Students retrieved successfully", {
+      students: studentsWithStats,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalStudents: count,
+        studentsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
+      },
+      summary: {
+        totalStudents: count,
+        activeStudents: students.filter((s) => s.isVerified).length,
+        inactiveStudents: students.filter((s) => !s.isVerified).length,
       },
     });
   } catch (error) {
     console.error("Get all students error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve students",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
-/**
- * Get student by ID with detailed information
- */
 export const getStudentById = async (req, res) => {
   try {
     const { studentId } = req.params;
@@ -866,15 +660,11 @@ export const getStudentById = async (req, res) => {
     });
 
     if (!student) {
-      return res.status(404).json({
-        success: false,
-        message: "Student not found",
-      });
+      return sendNotFound(res, "Student not found");
     }
 
     const studentData = student.toJSON();
 
-    // Add detailed statistics
     if (includeProgress === "true") {
       const enrollments = studentData.enrollments || [];
       const totalEnrollments = enrollments.length;
@@ -906,7 +696,6 @@ export const getStudentById = async (req, res) => {
             : 0,
       };
 
-      // Recent activity
       const recentEnrollments = await Enrollment.findAll({
         where: { userId: studentId },
         include: [{ model: Course, attributes: ["title"] }],
@@ -922,24 +711,13 @@ export const getStudentById = async (req, res) => {
       }));
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Student details retrieved successfully",
-      data: studentData,
-    });
+    return sendSuccess(res, 200, "Student details retrieved successfully", studentData);
   } catch (error) {
     console.error("Get student by ID error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve student details",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
-/**
- * Create new student (Admin)
- */
 export const createStudent = async (req, res) => {
   const transaction = await sequelize.transaction();
 
@@ -961,32 +739,21 @@ export const createStudent = async (req, res) => {
       isVerified = false,
     } = req.body;
 
-    // Validation
     if (!firstName || !lastName || !email) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "First name, last name, and email are required",
-      });
+      return sendValidationError(res, "First name, last name, and email are required");
     }
 
     if (!validateEmail(email)) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Invalid email format",
-      });
+      return sendValidationError(res, "Invalid email format");
     }
 
     if (mobile && !validateMobile(mobile)) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Invalid mobile number format",
-      });
+      return sendValidationError(res, "Invalid mobile number format");
     }
 
-    // Check for existing user
     const existingUser = await User.findOne({
       where: {
         [Op.or]: [
@@ -999,19 +766,14 @@ export const createStudent = async (req, res) => {
 
     if (existingUser) {
       await transaction.rollback();
-      return res.status(409).json({
-        success: false,
-        message: "User with this email, mobile, or username already exists",
-      });
+      return sendConflict(res, "user", email || mobile || username);
     }
 
-    // Hash password if provided
     let hashedPassword = null;
     if (password) {
       hashedPassword = await bcrypt.hash(password, 10);
     }
 
-    // Create student
     const student = await User.create(
       {
         firstName,
@@ -1036,28 +798,16 @@ export const createStudent = async (req, res) => {
 
     await transaction.commit();
 
-    // Return student data without password
     const { password: _, ...studentData } = student.toJSON();
 
-    res.status(201).json({
-      success: true,
-      message: "Student created successfully",
-      data: studentData,
-    });
+    return sendSuccess(res, 200, "Student created successfully", studentData);
   } catch (error) {
     await transaction.rollback();
     console.error("Create student error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create student",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
-/**
- * Update student information
- */
 export const updateStudent = async (req, res) => {
   const transaction = await sequelize.transaction();
 
@@ -1065,43 +815,29 @@ export const updateStudent = async (req, res) => {
     const { studentId } = req.params;
     const updateData = req.body;
 
-    // Remove sensitive fields that shouldn't be updated via this endpoint
     delete updateData.password;
     delete updateData.role;
     delete updateData.userId;
 
-    // Validate email if provided
     if (updateData.email && !validateEmail(updateData.email)) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Invalid email format",
-      });
+      return sendValidationError(res, "Invalid email format");
     }
 
-    // Validate mobile if provided
     if (updateData.mobile && !validateMobile(updateData.mobile)) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Invalid mobile number format",
-      });
+      return sendValidationError(res, "Invalid mobile number format");
     }
 
-    // Check if student exists
     const student = await User.findOne({
       where: { userId: studentId, role: "student" },
     });
 
     if (!student) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Student not found",
-      });
+      return sendNotFound(res, "Student not found");
     }
 
-    // Check for unique constraints if email/mobile/username are being updated
     if (updateData.email || updateData.mobile || updateData.username) {
       const whereConditions = {
         userId: { [Op.ne]: studentId },
@@ -1119,43 +855,27 @@ export const updateStudent = async (req, res) => {
         const existingUser = await User.findOne({ where: whereConditions });
         if (existingUser) {
           await transaction.rollback();
-          return res.status(409).json({
-            success: false,
-            message: "Email, mobile, or username already exists",
-          });
+          return sendConflict(res, "user", updateData.email || updateData.mobile || updateData.username);
         }
       }
     }
 
-    // Update student
     await student.update(updateData, { transaction });
 
     await transaction.commit();
 
-    // Return updated student data
     const updatedStudent = await User.findByPk(studentId, {
       attributes: { exclude: ["password"] },
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Student updated successfully",
-      data: updatedStudent,
-    });
+    return sendSuccess(res, 200, "Student updated successfully", updatedStudent);
   } catch (error) {
     await transaction.rollback();
     console.error("Update student error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update student",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
-/**
- * Delete student (soft delete)
- */
 export const deleteStudent = async (req, res) => {
   const transaction = await sequelize.transaction();
 
@@ -1169,14 +889,10 @@ export const deleteStudent = async (req, res) => {
 
     if (!student) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Student not found",
-      });
+      return sendNotFound(res, "Student not found");
     }
 
     if (permanent === "true") {
-      // Hard delete - remove all related data
       await BatchStudents.destroy({
         where: { userId: studentId },
         transaction,
@@ -1184,7 +900,6 @@ export const deleteStudent = async (req, res) => {
       await Enrollment.destroy({ where: { userId: studentId }, transaction });
       await student.destroy({ transaction });
     } else {
-      // Soft delete - deactivate account
       await student.update(
         {
           isActive: false,
@@ -1196,32 +911,24 @@ export const deleteStudent = async (req, res) => {
 
     await transaction.commit();
 
-    res.status(200).json({
-      success: true,
-      message:
-        permanent === "true"
-          ? "Student permanently deleted"
-          : "Student deactivated successfully",
-    });
+    return sendSuccess(
+      res,
+      200,
+      permanent === "true"
+        ? "Student permanently deleted"
+        : "Student deactivated successfully"
+    );
   } catch (error) {
     await transaction.rollback();
     console.error("Delete student error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete student",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
-/**
- * Get student analytics and statistics
- */
 export const getStudentAnalytics = async (req, res) => {
   try {
     const { timeRange = "30d" } = req.query;
 
-    // Calculate date range
     const now = new Date();
     let startDate = new Date();
 
@@ -1242,7 +949,6 @@ export const getStudentAnalytics = async (req, res) => {
         startDate.setDate(now.getDate() - 30);
     }
 
-    // Basic student counts
     const totalStudents = await User.count({ where: { role: "student" } });
     const activeStudents = await User.count({
       where: { role: "student", isVerified: true, isActive: true },
@@ -1254,7 +960,6 @@ export const getStudentAnalytics = async (req, res) => {
       },
     });
 
-    // Enrollment statistics
     const totalEnrollments = await Enrollment.count();
     const activeEnrollments = await Enrollment.count({
       where: { completionStatus: "in_progress" },
@@ -1263,7 +968,6 @@ export const getStudentAnalytics = async (req, res) => {
       where: { completionStatus: "completed" },
     });
 
-    // Popular courses among students
     const popularCourses = await Course.findAll({
       attributes: [
         "courseId",
@@ -1290,7 +994,6 @@ export const getStudentAnalytics = async (req, res) => {
       limit: 10,
     });
 
-    // Student registration trends (last 12 months)
     const registrationTrends = await User.findAll({
       where: {
         role: "student",
@@ -1314,7 +1017,6 @@ export const getStudentAnalytics = async (req, res) => {
       ],
     });
 
-    // Completion rates by category
     const categoryStats = await CourseCategory.findAll({
       attributes: [
         "categoryId",
@@ -1408,16 +1110,9 @@ export const getStudentAnalytics = async (req, res) => {
       })),
     };
 
-    res.status(200).json({
-      success: true,
-      data: analytics,
-    });
+    return sendSuccess(res, 200, "Student analytics fetched successfully", analytics);
   } catch (error) {
     console.error("Get student analytics error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch student analytics",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };

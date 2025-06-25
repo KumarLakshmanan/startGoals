@@ -68,15 +68,14 @@ app.get('/sync-db', syncDbMiddleware, (req, res) => {
 
 // API endpoint to create required tables
 app.post('/create-required-tables', syncDbMiddleware, createTablesHandler);
-
 // API to get all database models and their fields
 app.get('/db-models', syncDbMiddleware, async (req, res) => {
   try {
     const models = await getModels();
-    res.json(models);
+    return sendSuccess(res, 200, "Fetched database models successfully", models);
   } catch (error) {
     console.error("Failed to fetch database models:", error);
-    res.status(500).json({ error: "Failed to fetch database models" });
+    return sendServerError(res, error);
   }
 });
 
@@ -84,36 +83,27 @@ app.get('/db-models', syncDbMiddleware, async (req, res) => {
 app.post('/sync-db', syncDbMiddleware, async (req, res) => {
   try {
     const { models, options } = req.body;
-    
+
     console.log('Received sync request with models:', JSON.stringify(models, null, 2));
     console.log('Received sync request with options:', JSON.stringify(options, null, 2));
-    
+
     if (!models || !Array.isArray(models) || models.length === 0) {
-      return res.status(400).json({ 
-        success: false,
-        message: "Please select at least one model to synchronize",
-        logs: ["Error: No models selected"]
-      });
+      return sendError(res, 400, "Please select at least one model to synchronize", { logs: ["Error: No models selected"] });
     }
-    
+
     console.log(`Starting manual database sync with options:`, options);
     const result = await syncModels(models, options);
-    
+
     if (result.success) {
       console.log("✅ Database synced successfully");
+      return sendSuccess(res, 200, "Database synced successfully", result);
     } else {
       console.error("💥 Failed to sync database:", result.error);
+      return sendError(res, 500, "Failed to sync database", { error: result.error, logs: result.logs });
     }
-    
-    return res.json(result);
   } catch (error) {
     console.error("💥 Failed to sync database:", error);
-    return res.status(500).json({ 
-      success: false,
-      message: "Failed to sync database",
-      error: error.message,
-      logs: [`Error: ${error.message}`]
-    });
+    return sendServerError(res, error);
   }
 });
 
@@ -121,12 +111,13 @@ app.use("/api", router);
 
 // Global error handler (must be after all routes)
 import { globalErrorHandler, notFoundHandler } from './middleware/globalErrorHandler.js';
+import { sendSuccess, sendError } from "./utils/responseHelper.js";
 
 // 404 handler for undefined routes
 app.use(notFoundHandler);
 
 // Global error handler (must be last)
-app.use(globalErrorHandler);
+// app.use(globalErrorHandler);
 
 const server = http.createServer(app);
 const io = new Server(server, {

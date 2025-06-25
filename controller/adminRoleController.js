@@ -2,6 +2,7 @@ import User from "../model/user.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import bcrypt from "bcryptjs";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 // ===================== COMPREHENSIVE ADMIN ROLE MANAGEMENT =====================
 
@@ -244,10 +245,7 @@ export const getAdminUsers = async (req, res) => {
       ).length,
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Admin users retrieved successfully",
-      data: {
+    return sendSuccess(res, 200, "Admin users retrieved successfully", {
         admins: paginatedAdmins,
         pagination: {
           currentPage: parseInt(page),
@@ -256,15 +254,10 @@ export const getAdminUsers = async (req, res) => {
           recordsPerPage: parseInt(limit),
         },
         analytics,
-      },
-    });
+      });
   } catch (error) {
     console.error("Get admin users error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve admin users",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -371,20 +364,13 @@ export const getAdminUser = async (req, res) => {
     };
 
     if (!mockAdmin) {
-      return res.status(404).json({
-        success: false,
-        message: "Admin user not found",
-      });
+      return sendNotFound(res, "Admin user not found");
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Admin user details retrieved successfully",
-      data: mockAdmin,
-    });
+    return sendSuccess(res, 200, "Admin user details retrieved successfully", mockAdmin);
   } catch (error) {
     console.error("Get admin user details error:", error);
-    res.status(500).json({
+    return sendServerError(res, error);
       success: false,
       message: "Failed to retrieve admin user details",
       error: error.message,
@@ -465,11 +451,7 @@ export const createAdminUser = async (req, res) => {
     }
 
     if (validationErrors.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: validationErrors,
-      });
+      return sendValidationError(res, "Validation failed", { validation: validationErrors });
     }
 
     // Hash password
@@ -506,18 +488,10 @@ export const createAdminUser = async (req, res) => {
     // Remove password from response
     const { password: _, ...adminResponse } = newAdmin;
 
-    res.status(201).json({
-      success: true,
-      message: "Admin user created successfully",
-      data: adminResponse,
-    });
+    return sendSuccess(res, 201, "Admin user created successfully", adminResponse);
   } catch (error) {
     console.error("Create admin user error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create admin user",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -586,11 +560,7 @@ export const updateAdminUser = async (req, res) => {
     }
 
     if (validationErrors.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: validationErrors,
-      });
+      return sendValidationError(res, "Validation failed", { validation: validationErrors });
     }
 
     // Check if trying to update email to existing email
@@ -602,10 +572,7 @@ export const updateAdminUser = async (req, res) => {
         },
       });
       if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          message: "Email address is already registered to another user",
-        });
+        return sendValidationError(res, "Email address is already registered to another user", { email: "Email address is already registered" });
       }
     }
 
@@ -617,18 +584,10 @@ export const updateAdminUser = async (req, res) => {
       lastModifiedBy,
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Admin user updated successfully",
-      data: updatedAdmin,
-    });
+    return sendSuccess(res, 200, "Admin user updated successfully", updatedAdmin);
   } catch (error) {
     console.error("Update admin user error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update admin user",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -644,10 +603,7 @@ export const changeAdminPassword = async (req, res) => {
 
     // Validation
     if (!newPassword || newPassword.length < 8) {
-      return res.status(400).json({
-        success: false,
-        message: "New password must be at least 8 characters long",
-      });
+      return sendValidationError(res, "New password must be at least 8 characters long", { newPassword: "New password must be at least 8 characters long" });
     }
 
     // Check if requesting user is changing their own password or is super admin
@@ -655,29 +611,20 @@ export const changeAdminPassword = async (req, res) => {
     const isSuperAdmin = req.user.adminRole === "super_admin";
 
     if (!isSelfChange && !isSuperAdmin && !forceChange) {
-      return res.status(403).json({
-        success: false,
-        message: "Insufficient permissions to change this user's password",
-      });
+      return sendError(res, 403, "Insufficient permissions to change this user's password", { auth: "Insufficient permissions" });
     }
 
     // If self change, verify current password
     if (isSelfChange && !forceChange) {
       if (!currentPassword) {
-        return res.status(400).json({
-          success: false,
-          message: "Current password is required",
-        });
+        return sendValidationError(res, "Current password is required", { currentPassword: "Current password is required" });
       }
 
       // In real implementation, verify current password
-      // const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
-      // if (!isCurrentPasswordValid) {
-      //   return res.status(400).json({
-      //     success: false,
-      //     message: "Current password is incorrect"
-      //   });
-      // }
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        return sendValidationError(res, "Current password is incorrect", { currentPassword: "Current password is incorrect" });
+      }
     }
 
     // Hash new password
@@ -693,18 +640,10 @@ export const changeAdminPassword = async (req, res) => {
       forceChange,
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Password changed successfully",
-      data: passwordUpdate,
-    });
+    return sendSuccess(res, 200, "Password changed successfully", passwordUpdate);
   } catch (error) {
     console.error("Change admin password error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to change password",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -720,10 +659,7 @@ export const deleteAdminUser = async (req, res) => {
 
     // Prevent self-deletion
     if (parseInt(userId) === requestingUserId) {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot delete your own admin account",
-      });
+      return sendValidationError(res, "Cannot delete your own admin account", { userId: "Cannot delete your own admin account" });
     }
 
     // Check if user is the only super admin
@@ -731,12 +667,7 @@ export const deleteAdminUser = async (req, res) => {
     const userRole = "course_manager"; // Mock role - in real implementation, get from database
 
     if (userRole === "super_admin" && superAdminCount <= 1 && !forceDelete) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Cannot delete the only super admin. Create another super admin first or use forceDelete=true.",
-        data: { superAdminCount },
-      });
+      return sendValidationError(res, "Cannot delete the only super admin. Create another super admin first or use forceDelete=true.", { superAdminCount });
     }
 
     // Check for active activities
@@ -751,12 +682,7 @@ export const deleteAdminUser = async (req, res) => {
     );
 
     if (hasActiveActivities && !transferActivities && !forceDelete) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Admin has active activities. Please transfer activities to another admin or use forceDelete=true.",
-        data: { activeActivities },
-      });
+      return sendValidationError(res, "Admin has active activities. Please transfer activities to another admin or use forceDelete=true.", { activeActivities });
     }
 
     // In real implementation, handle activity transfer and delete from database
@@ -769,18 +695,10 @@ export const deleteAdminUser = async (req, res) => {
       forceDelete,
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Admin user deleted successfully",
-      data: deletionResult,
-    });
+    return sendSuccess(res, 200, "Admin user deleted successfully", deletionResult);
   } catch (error) {
     console.error("Delete admin user error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete admin user",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -962,27 +880,21 @@ export const getActivityLogs = async (req, res) => {
       uniqueIPs: [...new Set(filteredLogs.map((l) => l.ipAddress))].length,
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Activity logs retrieved successfully",
-      data: {
-        logs: paginatedLogs,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalCount / parseInt(limit)),
-          totalRecords: totalCount,
-          recordsPerPage: parseInt(limit),
-        },
-        analytics,
+    const responseData = {
+      logs: paginatedLogs,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalRecords: totalCount,
+        recordsPerPage: parseInt(limit),
       },
-    });
+      analytics,
+    };
+
+    return sendSuccess(res, 200, "Activity logs retrieved successfully", responseData);
   } catch (error) {
     console.error("Get activity logs error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve activity logs",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1129,22 +1041,16 @@ export const getPermissions = async (req, res) => {
       certificate_manager: { level: 2, description: "Certificate management" },
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Permissions retrieved successfully",
-      data: {
-        permissions: role ? { [role]: permissions } : permissions,
-        roleHierarchy,
-        availableRoles: Object.keys(roleHierarchy),
-      },
-    });
+    const responseData = {
+      permissions: role ? { [role]: permissions } : permissions,
+      roleHierarchy,
+      availableRoles: Object.keys(roleHierarchy),
+    };
+
+    return sendSuccess(res, 200, "Permissions retrieved successfully", responseData);
   } catch (error) {
     console.error("Get permissions error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve permissions",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -1231,11 +1137,7 @@ export const exportAdminData = async (req, res) => {
         break;
 
       default:
-        return res.status(400).json({
-          success: false,
-          message:
-            "Invalid export type. Supported types: users, activity_logs, permissions",
-        });
+        return sendValidationError(res, "Invalid export type. Supported types: users, activity_logs, permissions", { type: "Invalid export type" });
     }
 
     // Format response based on requested format
@@ -1254,18 +1156,10 @@ export const exportAdminData = async (req, res) => {
       );
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Data exported successfully",
-      data: exportData,
-    });
+    return sendSuccess(res, 200, "Data exported successfully", exportData);
   } catch (error) {
     console.error("Export admin data error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to export data",
-      error: error.message,
-    });
+    return sendServerError(res, error);
   }
 };
 

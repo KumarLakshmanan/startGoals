@@ -16,6 +16,7 @@ import {
   generateMeetingData,
   handlePlatformErrors,
 } from "../utils/liveSessionUtils.js";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 const { RtcRole } = AgoraAccessToken;
 
@@ -53,11 +54,7 @@ export const createLiveSession = async (req, res) => {
     });
 
     if (basicValidationErrors.length > 0) {
-      return res.status(400).json({
-        status: false,
-        message: "Validation failed",
-        errors: basicValidationErrors,
-      });
+      return sendValidationError(res, "Validation failed", basicValidationErrors);
     }
 
     // Additional UUID validations
@@ -65,20 +62,13 @@ export const createLiveSession = async (req, res) => {
     const batchIdError = validateSessionInput.uuid(batchId, "Batch ID");
 
     if (courseIdError || batchIdError) {
-      return res.status(400).json({
-        status: false,
-        message: "Invalid ID format",
-        errors: [courseIdError, batchIdError].filter(Boolean),
-      });
+      return sendValidationError(res, "Invalid ID format", [courseIdError, batchIdError].filter(Boolean));
     }
 
     // Validate time range
     const timeRangeError = validateSessionInput.timeRange(startTime, endTime);
     if (timeRangeError) {
-      return res.status(400).json({
-        status: false,
-        message: timeRangeError,
-      });
+      return sendValidationError(res, timeRangeError);
     }
 
     // ✅ Validate course & batch existence
@@ -93,18 +83,12 @@ export const createLiveSession = async (req, res) => {
     });
     if (!course) {
       await safeRollback();
-      return res.status(404).json({
-        status: false,
-        message: "Course not found",
-      });
+      return sendNotFound(res, "Course not found");
     }
 
     if (!batch) {
       await safeRollback();
-      return res.status(404).json({
-        status: false,
-        message: "Batch not found",
-      });
+      return sendNotFound(res, "Batch not found");
     }
 
     // ✅ Optionally calculate duration if not sent
@@ -159,18 +143,12 @@ export const createLiveSession = async (req, res) => {
       generatedMeetingLink = platformSessionDetails.join_url;
     } else {
       await safeRollback();
-      return res.status(400).json({
-        status: false,
-        message: "Invalid platform specified. Choose 'agora' or 'zoom'.",
-      });
+      return sendError(res, "Invalid platform specified. Choose 'agora' or 'zoom'.");
     }
 
     if (!platformSessionDetails) {
       await safeRollback();
-      return res.status(500).json({
-        status: false,
-        message: `Failed to create session on ${platform}.`,
-      });
+      return sendServerError(res, `Failed to create session on ${platform}.`);
     }
 
     // ✅ Create Live Session in DB
@@ -195,20 +173,12 @@ export const createLiveSession = async (req, res) => {
     );
 
     await t.commit();
-    return res.status(201).json({
-      status: true,
-      message: "Live session created successfully",
-      data: session,
-    });
+    return sendSuccess(res, "Live session created successfully", session);
   } catch (error) {
     console.error("Live session creation error:", error);
     // Only rollback if transaction is still active
     await safeRollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -229,35 +199,23 @@ export const startLiveSession = async (req, res) => {
     const { sessionId } = req.params;
 
     if (!sessionId) {
-      return res.status(400).json({
-        status: false,
-        message: "Session ID is required",
-      });
+      return sendValidationError(res, "Session ID is required");
     }
 
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
     if (!session) {
       await safeRollback();
-      return res.status(404).json({
-        status: false,
-        message: "Live session not found",
-      });
+      return sendNotFound(res, "Live session not found");
     }
 
     if (session.status === "active") {
       await safeRollback();
-      return res.status(400).json({
-        status: false,
-        message: "Session is already active",
-      });
+      return sendConflict(res, "Session is already active");
     }
 
     if (session.status === "ended") {
       await safeRollback();
-      return res.status(400).json({
-        status: false,
-        message: "Cannot start an ended session",
-      });
+      return sendConflict(res, "Cannot start an ended session");
     } // Platform-specific start logic
     try {
       if (session.platform === "agora") {
@@ -270,10 +228,7 @@ export const startLiveSession = async (req, res) => {
         // Additional Zoom-specific actions after starting, if any
       } else {
         await t.rollback();
-        return res.status(400).json({
-          status: false,
-          message: "Unknown platform for this session.",
-        });
+        return sendError(res, "Unknown platform for this session.");
       }
     } catch (platformError) {
       console.error(`${session.platform} session start error:`, platformError);
@@ -284,30 +239,18 @@ export const startLiveSession = async (req, res) => {
           ? handlePlatformErrors.agora(platformError)
           : handlePlatformErrors.zoom(platformError);
 
-      return res.status(500).json({
-        status: false,
-        message: `Failed to start ${session.platform} session: ${errorResponse.message}`,
-        code: errorResponse.code,
-      });
+      return sendServerError(res, `Failed to start ${session.platform} session: ${errorResponse.message}`, errorResponse.code);
     }
 
     session.status = "active";
     await session.save({ transaction: t });
 
     await t.commit();
-    return res.status(200).json({
-      status: true,
-      message: `Live session on ${session.platform} started successfully`,
-      data: session,
-    });
+    return sendSuccess(res, `Live session on ${session.platform} started successfully`, session);
   } catch (error) {
     console.error("Error starting live session:", error);
     await t.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -320,28 +263,19 @@ export const endLiveSession = async (req, res) => {
     const { sessionId } = req.params;
 
     if (!sessionId) {
-      return res.status(400).json({
-        status: false,
-        message: "Session ID is required",
-      });
+      return sendValidationError(res, "Session ID is required");
     }
 
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
 
     if (!session) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Live session not found",
-      });
+      return sendNotFound(res, "Live session not found");
     }
 
     if (session.status === "ended") {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Session is already ended",
-      });
+      return sendConflict(res, "Session is already ended");
     } // Platform-specific end logic
     try {
       if (session.platform === "agora") {
@@ -352,10 +286,7 @@ export const endLiveSession = async (req, res) => {
         // Additional Zoom-specific cleanup, if any
       } else {
         await t.rollback();
-        return res.status(400).json({
-          status: false,
-          message: "Unknown platform for this session.",
-        });
+        return sendError(res, "Unknown platform for this session.");
       }
     } catch (platformError) {
       console.error(`${session.platform} session end error:`, platformError);
@@ -366,30 +297,18 @@ export const endLiveSession = async (req, res) => {
           ? handlePlatformErrors.agora(platformError)
           : handlePlatformErrors.zoom(platformError);
 
-      return res.status(500).json({
-        status: false,
-        message: `Failed to end ${session.platform} session: ${errorResponse.message}`,
-        code: errorResponse.code,
-      });
+      return sendServerError(res, `Failed to end ${session.platform} session: ${errorResponse.message}`, errorResponse.code);
     }
 
     session.status = "ended";
     await session.save({ transaction: t });
 
     await t.commit();
-    return res.status(200).json({
-      status: true,
-      message: `Live session on ${session.platform} ended successfully`,
-      data: session,
-    });
+    return sendSuccess(res, `Live session on ${session.platform} ended successfully`, session);
   } catch (error) {
     console.error("Error ending live session:", error);
     await t.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -401,32 +320,19 @@ export const getLiveSessionDetails = async (req, res) => {
     const { sessionId } = req.params;
 
     if (!sessionId) {
-      return res.status(400).json({
-        status: false,
-        message: "Session ID is required",
-      });
+      return sendValidationError(res, "Session ID is required");
     }
 
     const session = await LiveSession.findByPk(sessionId);
 
     if (!session) {
-      return res.status(404).json({
-        status: false,
-        message: "Live session not found",
-      });
+      return sendNotFound(res, "Live session not found");
     }
 
-    return res.status(200).json({
-      status: true,
-      data: session,
-    });
+    return sendSuccess(res, "Live session details retrieved successfully", session);
   } catch (error) {
     console.error("Error getting live session details:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -441,30 +347,19 @@ export const joinLiveSession = async (req, res) => {
     const { userId, role } = req.user;
 
     if (!sessionId || !userId) {
-      return res.status(400).json({
-        status: false,
-        message: "Session ID and User ID are required",
-      });
+      return sendValidationError(res, "Session ID and User ID are required");
     }
 
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
 
     if (!session) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Live session not found",
-      });
+      return sendNotFound(res, "Live session not found");
     }
 
     if (session.status !== "active") {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message:
-          "Cannot join a session that is not active. Current status: " +
-          session.status,
-      });
+      return sendConflict(res, "Cannot join a session that is not active. Current status: " + session.status);
     }
 
     // Check if user has already joined
@@ -475,10 +370,7 @@ export const joinLiveSession = async (req, res) => {
     console.log("Existing Participant:", existingParticipant);
     if (existingParticipant && !existingParticipant.leftAt) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "User has already joined this session and has not left.",
-      });
+      return sendConflict(res, "User has already joined this session and has not left.");
     }
 
     // If user rejoining, update leftAt to null, otherwise create new participant
@@ -511,10 +403,7 @@ export const joinLiveSession = async (req, res) => {
       const numericUserId = parseInt(userId, 10);
       if (isNaN(numericUserId)) {
         await t.rollback();
-        return res.status(400).json({
-          status: false,
-          message: "User ID must be a number for Agora sessions",
-        });
+        return sendValidationError(res, "User ID must be a number for Agora sessions");
       }
 
       try {
@@ -536,10 +425,7 @@ export const joinLiveSession = async (req, res) => {
         };
       } catch (tokenError) {
         await t.rollback();
-        return res.status(500).json({
-          status: false,
-          message: `Failed to generate Agora token: ${tokenError.message}`,
-        });
+        return sendServerError(res, `Failed to generate Agora token: ${tokenError.message}`);
       }
     } else if (session.platform === "zoom") {
       try {
@@ -568,10 +454,7 @@ export const joinLiveSession = async (req, res) => {
       }
     } else {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Unknown platform for this session.",
-      });
+      return sendError(res, "Unknown platform for this session.");
     }
 
     await t.commit();
@@ -587,19 +470,11 @@ export const joinLiveSession = async (req, res) => {
         joinedAt: participant.joinedAt,
       });
     }
-    return res.status(200).json({
-      status: true,
-      message: `Successfully prepared to join ${session.platform} live session`,
-      data: joinData,
-    });
+    return sendSuccess(res, `Successfully prepared to join ${session.platform} live session`, joinData);
   } catch (error) {
     console.error("Error joining live session:", error);
     await t.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -655,17 +530,10 @@ export const listSessions = async (req, res) => {
       // TODO: Add pagination (limit, offset) based on req.query.page and req.query.limit
     });
 
-    return res.status(200).json({
-      status: true,
-      data: sessions,
-    });
+    return sendSuccess(res, "Sessions retrieved successfully", sessions);
   } catch (error) {
     console.error("Error listing sessions:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -683,20 +551,14 @@ export const toggleParticipantMic = async (req, res) => {
     const { allow } = req.body; // allow: true to unmute, false to mute
 
     if (!sessionId || !participantUserId || typeof allow !== "boolean") {
-      return res.status(400).json({
-        status: false,
-        message:
-          "Session ID, Participant User ID, and allow (boolean) are required",
-      });
+      return sendValidationError(res, "Session ID, Participant User ID, and allow (boolean) are required");
     }
 
     // Basic check: Ensure session exists and is active (optional, depends on requirements)
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
     if (!session || session.status !== "active") {
       await t.rollback();
-      return res
-        .status(404)
-        .json({ status: false, message: "Active session not found." });
+      return sendNotFound(res, "Active session not found.");
     }
     // Authorization is handled by isSessionInstructor middleware
 
@@ -707,10 +569,7 @@ export const toggleParticipantMic = async (req, res) => {
 
     if (!participant) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Active participant not found in this session.",
-      });
+      return sendNotFound(res, "Active participant not found in this session.");
     }
 
     if (session.platform === "agora") {
@@ -725,9 +584,6 @@ export const toggleParticipantMic = async (req, res) => {
           `Agora mic control error for user ${participantUserId} in session ${sessionId}:`,
           agoraError,
         );
-        // Decide if this should be a fatal error or just a warning
-        // await t.rollback();
-        // return res.status(500).json({ status: false, message: "Failed to control participant mic on Agora." });
       }
     } else if (session.platform === "zoom") {
       // Mic control for Zoom is typically handled client-side or via Zoom's interface by host/co-host.
@@ -750,19 +606,11 @@ export const toggleParticipantMic = async (req, res) => {
         sessionId,
       });
     }
-    return res.status(200).json({
-      status: true,
-      message: `Participant mic on ${session.platform} ${allow ? "unmuted" : "muted"} successfully (DB updated). Platform action: ${session.platform === "agora" ? "attempted" : "manual/client-side"}`,
-      data: participant,
-    });
+    return sendSuccess(res, `Participant mic on ${session.platform} ${allow ? "unmuted" : "muted"} successfully (DB updated). Platform action: ${session.platform === "agora" ? "attempted" : "manual/client-side"}`, participant);
   } catch (error) {
     console.error("Error toggling participant mic:", error);
     await t.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -776,20 +624,14 @@ export const toggleParticipantCamera = async (req, res) => {
     const { enable } = req.body; // enable: true to turn on, false to turn off
 
     if (!sessionId || !participantUserId || typeof enable !== "boolean") {
-      return res.status(400).json({
-        status: false,
-        message:
-          "Session ID, Participant User ID, and enable (boolean) are required",
-      });
+      return sendValidationError(res, "Session ID, Participant User ID, and enable (boolean) are required");
     }
 
     // Basic check: Ensure session exists and is active
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
     if (!session || session.status !== "active") {
       await t.rollback();
-      return res
-        .status(404)
-        .json({ status: false, message: "Active session not found." });
+      return sendNotFound(res, "Active session not found.");
     }
     // Authorization is handled by isSessionInstructor middleware
 
@@ -800,10 +642,7 @@ export const toggleParticipantCamera = async (req, res) => {
 
     if (!participant) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Active participant not found in this session.",
-      });
+      return sendNotFound(res, "Active participant not found in this session.");
     }
 
     if (session.platform === "agora") {
@@ -840,19 +679,11 @@ export const toggleParticipantCamera = async (req, res) => {
         sessionId,
       });
     }
-    return res.status(200).json({
-      status: true,
-      message: `Participant camera on ${session.platform} ${enable ? "enabled" : "disabled"} successfully (DB updated). Platform action: ${session.platform === "agora" ? "attempted" : "manual/client-side"}`,
-      data: participant,
-    });
+    return sendSuccess(res, `Participant camera on ${session.platform} ${enable ? "enabled" : "disabled"} successfully (DB updated). Platform action: ${session.platform === "agora" ? "attempted" : "manual/client-side"}`, participant);
   } catch (error) {
     console.error("Error toggling participant camera:", error);
     await t.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -865,19 +696,14 @@ export const removeParticipantFromSession = async (req, res) => {
     const { sessionId, participantUserId } = req.params;
 
     if (!sessionId || !participantUserId) {
-      return res.status(400).json({
-        status: false,
-        message: "Session ID and Participant User ID are required",
-      });
+      return sendValidationError(res, "Session ID and Participant User ID are required");
     }
 
     // Basic check: Ensure session exists and is active
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
     if (!session || session.status !== "active") {
       await t.rollback();
-      return res
-        .status(404)
-        .json({ status: false, message: "Active session not found." });
+      return sendNotFound(res, "Active session not found.");
     }
     // Authorization is handled by isSessionInstructor middleware
 
@@ -888,18 +714,12 @@ export const removeParticipantFromSession = async (req, res) => {
 
     if (!participant) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Participant not found in this session",
-      });
+      return sendNotFound(res, "Participant not found in this session");
     }
 
     if (participant.leftAt) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Participant has already left the session.",
-      });
+      return sendConflict(res, "Participant has already left the session.");
     }
 
     if (session.platform === "agora") {
@@ -935,19 +755,11 @@ export const removeParticipantFromSession = async (req, res) => {
         sessionId,
       });
     }
-    return res.status(200).json({
-      status: true,
-      message: `Participant removed from ${session.platform} session (DB updated). Platform action: ${session.platform === "agora" ? "attempted" : "manual/client-side"}`,
-      data: participant,
-    });
+    return sendSuccess(res, `Participant removed from ${session.platform} session (DB updated). Platform action: ${session.platform === "agora" ? "attempted" : "manual/client-side"}`, participant);
   } catch (error) {
     console.error("Error removing participant from session:", error);
     await t.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -963,20 +775,13 @@ export const raiseHand = async (req, res) => {
     const { participantId } = req.body; // participantId of the student raising hand
 
     if (!sessionId || !participantId) {
-      return res.status(400).json({
-        status: false,
-        message: "Session ID and Participant ID are required",
-      });
+      return sendValidationError(res, "Session ID and Participant ID are required");
     }
 
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
     if (!session || session.status !== "active") {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message:
-          "Cannot raise hand in a session that is not active or does not exist.",
-      });
+      return sendValidationError(res, "Cannot raise hand in a session that is not active or does not exist.");
     }
 
     const participant = await LiveSessionParticipant.findOne({
@@ -986,10 +791,7 @@ export const raiseHand = async (req, res) => {
 
     if (!participant || participant.leftAt) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Participant not found in this session or has left.",
-      });
+      return sendNotFound(res, "Participant not found in this session or has left.");
     }
 
     // Check if already has an active raised hand
@@ -1000,10 +802,7 @@ export const raiseHand = async (req, res) => {
 
     if (existingRaisedHand) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Participant already has a pending raised hand request.",
-      });
+      return sendConflict(res, "Participant already has a pending raised hand request.");
     }
 
     const newRaisedHand = await RaisedHand.create(
@@ -1028,19 +827,11 @@ export const raiseHand = async (req, res) => {
       };
       io.to(sessionId).emit("raiseHandReceived", eventData);
     }
-    return res.status(201).json({
-      status: true,
-      message: "Hand raised successfully",
-      data: newRaisedHand,
-    });
+    return sendSuccess(res, "Hand raised successfully", newRaisedHand);
   } catch (error) {
     console.error("Error raising hand:", error);
     await t.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -1052,17 +843,12 @@ export const listRaisedHands = async (req, res) => {
     const { sessionId } = req.params;
 
     if (!sessionId) {
-      return res.status(400).json({
-        status: false,
-        message: "Session ID is required",
-      });
+      return sendValidationError(res, "Session ID is required");
     }
 
     const session = await LiveSession.findByPk(sessionId);
     if (!session) {
-      return res
-        .status(404)
-        .json({ status: false, message: "Session not found." });
+      return sendNotFound(res, "Session not found.");
     }
     // Add authorization: ensure req.user is instructor for this session
 
@@ -1078,17 +864,10 @@ export const listRaisedHands = async (req, res) => {
       order: [["raisedAt", "ASC"]],
     });
 
-    return res.status(200).json({
-      status: true,
-      data: raisedHands,
-    });
+    return sendSuccess(res, "Raised hands retrieved successfully", raisedHands);
   } catch (error) {
     console.error("Error listing raised hands:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -1103,21 +882,13 @@ export const respondToRaisedHand = async (req, res) => {
 
     if (!sessionId || !raisedHandId || !["accept", "reject"].includes(action)) {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message:
-          "Session ID, Raised Hand ID, and a valid action ('accept' or 'reject') are required",
-      });
+      return sendValidationError(res, "Session ID, Raised Hand ID, and a valid action ('accept' or 'reject') are required");
     }
 
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
     if (!session || session.status !== "active") {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message:
-          "Cannot respond to raised hand in a session that is not active or does not exist.",
-      });
+      return sendValidationError(res, "Cannot respond to raised hand in a session that is not active or does not exist.");
     }
     // Add authorization: ensure req.user is instructor for this session (placeholder)
 
@@ -1129,18 +900,12 @@ export const respondToRaisedHand = async (req, res) => {
 
     if (!raisedHand) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Raised hand request not found",
-      });
+      return sendNotFound(res, "Raised hand request not found");
     }
 
     if (raisedHand.status !== "pending") {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: `Cannot ${action} a raised hand that is already ${raisedHand.status}.`,
-      });
+      return sendConflict(res, `Cannot ${action} a raised hand that is already ${raisedHand.status}.`);
     }
 
     raisedHand.status = action === "accept" ? "accepted" : "rejected";
@@ -1223,19 +988,11 @@ export const respondToRaisedHand = async (req, res) => {
       }
     }
 
-    return res.status(200).json({
-      status: true,
-      message: `Raised hand ${action === "accept" ? "accepted" : "rejected"} successfully`,
-      data: raisedHand,
-    });
+    return sendSuccess(res, `Raised hand ${action === "accept" ? "accepted" : "rejected"} successfully`, raisedHand);
   } catch (error) {
     console.error("Error responding to raised hand:", error);
     await t.rollback(); // Ensure rollback on any error
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -1249,20 +1006,13 @@ export const endRaisedHandInteraction = async (req, res) => {
     // const { participantId } = req.body; // Or get participantId from raisedHandId
 
     if (!sessionId || !raisedHandId) {
-      return res.status(400).json({
-        status: false,
-        message: "Session ID and Raised Hand ID are required",
-      });
+      return sendValidationError(res, "Session ID and Raised Hand ID are required");
     }
 
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
     if (!session || session.status !== "active") {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message:
-          "Cannot end interaction in a session that is not active or does not exist.",
-      });
+      return sendValidationError(res, "Cannot end interaction in a session that is not active or does not exist.");
     }
     // Add authorization: ensure req.user is instructor for this session
 
@@ -1274,18 +1024,12 @@ export const endRaisedHandInteraction = async (req, res) => {
 
     if (!raisedHand) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Raised hand request not found.",
-      });
+      return sendNotFound(res, "Raised hand request not found.");
     }
 
     if (raisedHand.status !== "accepted") {
       await t.rollback();
-      return res.status(400).json({
-        status: false,
-        message: "Can only end interaction for an 'accepted' raised hand.",
-      });
+      return sendConflict(res, "Can only end interaction for an 'accepted' raised hand.");
     }
 
     raisedHand.status = "addressed"; // Or 'ended', 'completed'
@@ -1320,19 +1064,11 @@ export const endRaisedHandInteraction = async (req, res) => {
         sessionId,
       });
     }
-    return res.status(200).json({
-      status: true,
-      message: "Raised hand interaction ended successfully.",
-      data: raisedHand,
-    });
+    return sendSuccess(res, "Raised hand interaction ended successfully.", raisedHand);
   } catch (error) {
     console.error("Error ending raised hand interaction:", error);
     await t.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };
 
@@ -1346,27 +1082,18 @@ export const leaveLiveSession = async (req, res) => {
     const userId = req.user?.id; // Get userId from authenticated user
 
     if (!sessionId) {
-      return res.status(400).json({
-        status: false,
-        message: "Session ID is required",
-      });
+      return sendValidationError(res, "Session ID is required");
     }
 
     if (!userId) {
-      return res.status(401).json({
-        status: false,
-        message: "User authentication required",
-      });
+      return sendValidationError(res, "User authentication required");
     }
 
     // Verify session exists and get session details
     const session = await LiveSession.findByPk(sessionId, { transaction: t });
     if (!session) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "Live session not found",
-      });
+      return sendNotFound(res, "Live session not found");
     }
 
     // Find the participant record for this user in this session
@@ -1381,10 +1108,7 @@ export const leaveLiveSession = async (req, res) => {
 
     if (!participant) {
       await t.rollback();
-      return res.status(404).json({
-        status: false,
-        message: "You are not currently in this session or have already left",
-      });
+      return sendNotFound(res, "You are not currently in this session or have already left");
     }
 
     // Update participant record to mark as left
@@ -1427,24 +1151,16 @@ export const leaveLiveSession = async (req, res) => {
       });
     }
 
-    return res.status(200).json({
-      status: true,
-      message: "Successfully left the live session",
-      data: {
-        sessionId,
-        participantId: participant.participantId,
-        userId: participant.userId,
-        leftAt: participant.leftAt,
-        platform: session.platform,
-      },
+    return sendSuccess(res, "Successfully left the live session", {
+      sessionId,
+      participantId: participant.participantId,
+      userId: participant.userId,
+      leftAt: participant.leftAt,
+      platform: session.platform,
     });
   } catch (error) {
     console.error("Error leaving live session:", error);
     await t.rollback();
-    return res.status(500).json({
-      status: false,
-      message: "Internal server error",
-      error: error.message,
-    });
+    return sendServerError(res, "Internal server error", error.message);
   }
 };

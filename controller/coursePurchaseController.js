@@ -10,6 +10,14 @@ import User from "../model/user.js";
 import Enrollment from "../model/enrollment.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendServerError,
+  sendConflict,
+} from "../utils/responseHelper.js";
 
 // Initialize Razorpay
 const razorpay = new Razorpay({
@@ -30,27 +38,26 @@ export const createCourseOrder = async (req, res) => {
     // Validate user authentication
     if (!userId) {
       await transaction.rollback();
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
+      return sendError(res, 401, "Authentication required");
     }
 
     // Validate courseId is provided
     if (!courseId) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Course ID is required",
+      return sendValidationError(res, "Course ID is required", {
+        courseId: "Required field",
       });
     }
-    
+
     // Validate UUID format
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        courseId,
+      )
+    ) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
+      return sendValidationError(res, "Invalid course ID format", {
+        courseId: "Must be a valid UUID",
       });
     }
 
@@ -65,10 +72,7 @@ export const createCourseOrder = async (req, res) => {
 
     if (!course) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Course not found or not available for purchase",
-      });
+      return sendNotFound(res, "Course not found or not available for purchase");
     }
 
     // Check if user already enrolled
@@ -81,20 +85,14 @@ export const createCourseOrder = async (req, res) => {
 
     if (existingEnrollment) {
       await transaction.rollback();
-      return res.status(409).json({
-        success: false,
-        message: "You are already enrolled in this course",
-      });
+      return sendConflict(res, "course", courseId);
     }
 
     // Get user details
     const user = await User.findByPk(userId);
     if (!user) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return sendNotFound(res, "User not found");
     }
 
     // Calculate final price (use salePrice if available, otherwise regular price)
@@ -103,9 +101,8 @@ export const createCourseOrder = async (req, res) => {
 
     if (amountInPaise <= 0) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Invalid course price",
+      return sendValidationError(res, "Invalid course price", {
+        price: "Price must be greater than zero",
       });
     }
 
@@ -128,43 +125,32 @@ export const createCourseOrder = async (req, res) => {
     await transaction.commit();
 
     // Return order details to frontend
-    res.status(200).json({
-      success: true,
-      message: "Order created successfully",
-      data: {
-        orderId: razorpayOrder.id,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        courseDetails: {
-          courseId: course.courseId,
-          title: course.title,
-          type: course.type,
-          thumbnail: course.thumbnailUrl,
-          originalPrice: course.price,
-          salePrice: course.salePrice,
-          finalPrice: finalPrice,
-        },
-        userDetails: {
-          name: user.firstName
-            ? `${user.firstName} ${user.lastName || ""}`.trim()
-            : user.username,
-          email: user.email,
-          mobile: user.mobile,
-        },
-        razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+    return sendSuccess(res, 200, "Order created successfully", {
+      orderId: razorpayOrder.id,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      courseDetails: {
+        courseId: course.courseId,
+        title: course.title,
+        type: course.type,
+        thumbnail: course.thumbnailUrl,
+        originalPrice: course.price,
+        salePrice: course.salePrice,
+        finalPrice: finalPrice,
       },
+      userDetails: {
+        name: user.firstName
+          ? `${user.firstName} ${user.lastName || ""}`.trim()
+          : user.username,
+        email: user.email,
+        mobile: user.mobile,
+      },
+      razorpayKeyId: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Create course order error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create order",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : "Internal Server Error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -187,10 +173,7 @@ export const verifyPaymentAndEnroll = async (req, res) => {
     // Validate user authentication
     if (!userId) {
       await transaction.rollback();
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
+      return sendError(res, 401, "Authentication required");
     }
 
     // Validate required fields
@@ -201,27 +184,32 @@ export const verifyPaymentAndEnroll = async (req, res) => {
       !courseId
     ) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Missing required payment verification data",
-        details: {
+      return sendValidationError(
+        res,
+        "Missing required payment verification data",
+        {
           missingFields: [
-            !razorpay_order_id ? 'razorpay_order_id' : null,
-            !razorpay_payment_id ? 'razorpay_payment_id' : null,
-            !razorpay_signature ? 'razorpay_signature' : null,
-            !courseId ? 'courseId' : null
-          ].filter(Boolean)
-        }
-      });
+            !razorpay_order_id ? "razorpay_order_id" : null,
+            !razorpay_payment_id ? "razorpay_payment_id" : null,
+            !razorpay_signature ? "razorpay_signature" : null,
+            !courseId ? "courseId" : null,
+          ].filter(Boolean),
+        },
+      );
     }
-    
+
     // Validate courseId UUID format
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        courseId,
+      )
+    ) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
-      });
+      return sendValidationError(
+        res,
+        `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
+        { courseId: "Must be a valid UUID" },
+      );
     }
 
     // Verify signature
@@ -233,10 +221,7 @@ export const verifyPaymentAndEnroll = async (req, res) => {
 
     if (expectedSignature !== razorpay_signature) {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Payment verification failed - invalid signature",
-      });
+      return sendError(res, 400, "Payment verification failed - invalid signature");
     }
 
     // Fetch payment details from Razorpay
@@ -244,10 +229,7 @@ export const verifyPaymentAndEnroll = async (req, res) => {
 
     if (payment.status !== "captured" && payment.status !== "authorized") {
       await transaction.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Payment not successful",
-      });
+      return sendError(res, 400, "Payment not successful");
     }
 
     // Verify course exists and matches order
@@ -261,10 +243,7 @@ export const verifyPaymentAndEnroll = async (req, res) => {
 
     if (!course) {
       await transaction.rollback();
-      return res.status(404).json({
-        success: false,
-        message: "Course not found",
-      });
+      return sendNotFound(res, "Course not found");
     }
 
     // Check if user already enrolled (double check)
@@ -277,10 +256,7 @@ export const verifyPaymentAndEnroll = async (req, res) => {
 
     if (existingEnrollment) {
       await transaction.rollback();
-      return res.status(409).json({
-        success: false,
-        message: "Already enrolled in this course",
-      });
+      return sendConflict(res, "course", courseId);
     }
 
     // Create enrollment record
@@ -309,10 +285,11 @@ export const verifyPaymentAndEnroll = async (req, res) => {
       attributes: ["userId", "firstName", "lastName", "username", "email"],
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Payment verified and enrollment completed successfully",
-      data: {
+    return sendSuccess(
+      res,
+      200,
+      "Payment verified and enrollment completed successfully",
+      {
         enrollmentId: enrollment.enrollmentId,
         courseId: course.courseId,
         courseTitle: course.title,
@@ -328,18 +305,11 @@ export const verifyPaymentAndEnroll = async (req, res) => {
           email: user.email,
         },
       },
-    });
+    );
   } catch (error) {
     await transaction.rollback();
     console.error("Verify payment and enroll error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to verify payment and enroll",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : "Internal Server Error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -352,44 +322,46 @@ export const getUserPurchases = async (req, res) => {
     const { page = 1, limit = 10, status, type } = req.query;
 
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
+      return sendError(res, 401, "Authentication required");
     }
 
     // Validate page and limit parameters
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
-    
+
     if (isNaN(pageNum) || pageNum < 1) {
-      return res.status(400).json({
-        success: false,
-        message: "Page must be a positive integer",
+      return sendValidationError(res, "Page must be a positive integer", {
+        page: "Must be a positive integer",
       });
     }
-    
+
     if (isNaN(limitNum) || limitNum < 1 || limitNum > 100) {
-      return res.status(400).json({
-        success: false,
-        message: "Limit must be a positive integer between 1 and 100",
-      });
+      return sendValidationError(
+        res,
+        "Limit must be a positive integer between 1 and 100",
+        { limit: "Must be between 1 and 100" },
+      );
     }
 
     // Validate status if provided
-    if (status && !['not_started', 'in_progress', 'completed', 'on_hold'].includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid status value. Must be one of: not_started, in_progress, completed, on_hold",
-      });
+    if (
+      status &&
+      !["not_started", "in_progress", "completed", "on_hold"].includes(status)
+    ) {
+      return sendValidationError(
+        res,
+        "Invalid status value. Must be one of: not_started, in_progress, completed, on_hold",
+        { status: "Invalid value" },
+      );
     }
 
     // Validate type if provided
-    if (type && !['live', 'recorded', 'hybrid'].includes(type)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid type value. Must be one of: live, recorded, hybrid",
-      });
+    if (type && !["live", "recorded", "hybrid"].includes(type)) {
+      return sendValidationError(
+        res,
+        "Invalid type value. Must be one of: live, recorded, hybrid",
+        { type: "Invalid value" },
+      );
     }
 
     const offset = (pageNum - 1) * limitNum;
@@ -426,46 +398,35 @@ export const getUserPurchases = async (req, res) => {
           ],
         },
       ],
-      limit: parseInt(limit),
+      limit: limitNum,
       offset,
       order: [["enrollmentDate", "DESC"]],
     });
 
-    const totalPages = Math.ceil(count / parseInt(limit));
+    const totalPages = Math.ceil(count / limitNum);
 
-    res.status(200).json({
-      success: true,
-      message: "User purchases retrieved successfully",
-      data: {
-        purchases: enrollments.map((enrollment) => ({
-          enrollmentId: enrollment.enrollmentId,
-          enrollmentDate: enrollment.enrollmentDate,
-          completionStatus: enrollment.completionStatus,
-          progressPercentage: enrollment.progressPercentage,
-          amountPaid: enrollment.amountPaid,
-          paymentId: enrollment.paymentId,
-          course: enrollment.Course,
-        })),
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalPurchases: count,
-          purchasesPerPage: parseInt(limit),
-          hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1,
-        },
+    return sendSuccess(res, 200, "User purchases retrieved successfully", {
+      purchases: enrollments.map((enrollment) => ({
+        enrollmentId: enrollment.enrollmentId,
+        enrollmentDate: enrollment.enrollmentDate,
+        completionStatus: enrollment.completionStatus,
+        progressPercentage: enrollment.progressPercentage,
+        amountPaid: enrollment.amountPaid,
+        paymentId: enrollment.paymentId,
+        course: enrollment.Course,
+      })),
+      pagination: {
+        currentPage: pageNum,
+        totalPages,
+        totalPurchases: count,
+        purchasesPerPage: limitNum,
+        hasNextPage: pageNum < totalPages,
+        hasPrevPage: pageNum > 1,
       },
     });
   } catch (error) {
     console.error("Get user purchases error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve purchases",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : "Internal Server Error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -478,18 +439,21 @@ export const getCoursePurchaseDetails = async (req, res) => {
     const userId = req.user?.userId;
 
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
+      return sendError(res, 401, "Authentication required");
     }
-    
+
     // Validate UUID format for courseId
-    if (!courseId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(courseId)) {
-      return res.status(400).json({
-        success: false,
-        message: `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
-      });
+    if (
+      !courseId ||
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        courseId,
+      )
+    ) {
+      return sendValidationError(
+        res,
+        `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
+        { courseId: "Must be a valid UUID" },
+      );
     }
 
     // Get course details
@@ -516,10 +480,7 @@ export const getCoursePurchaseDetails = async (req, res) => {
     });
 
     if (!course) {
-      return res.status(404).json({
-        success: false,
-        message: "Course not found or not available",
-      });
+      return sendNotFound(res, "Course not found or not available");
     }
 
     // Check if user is already enrolled
@@ -532,44 +493,31 @@ export const getCoursePurchaseDetails = async (req, res) => {
 
     const finalPrice = course.salePrice || course.price;
 
-    res.status(200).json({
-      success: true,
-      message: "Course purchase details retrieved successfully",
-      data: {
-        course: course,
-        pricing: {
-          originalPrice: course.price,
-          salePrice: course.salePrice,
-          finalPrice: finalPrice,
-          discount: course.salePrice ? course.price - course.salePrice : 0,
-          discountPercentage: course.salePrice
-            ? Math.round(
-                ((course.price - course.salePrice) / course.price) * 100,
-              )
-            : 0,
-        },
-        enrollment: enrollment
-          ? {
-              isEnrolled: true,
-              enrollmentDate: enrollment.enrollmentDate,
-              completionStatus: enrollment.completionStatus,
-              progressPercentage: enrollment.progressPercentage,
-            }
-          : {
-              isEnrolled: false,
-            },
+    return sendSuccess(res, 200, "Course purchase details retrieved successfully", {
+      course: course,
+      pricing: {
+        originalPrice: course.price,
+        salePrice: course.salePrice,
+        finalPrice: finalPrice,
+        discount: course.salePrice ? course.price - course.salePrice : 0,
+        discountPercentage: course.salePrice
+          ? Math.round(((course.price - course.salePrice) / course.price) * 100)
+          : 0,
       },
+      enrollment: enrollment
+        ? {
+            isEnrolled: true,
+            enrollmentDate: enrollment.enrollmentDate,
+            completionStatus: enrollment.completionStatus,
+            progressPercentage: enrollment.progressPercentage,
+          }
+        : {
+            isEnrolled: false,
+          },
     });
   } catch (error) {
     console.error("Get course purchase details error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve course details",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : "Internal Server Error",
-    });
+    return sendServerError(res, error);
   }
 };
 
@@ -583,33 +531,33 @@ export const handlePaymentFailure = async (req, res) => {
 
     // Validate user authentication
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
+      return sendError(res, 401, "Authentication required");
     }
-    
+
     // Validate required fields
     if (!razorpay_order_id) {
-      return res.status(400).json({
-        success: false,
-        message: "Razorpay order ID is required",
+      return sendValidationError(res, "Razorpay order ID is required", {
+        razorpay_order_id: "Required field",
       });
     }
-    
+
     // Validate format of order_id if present
-    if (razorpay_order_id && !/^order_[a-zA-Z0-9]+$/i.test(razorpay_order_id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Razorpay order ID format",
+    if (
+      razorpay_order_id &&
+      !/^order_[a-zA-Z0-9]+$/i.test(razorpay_order_id)
+    ) {
+      return sendValidationError(res, "Invalid Razorpay order ID format", {
+        razorpay_order_id: "Invalid format",
       });
     }
-    
+
     // Validate format of payment_id if present
-    if (razorpay_payment_id && !/^pay_[a-zA-Z0-9]+$/i.test(razorpay_payment_id)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid Razorpay payment ID format",
+    if (
+      razorpay_payment_id &&
+      !/^pay_[a-zA-Z0-9]+$/i.test(razorpay_payment_id)
+    ) {
+      return sendValidationError(res, "Invalid Razorpay payment ID format", {
+        razorpay_payment_id: "Invalid format",
       });
     }
 
@@ -622,24 +570,13 @@ export const handlePaymentFailure = async (req, res) => {
 
     // You can log this to a payment failures table if needed
 
-    res.status(200).json({
-      success: false,
-      message: "Payment failed",
-      data: {
-        orderId: razorpay_order_id,
-        paymentId: razorpay_payment_id,
-        error: error?.description || "Payment was not completed",
-      },
+    return sendError(res, 400, "Payment failed", {
+      orderId: razorpay_order_id,
+      paymentId: razorpay_payment_id,
+      error: error?.description || "Payment was not completed",
     });
   } catch (error) {
     console.error("Handle payment failure error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to handle payment failure",
-      error:
-        process.env.NODE_ENV === "development"
-          ? error.message
-          : "Internal Server Error",
-    });
+    return sendServerError(res, error);
   }
 };

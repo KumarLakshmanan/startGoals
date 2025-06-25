@@ -3,6 +3,7 @@ import Goal from "../model/goal.js";
 import CourseLevel from "../model/courseLevel.js";
 import { validateGoalInput } from "../utils/commonUtils.js";
 import { Op } from "sequelize";
+import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
 
 export const bulkUploadGoals = async (req, res) => {
   try {
@@ -15,17 +16,14 @@ export const bulkUploadGoals = async (req, res) => {
     } else if (requestBody.goals && Array.isArray(requestBody.goals)) {
       goals = requestBody.goals;
     } else {
-      return res.status(400).json({
-        status: false,
-        message:
-          "Request body must be an array of goals or an object with a 'goals' array property",
+      return sendValidationError(res, "Invalid request format", {
+        body: "Request body must be an array of goals or an object with a 'goals' array property"
       });
     }
 
     if (goals.length === 0) {
-      return res.status(400).json({
-        status: false,
-        message: "Goals array cannot be empty",
+      return sendValidationError(res, "Empty goals array", {
+        goals: "Goals array cannot be empty"
       });
     }
 
@@ -110,10 +108,8 @@ export const bulkUploadGoals = async (req, res) => {
 
     // Return validation errors if any
     if (validationErrors.length > 0) {
-      return res.status(400).json({
-        status: false,
-        message: "Validation failed for one or more goals.",
-        validationErrors,
+      return sendValidationError(res, "Validation failed for one or more goals.", {
+        validationErrors
       });
     }
 
@@ -121,17 +117,13 @@ export const bulkUploadGoals = async (req, res) => {
       ignoreDuplicates: true, // Optional: skip duplicate goalName
     });
 
-    return res.status(201).json({
-      status: true,
-      message: "Goals uploaded successfully",
-      data: createdGoals,
+    return sendSuccess(res, "Goals uploaded successfully", {
+      data: createdGoals
     });
   } catch (error) {
     console.error("Bulk upload error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to upload goals",
-      error: error.message,
+    return sendServerError(res, "Failed to upload goals", {
+      error: error.message
     });
   }
 };
@@ -149,17 +141,13 @@ export const getAllGoals = async (req, res) => {
       order: [["createdAt", "ASC"]],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Goals fetched successfully",
-      data: goals,
+    return sendSuccess(res, "Goals fetched successfully", {
+      data: goals
     });
   } catch (error) {
     console.error("Fetch error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch goals",
-      error: error.message,
+    return sendServerError(res, "Failed to fetch goals", {
+      error: error.message
     });
   }
 };
@@ -170,19 +158,13 @@ export const getGoalsByLevel = async (req, res) => {
 
     // Validate UUID format for levelId
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
-      return res.status(400).json({
-        status: false,
-        message: `Invalid levelId format: ${levelId}. Must be a valid UUID.`,
-      });
+      return sendValidationError(res, `Invalid levelId format: ${levelId}. Must be a valid UUID.`);
     }
 
     // Validate if level exists
     const level = await CourseLevel.findByPk(levelId);
     if (!level) {
-      return res.status(404).json({
-        status: false,
-        message: "Level not found",
-      });
+      return sendNotFound(res, "Level not found");
     }
 
     const goals = await Goal.findAll({
@@ -197,17 +179,13 @@ export const getGoalsByLevel = async (req, res) => {
       order: [["goalName", "ASC"]],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Goals fetched successfully",
-      data: goals,
+    return sendSuccess(res, "Goals fetched successfully", {
+      data: goals
     });
   } catch (error) {
     console.error("Error fetching goals by level:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch goals by level",
-      error: error.message,
+    return sendServerError(res, "Failed to fetch goals by level", {
+      error: error.message
     });
   }
 };
@@ -220,19 +198,15 @@ export const getGoalOptions = async (req, res) => {
       order: [["order", "ASC"]],
     });
 
-    return res.status(200).json({
-      status: true,
-      message: "Goal options fetched successfully",
+    return sendSuccess(res, "Goal options fetched successfully", {
       data: {
-        levels,
-      },
+        levels
+      }
     });
   } catch (error) {
     console.error("Error fetching goal options:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Failed to fetch goal options",
-      error: error.message,
+    return sendServerError(res, "Failed to fetch goal options", {
+      error: error.message
     });
   }
 };

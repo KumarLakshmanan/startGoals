@@ -4,6 +4,14 @@ import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import fs from "fs/promises";
 import path from "path";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendServerError,
+  sendConflict,
+} from "../utils/responseHelper.js";
 
 // ===================== COMPREHENSIVE SETTINGS MANAGEMENT =====================
 // This file combines both basic settings and advanced admin settings management
@@ -26,24 +34,13 @@ export const getSettings = async (req, res) => {
 
     // If specific key requested, return single object
     if (key && settings.length === 1) {
-      return res.json({
-        success: true,
-        message: "Setting retrieved successfully",
-        data: settings[0],
-      });
+      return sendSuccess(res, 200, "Setting retrieved successfully", settings[0]);
     }
 
-    res.json({
-      success: true,
-      message: "Settings retrieved successfully",
-      data: settings,
-    });
+    sendSuccess(res, 200, "Settings retrieved successfully", settings);
   } catch (error) {
     console.error("Get settings error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    sendServerError(res, error);
   }
 };
 
@@ -53,10 +50,7 @@ export const upsertSetting = async (req, res) => {
     const { key, value, description, dataType = "string" } = req.body;
 
     if (!key) {
-      return res.status(400).json({
-        success: false,
-        message: "Setting key is required",
-      });
+      return sendValidationError(res, "Setting key is required");
     }
 
     // Check if setting exists
@@ -81,19 +75,17 @@ export const upsertSetting = async (req, res) => {
       });
     }
 
-    res.json({
-      success: true,
-      message: existingSetting
+    sendSuccess(
+      res,
+      200,
+      existingSetting
         ? "Setting updated successfully"
         : "Setting created successfully",
-      data: setting,
-    });
+      setting
+    );
   } catch (error) {
     console.error("Upsert setting error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    sendServerError(res, error);
   }
 };
 
@@ -104,24 +96,15 @@ export const deleteSetting = async (req, res) => {
 
     const setting = await Settings.findByPk(id);
     if (!setting) {
-      return res.status(404).json({
-        success: false,
-        message: "Setting not found",
-      });
+      return sendNotFound(res, "Setting not found");
     }
 
     await setting.update({ isActive: false });
 
-    res.json({
-      success: true,
-      message: "Setting deleted successfully",
-    });
+    sendSuccess(res, 200, "Setting deleted successfully");
   } catch (error) {
     console.error("Delete setting error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    sendServerError(res, error);
   }
 };
 
@@ -174,17 +157,15 @@ export const initializeDefaultSettings = async (req, res) => {
       }
     }
 
-    res.json({
-      success: true,
-      message: `Initialized ${createdSettings.length} default settings`,
-      data: createdSettings,
-    });
+    sendSuccess(
+      res,
+      200,
+      `Initialized ${createdSettings.length} default settings`,
+      createdSettings
+    );
   } catch (error) {
     console.error("Initialize settings error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error",
-    });
+    sendServerError(res, error);
   }
 };
 
@@ -296,27 +277,19 @@ export const getNotificationTemplates = async (req, res) => {
       totalUsage: filteredTemplates.reduce((sum, t) => sum + t.usageCount, 0),
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Notification templates retrieved successfully",
-      data: {
-        templates: paginatedTemplates,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalCount / parseInt(limit)),
-          totalRecords: totalCount,
-          recordsPerPage: parseInt(limit),
-        },
-        analytics,
+    sendSuccess(res, 200, "Notification templates retrieved successfully", {
+      templates: paginatedTemplates,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalRecords: totalCount,
+        recordsPerPage: parseInt(limit),
       },
+      analytics,
     });
   } catch (error) {
     console.error("Get notification templates error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve notification templates",
-      error: error.message,
-    });
+    sendServerError(res, error);
   }
 };
 
@@ -362,11 +335,7 @@ export const createNotificationTemplate = async (req, res) => {
     }
 
     if (validationErrors.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed",
-        errors: validationErrors,
-      });
+      return sendValidationError(res, "Validation failed", validationErrors);
     }
 
     // In real implementation, save to database
@@ -386,18 +355,10 @@ export const createNotificationTemplate = async (req, res) => {
       usageCount: 0,
     };
 
-    res.status(201).json({
-      success: true,
-      message: "Notification template created successfully",
-      data: newTemplate,
-    });
+    sendSuccess(res, 200, "Notification template created successfully", newTemplate);
   } catch (error) {
     console.error("Create notification template error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to create notification template",
-      error: error.message,
-    });
+    sendServerError(res, error);
   }
 };
 
@@ -488,27 +449,19 @@ export const getLegalPages = async (req, res) => {
       totalViews: filteredPages.reduce((sum, p) => sum + p.viewCount, 0),
     };
 
-    res.status(200).json({
-      success: true,
-      message: "Legal pages retrieved successfully",
-      data: {
-        pages: paginatedPages,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalCount / parseInt(limit)),
-          totalRecords: totalCount,
-          recordsPerPage: parseInt(limit),
-        },
-        analytics,
+    sendSuccess(res, 200, "Legal pages retrieved successfully", {
+      pages: paginatedPages,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalCount / parseInt(limit)),
+        totalRecords: totalCount,
+        recordsPerPage: parseInt(limit),
       },
+      analytics,
     });
   } catch (error) {
     console.error("Get legal pages error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve legal pages",
-      error: error.message,
-    });
+    sendServerError(res, error);
   }
 };
 
@@ -566,18 +519,10 @@ export const getSystemConfig = async (req, res) => {
       ? { [category]: mockConfig[category] }
       : mockConfig;
 
-    res.status(200).json({
-      success: true,
-      message: "System configuration retrieved successfully",
-      data: responseData,
-    });
+    sendSuccess(res, 200, "System configuration retrieved successfully", responseData);
   } catch (error) {
     console.error("Get system config error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to retrieve system configuration",
-      error: error.message,
-    });
+    sendServerError(res, error);
   }
 };
 
@@ -590,10 +535,7 @@ export const updateSystemConfig = async (req, res) => {
     const updatedBy = req.user.userId;
 
     if (!category || !settings) {
-      return res.status(400).json({
-        success: false,
-        message: "Category and settings are required",
-      });
+      return sendValidationError(res, "Category and settings are required");
     }
 
     // In real implementation, update in database
@@ -604,18 +546,10 @@ export const updateSystemConfig = async (req, res) => {
       updatedBy,
     };
 
-    res.status(200).json({
-      success: true,
-      message: "System configuration updated successfully",
-      data: updatedConfig,
-    });
+    sendSuccess(res, 200, "System configuration updated successfully", updatedConfig);
   } catch (error) {
     console.error("Update system config error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update system configuration",
-      error: error.message,
-    });
+    sendServerError(res, error);
   }
 };
 
