@@ -144,6 +144,19 @@ export const syncModels = async (modelsToSync, options = {
     `Starting database synchronization with options: force=${options.force}, alter=${options.alter}, safeMode=${options.safeMode}`,
   );
 
+  // Warn if any model has a fields array that is not all fields (field-level sync not supported)
+  for (const m of modelsToSync) {
+    if (m.fields && Array.isArray(m.fields)) {
+      const model = sequelize.models[m.name];
+      if (model) {
+        const allFields = Object.keys(model.rawAttributes);
+        if (m.fields.length !== allFields.length) {
+          logs.push(`⚠️ Field-level sync requested for model '${m.name}', but only full-table sync is supported. All fields will be synced.`);
+        }
+      }
+    }
+  }
+
   try {
     if (!Array.isArray(modelsToSync) || modelsToSync.length === 0) {
       throw new Error("No models specified for synchronization");
@@ -259,16 +272,19 @@ export const syncModels = async (modelsToSync, options = {
     );
 
     return {
+      status: successCount > 0,
       success: successCount > 0,
       message:
         successCount > 0
           ? `Database synchronized successfully (${successCount}/${totalModels} models)`
           : "Database synchronization failed for all models",
       logs,
+      error: successCount > 0 ? null : 'No models were successfully synced',
     };
   } catch (error) {
     logs.push(`Error in syncModels: ${error.message}`);
     return {
+      status: false,
       success: false,
       message: "Database synchronization failed",
       error: error.message,

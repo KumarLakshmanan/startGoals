@@ -130,7 +130,21 @@ export const bulkUploadGoals = async (req, res) => {
 
 export const getAllGoals = async (req, res) => {
   try {
-    const goals = await Goal.findAll({
+    const {
+      search = "",
+      sortBy = "createdAt",
+      sortOrder = "ASC",
+    } = req.query;
+
+    // Build where condition for search
+    const whereClause = {};
+    if (search) {
+      whereClause.goalName = {
+        [Op.iLike]: `%${search}%`,
+      };
+    }
+
+    const { count, rows: goals } = await Goal.findAndCountAll({
       attributes: ["goalId", "goalName", "description", "levelId"],
       include: {
         model: CourseLevel,
@@ -138,12 +152,10 @@ export const getAllGoals = async (req, res) => {
         attributes: ["levelId", "name", "order"],
         required: false, // LEFT JOIN since levelId is optional
       },
-      order: [["createdAt", "ASC"]],
+      order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    return sendSuccess(res, "Goals fetched successfully", {
-      data: goals
-    });
+    return sendSuccess(res, 200, "Goals fetched successfully", goals);
   } catch (error) {
     console.error("Fetch error:", error);
     return sendServerError(res, "Failed to fetch goals", {
@@ -208,5 +220,208 @@ export const getGoalOptions = async (req, res) => {
     return sendServerError(res, "Failed to fetch goal options", {
       error: error.message
     });
+  }
+};
+
+// Get goal by ID
+export const getGoal = async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    
+    // Validate UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(goalId)) {
+      return sendValidationError(res, `Invalid goalId format: ${goalId}. Must be a valid UUID.`);
+    }
+    
+    const goal = await Goal.findByPk(goalId, {
+      attributes: ["goalId", "goalName", "description", "levelId"],
+      include: {
+        model: CourseLevel,
+        as: "level",
+        attributes: ["levelId", "name", "order"],
+        required: false, // LEFT JOIN since levelId is optional
+      }
+    });
+    
+    if (!goal) {
+      return sendNotFound(res, "Goal not found");
+    }
+    
+    return sendSuccess(res, 200, "Goal fetched successfully", goal);
+  } catch (error) {
+    console.error("Error fetching goal by ID:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Create a new goal
+export const createGoal = async (req, res) => {
+  try {
+    const { goalName, description, levelId } = req.body;
+    
+    // Validate required fields
+    if (!goalName) {
+      return sendValidationError(res, "Missing required fields", {
+        goalName: "Goal name is required"
+      });
+    }
+    
+    // Validate level ID if provided
+    if (levelId) {
+      // Validate UUID format
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
+        return sendValidationError(res, "Invalid level ID format", {
+          levelId: "Level ID must be a valid UUID"
+        });
+      }
+      
+      const level = await CourseLevel.findByPk(levelId);
+      if (!level) {
+        return sendNotFound(res, `Level with ID '${levelId}' not found`);
+      }
+    }
+    
+    // Check for existing goal with same name
+    const existingGoal = await Goal.findOne({
+      where: {
+        goalName
+      }
+    });
+    
+    if (existingGoal) {
+      return sendConflict(res, "A goal with this name already exists");
+    }
+    
+    // Create the goal
+    const newGoal = await Goal.create({
+      goalName,
+      description,
+      levelId
+    });
+    
+    // Fetch the created goal with level association
+    const createdGoal = await Goal.findByPk(newGoal.goalId, {
+      include: {
+        model: CourseLevel,
+        as: "level",
+        attributes: ["levelId", "name", "order"],
+        required: false
+      }
+    });
+    
+    return sendSuccess(res, 201, "Goal created successfully", createdGoal);
+  } catch (error) {
+    console.error("Error creating goal:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Update an existing goal
+export const updateGoal = async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    const { goalName, description, levelId } = req.body;
+    
+    // Validate UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(goalId)) {
+      return sendValidationError(res, `Invalid goalId format: ${goalId}. Must be a valid UUID.`);
+    }
+    
+    // Find the goal
+    const goal = await Goal.findByPk(goalId);
+    if (!goal) {
+      return sendNotFound(res, "Goal not found");
+    }
+    
+    // Validate level ID if provided
+    if (levelId) {
+      // Validate UUID format
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
+        return sendValidationError(res, "Invalid level ID format", {
+          levelId: "Level ID must be a valid UUID"
+        });
+      }
+      
+      const level = await CourseLevel.findByPk(levelId);
+      if (!level) {
+        return sendNotFound(res, `Level with ID '${levelId}' not found`);
+      }
+    }
+    
+    // Check for conflicting goal name
+    if (goalName && goalName !== goal.goalName) {
+      const existingGoal = await Goal.findOne({
+        where: {
+          goalName,
+          goalId: { [Op.ne]: goalId }
+        }
+      });
+      
+      if (existingGoal) {
+        return sendConflict(res, "A goal with this name already exists");
+      }
+    }
+    
+    // Update the goal
+    await goal.update({
+      goalName: goalName || goal.goalName,
+      description: description !== undefined ? description : goal.description,
+      levelId: levelId !== undefined ? levelId : goal.levelId
+    });
+    
+    // Fetch the updated goal with level association
+    const updatedGoal = await Goal.findByPk(goalId, {
+      include: {
+        model: CourseLevel,
+        as: "level",
+        attributes: ["levelId", "name", "order"],
+        required: false
+      }
+    });
+    
+    return sendSuccess(res, 200, "Goal updated successfully", updatedGoal);
+  } catch (error) {
+    console.error("Error updating goal:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Delete a goal
+export const deleteGoal = async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    
+    // Validate UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(goalId)) {
+      return sendValidationError(res, `Invalid goalId format: ${goalId}. Must be a valid UUID.`);
+    }
+    
+    // Find the goal
+    const goal = await Goal.findByPk(goalId);
+    if (!goal) {
+      return sendNotFound(res, "Goal not found");
+    }
+    
+    // Check if goal has associated skills
+    const skillCount = await Skill.count({
+      where: {
+        goalId
+      }
+    });
+    
+    if (skillCount > 0) {
+      return sendConflict(
+        res, 
+        `Cannot delete goal: ${skillCount} skills are associated with this goal. Remove the skills first.`
+      );
+    }
+    
+    // Delete the goal
+    await goal.destroy();
+    
+    return sendSuccess(res, 200, "Goal deleted successfully");
+  } catch (error) {
+    console.error("Error deleting goal:", error);
+    return sendServerError(res, error);
   }
 };

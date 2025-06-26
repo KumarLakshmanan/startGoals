@@ -39,9 +39,9 @@ const Project = sequelize.define(
       },
     },
     skillLevel: {
-      type: DataTypes.ENUM("beginner", "intermediate", "expert"),
+      type: DataTypes.ENUM("beginner", "intermediate", "advanced"),
       allowNull: false,
-      defaultValue: "beginner",
+      defaultValue: "intermediate",
     },
     tags: {
       type: DataTypes.JSON,
@@ -56,6 +56,15 @@ const Project = sequelize.define(
         key: "language_id",
       },
       comment: "Programming/source language if applicable",
+    },
+    linkedTeacherId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "users",
+        key: "user_id",
+      },
+      comment: "Teacher who owns/created the project",
     },
     price: {
       type: DataTypes.DECIMAL(10, 2),
@@ -74,7 +83,7 @@ const Project = sequelize.define(
       allowNull: true,
       comment: "Main project thumbnail",
     },
-    demoVideo: {
+    previewVideo: {
       type: DataTypes.STRING,
       allowNull: true,
       comment: "Demo video URL",
@@ -145,7 +154,7 @@ const Project = sequelize.define(
       defaultValue: "1.0",
     },
     status: {
-      type: DataTypes.ENUM("draft", "published", "archived", "rejected"),
+      type: DataTypes.ENUM("draft", "published", "archived", "rejected", "hidden"),
       defaultValue: "draft",
       allowNull: false,
     },
@@ -190,6 +199,16 @@ const Project = sequelize.define(
       defaultValue: false,
       comment: "Featured project for promotion",
     },
+    documentationUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "URL to project documentation",
+    },
+    supportEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Support contact email",
+    },
     ...commonFields,
   },
   {
@@ -201,11 +220,11 @@ const Project = sequelize.define(
         type: "BTREE",
       },
       {
-        fields: ["category_id"], // Fixed: use snake_case column name
+        fields: ["category_id"],
         type: "BTREE",
       },
       {
-        fields: ["skill_level"], // Fixed: use snake_case column name
+        fields: ["skill_level"],
         type: "BTREE",
       },
       {
@@ -221,19 +240,27 @@ const Project = sequelize.define(
         type: "BTREE",
       },
       {
-        fields: ["average_rating"], // Fixed: use snake_case column name
+        fields: ["average_rating"],
         type: "BTREE",
       },
       {
-        fields: ["total_sales"], // Fixed: use snake_case column name
+        fields: ["total_sales"],
         type: "BTREE",
       },
       {
-        fields: ["created_at"], // Fixed: use snake_case column name
+        fields: ["created_at"],
         type: "BTREE",
       },
       {
-        fields: ["published_at"], // Fixed: use snake_case column name
+        fields: ["published_at"],
+        type: "BTREE",
+      },
+      {
+        fields: ["linked_teacher_id"],
+        type: "BTREE",
+      },
+      {
+        fields: ["language_id"],
         type: "BTREE",
       },
     ],

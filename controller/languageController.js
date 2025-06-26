@@ -8,7 +8,7 @@ import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerEr
 export const deleteCourseLanguage = async (req, res) => {
   try {
     const { id } = req.params;
-    const language = await CourseLanguage.findByPk(id);
+    const language = await Language.findByPk(id);
     if (!language) {
       return sendNotFound(res, "Language not found");
     }
@@ -142,7 +142,16 @@ export const uploadLanguagesBulk = async (req, res) => {
 
 export const getAllLanguages = async (req, res) => {
   try {
-    const { page = 1, limit = 20, search, includeStats = false } = req.query;
+    const {
+      sortBy = "languageId",
+      sortOrder = "DESC",
+      search,
+    } = req.query;
+
+    // Only allow sorting by specific columns to prevent SQL errors
+    const allowedSortFields = ["languageId", "language", "languageCode", "nativeName", "languageType"];
+    const safeSortBy = allowedSortFields.includes(sortBy) ? sortBy : "languageId";
+    const safeSortOrder = ["ASC", "DESC"].includes(sortOrder.toUpperCase()) ? sortOrder.toUpperCase() : "DESC";
 
     // Build where conditions
     const whereConditions = {};
@@ -153,46 +162,14 @@ export const getAllLanguages = async (req, res) => {
         { nativeName: { [Op.iLike]: `%${search}%` } },
       ];
     }
-
-    // Calculate pagination
-    const offset = (parseInt(page) - 1) * parseInt(limit); // Build query options
     const queryOptions = {
       where: whereConditions,
-      attributes: [
-        "languageId",
-        "language",
-        "languageCode",
-        "nativeName",
-        "languageType",
-      ],
-      limit: parseInt(limit),
-      offset: offset,
-    };
-
-    const { count, rows: languages } =
-      await Language.findAndCountAll(queryOptions);
-
-    const response = {
-      message: "Languages fetched successfully",
-      data: languages,
-      status: true,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: count,
-        totalPages: Math.ceil(count / parseInt(limit)),
-      },
-    };
-
-    if (includeStats === "true") {
-      const stats = await Language.count({
-        group: ["languageType"],
-        attributes: ["languageType"],
-      });
-      response.stats = stats;
+      order: [[safeSortBy, safeSortOrder]],
     }
 
-    return sendSuccess(res, 200, response);
+    const { count, rows } = await Language.findAndCountAll(queryOptions);
+
+    return sendSuccess(res, 200, "Languages fetched successfully", rows);
   } catch (error) {
     console.error("Error fetching languages:", error);
     return sendServerError(res, error);
@@ -266,11 +243,11 @@ export const getLanguageStats = async (req, res) => {
 
 export const saveAllLanguages = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const requestBody = req.body;
     let languages;
-    
+
     // Handle both direct array and wrapper object formats
     if (Array.isArray(requestBody)) {
       languages = requestBody;
@@ -279,12 +256,12 @@ export const saveAllLanguages = async (req, res) => {
     } else {
       return sendError(res, 400, "Request body must be an array of languages or an object with a 'languages' array property");
     }
-    
+
     if (languages.length === 0) {
       await transaction.rollback();
       return sendError(res, 400, "Languages array cannot be empty");
     }
-    
+
     // Ensure the languages table exists
     try {
       await Language.sync({ alter: false });
@@ -293,14 +270,14 @@ export const saveAllLanguages = async (req, res) => {
       await transaction.rollback();
       return sendServerError(res, error);
     }
-    
+
     // Process languages
     const languagesToCreate = [];
     const validationErrors = [];
-    
+
     for (let i = 0; i < languages.length; i++) {
       const lang = languages[i];
-      
+
       // Validate required fields
       if (!lang.language || !lang.languageCode) {
         validationErrors.push({
@@ -309,7 +286,7 @@ export const saveAllLanguages = async (req, res) => {
         });
         continue;
       }
-      
+
       // Check for existing languages with the same name or code
       const existing = await Language.findOne({
         where: {
@@ -320,7 +297,7 @@ export const saveAllLanguages = async (req, res) => {
         },
         transaction
       });
-      
+
       if (existing) {
         validationErrors.push({
           index: i,
@@ -332,7 +309,7 @@ export const saveAllLanguages = async (req, res) => {
         });
         continue;
       }
-      
+
       // Create language object
       const languageData = {
         language: lang.language,
@@ -340,33 +317,150 @@ export const saveAllLanguages = async (req, res) => {
         nativeName: lang.nativeName || lang.language,
         languageType: lang.languageType || "both"
       };
-      
+
       languagesToCreate.push(languageData);
     }
-    
+
     // Return validation errors if any
     if (validationErrors.length > 0) {
       await transaction.rollback();
       return sendValidationError(res, validationErrors);
     }
-    
+
     // Create languages in bulk
     const createdLanguages = await Language.bulkCreate(languagesToCreate, {
       transaction,
       ignoreDuplicates: false // we already checked for duplicates
     });
-    
+
     await transaction.commit();
-    
+
     return sendSuccess(res, 200, {
       status: true,
       message: "Languages created successfully",
       data: createdLanguages
     });
-    
+
   } catch (error) {
     await transaction.rollback();
     console.error("Bulk language upload error:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Get language by ID
+export const getLanguageById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const language = await Language.findByPk(id);
+
+    if (!language) {
+      return sendNotFound(res, "Language not found");
+    }
+
+    return sendSuccess(res, 200, "Language fetched successfully", language);
+  } catch (error) {
+    console.error("Error fetching language by ID:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Create a new language
+export const saveLanguage = async (req, res) => {
+  try {
+    const { language: languageName, languageCode, nativeName, languageType } = req.body;
+
+    // Validate required fields
+    if (!languageName || !languageCode) {
+      return sendValidationError(res, "Missing required fields", {
+        language: languageName ? undefined : "Language name is required",
+        languageCode: languageCode ? undefined : "Language code is required"
+      });
+    }
+
+    // Check for existing language with same name or code
+    const existingLanguage = await Language.findOne({
+      where: {
+        [Op.or]: [
+          { language: languageName },
+          { languageCode }
+        ]
+      }
+    });
+
+    if (existingLanguage) {
+      return sendConflict(res, "Language already exists", {
+        field: existingLanguage.language === languageName ? "language" : "languageCode",
+        message: existingLanguage.language === languageName
+          ? "A language with this name already exists"
+          : "A language with this code already exists"
+      });
+    }
+
+    // Create the language
+    const newLanguage = await Language.create({
+      language: languageName,
+      languageCode,
+      nativeName: nativeName || languageName,
+      languageType: languageType || "both"
+    });
+
+    return sendSuccess(res, 201, "Language created successfully", newLanguage);
+  } catch (error) {
+    console.error("Error creating language:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Update an existing language
+export const updateLanguage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { language: languageName, languageCode, nativeName, languageType } = req.body;
+
+    // Find the language
+    const language = await Language.findByPk(id);
+    if (!language) {
+      return sendNotFound(res, "Language not found");
+    }
+
+    // Check for conflicting language with same name or code
+    if (languageName !== language.language || languageCode !== language.languageCode) {
+      const existingLanguage = await Language.findOne({
+        where: {
+          [Op.and]: [
+            { languageId: { [Op.ne]: id } },
+            {
+              [Op.or]: [
+                { language: languageName },
+                { languageCode }
+              ]
+            }
+          ]
+        }
+      });
+
+      if (existingLanguage) {
+        return sendConflict(res, "Language already exists", {
+          field: existingLanguage.language === languageName ? "language" : "languageCode",
+          message: existingLanguage.language === languageName
+            ? "A language with this name already exists"
+            : "A language with this code already exists"
+        });
+      }
+    }
+
+    // Update the language
+    await language.update({
+      language: languageName || language.language,
+      languageCode: languageCode || language.languageCode,
+      nativeName: nativeName || language.nativeName,
+      languageType: languageType || language.languageType
+    });
+
+    return sendSuccess(res, 200, "Language updated successfully", language);
+  } catch (error) {
+    console.error("Error updating language:", error);
     return sendServerError(res, error);
   }
 };

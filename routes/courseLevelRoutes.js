@@ -1,20 +1,27 @@
 import express from "express";
 import {
   bulkUploadCourseLevels,
+  createCourseLevel,
+  deleteCourseLevel,
   getAllCourseLevels,
   getCourseLevelById,
+  reorderCourseLevels,
+  updateCourseLevel,
 } from "../controller/courseLevelController.js";
-import { isTeacher } from "../middleware/authMiddleware.js";
+import { isAdmin, isTeacher } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Bulk upload course levels with new structure
-router.post("/bulk-upload", isTeacher, bulkUploadCourseLevels);
-
-// Get all course levels
+router.get("/", getAllCourseLevels);
+router.post("/bulk-upload", isAdmin, bulkUploadCourseLevels);
 router.get("/getAll", getAllCourseLevels);
-
-// Get course level by ID (public access)
 router.get("/:levelId", getCourseLevelById);
+
+
+router.post("/bulk-upload", isAdmin, bulkUploadCourseLevels);
+router.post("/", isAdmin, createCourseLevel);
+router.put("/:levelId", isAdmin, updateCourseLevel);
+router.delete("/:levelId", isAdmin, deleteCourseLevel);
+router.post("/reorder", isAdmin, reorderCourseLevels);
 
 export default router;

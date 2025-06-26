@@ -14,6 +14,7 @@
 export const sendSuccess = (res, code = 200, message = "Request successful", data = null) => {
   return res.status(200).json({
     status: true,
+    success: true,
     code,
     message,
     data
@@ -31,6 +32,7 @@ export const sendSuccess = (res, code = 200, message = "Request successful", dat
 export const sendError = (res, code = 400, message = "Request failed", errors = {}) => {
   return res.status(200).json({
     status: false,
+    success: false,
     code,
     message,
     data: null,

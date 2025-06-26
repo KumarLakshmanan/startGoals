@@ -20,7 +20,13 @@ import {
   getProjectDetailsAdmin,
   getProjectBuyers,
   getProjectDownloads,
-  applyDiscountToProject,
+  updateProjectStatus,
+  bulkUpdateProjectStatus,
+  getProjectReviews,
+  updateReviewStatus,
+  bulkUpdateReviewStatus,
+  getProjectSettings,
+  updateProjectSettings,
 } from "../controller/projectController.js";
 import { isAdmin, verifyToken } from "../middleware/authMiddleware.js";
 import { validateInput } from "../middleware/validationMiddleware.js";
@@ -336,7 +342,247 @@ router.post(
   "/admin/projects/:projectId/apply-discount",
   verifyToken,
   isAdmin,
-  applyDiscountToProject,
+);
+
+// ===================== ADMIN PANEL PROJECT MANAGEMENT ROUTES =====================
+
+/**
+ * @route GET /api/projects/admin/all
+ * @desc Get all projects for admin panel with detailed information
+ * @access Private (Admin)
+ */
+router.get(
+  "/admin/all",
+  verifyToken,
+  isAdmin,
+  [
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+    query("status")
+      .optional()
+      .isString()
+      .withMessage("Status must be a string"),
+    query("sortBy")
+      .optional()
+      .isString()
+      .withMessage("SortBy must be a string"),
+    query("sortOrder")
+      .optional()
+      .isIn(["ASC", "DESC"])
+      .withMessage("SortOrder must be ASC or DESC"),
+  ],
+  validateInput,
+  getAllProjectsAdmin,
+);
+
+/**
+ * @route GET /api/projects/admin/:id
+ * @desc Get detailed project information for admin panel
+ * @access Private (Admin)
+ */
+router.get(
+  "/admin/:id",
+  verifyToken,
+  isAdmin,
+  param("id").isUUID().withMessage("Invalid project ID"),
+  validateInput,
+  getProjectDetailsAdmin,
+);
+
+/**
+ * @route GET /api/projects/admin/:id/buyers
+ * @desc Get all buyers of a specific project
+ * @access Private (Admin)
+ */
+router.get(
+  "/admin/:id/buyers",
+  verifyToken,
+  isAdmin,
+  param("id").isUUID().withMessage("Invalid project ID"),
+  validateInput,
+  getProjectBuyers,
+);
+
+/**
+ * @route GET /api/projects/admin/:id/downloads
+ * @desc Get download statistics for a specific project
+ * @access Private (Admin)
+ */
+router.get(
+  "/admin/:id/downloads",
+  verifyToken,
+  isAdmin,
+  param("id").isUUID().withMessage("Invalid project ID"),
+  validateInput,
+  getProjectDownloads,
+);
+
+/**
+ * @route PATCH /api/projects/admin/:id/status
+ * @desc Update project status (publish/hide/archive)
+ * @access Private (Admin)
+ */
+router.patch(
+  "/admin/:id/status",
+  verifyToken,
+  isAdmin,
+  [
+    param("id").isUUID().withMessage("Invalid project ID"),
+    body("status")
+      .isIn(["draft", "published", "archived", "hidden", "rejected"])
+      .withMessage("Invalid status"),
+  ],
+  validateInput,
+  updateProjectStatus,
+);
+
+/**
+ * @route POST /api/projects/admin/bulk-status
+ * @desc Bulk update project statuses
+ * @access Private (Admin)
+ */
+router.post(
+  "/admin/bulk-status",
+  verifyToken,
+  isAdmin,
+  [
+    body("projectIds").isArray().withMessage("Project IDs must be an array"),
+    body("status")
+      .isIn(["draft", "published", "archived", "hidden", "rejected"])
+      .withMessage("Invalid status"),
+  ],
+  validateInput,
+  bulkUpdateProjectStatus,
+);
+
+/**
+ * @route GET /api/projects/admin/reviews
+ * @desc Get project reviews for admin moderation
+ * @access Private (Admin)
+ */
+router.get(
+  "/admin/reviews",
+  verifyToken,
+  isAdmin,
+  [
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+    query("status")
+      .optional()
+      .isString()
+      .withMessage("Status must be a string"),
+    query("sortBy")
+      .optional()
+      .isString()
+      .withMessage("SortBy must be a string"),
+    query("sortOrder")
+      .optional()
+      .isIn(["ASC", "DESC"])
+      .withMessage("SortOrder must be ASC or DESC"),
+  ],
+  validateInput,
+  getProjectReviews,
+);
+
+/**
+ * @route PATCH /api/projects/admin/reviews/:id/status
+ * @desc Update review moderation status
+ * @access Private (Admin)
+ */
+router.patch(
+  "/admin/reviews/:id/status",
+  verifyToken,
+  isAdmin,
+  [
+    param("id").isUUID().withMessage("Invalid review ID"),
+    body("status")
+      .isIn(["pending", "approved", "rejected", "hidden"])
+      .withMessage("Invalid status"),
+  ],
+  validateInput,
+  updateReviewStatus,
+);
+
+/**
+ * @route POST /api/projects/admin/reviews/bulk-status
+ * @desc Bulk update review statuses
+ * @access Private (Admin)
+ */
+router.post(
+  "/admin/reviews/bulk-status",
+  verifyToken,
+  isAdmin,
+  [
+    body("reviewIds").isArray().withMessage("Review IDs must be an array"),
+    body("status")
+      .isIn(["pending", "approved", "rejected", "hidden"])
+      .withMessage("Invalid status"),
+  ],
+  validateInput,
+  bulkUpdateReviewStatus,
+);
+
+/**
+ * @route GET /api/projects/admin/settings
+ * @desc Get project settings
+ * @access Private (Admin)
+ */
+router.get(
+  "/admin/settings",
+  verifyToken,
+  isAdmin,
+  getProjectSettings,
+);
+
+/**
+ * @route PUT /api/projects/admin/settings
+ * @desc Update project settings
+ * @access Private (Admin)
+ */
+router.put(
+  "/admin/settings",
+  verifyToken,
+  isAdmin,
+  [
+    body("globalDownloadLimit")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Global download limit must be a positive integer"),
+    body("enableRatings")
+      .optional()
+      .isBoolean()
+      .withMessage("Enable ratings must be a boolean"),
+    body("enableReviewModeration")
+      .optional()
+      .isBoolean()
+      .withMessage("Enable review moderation must be a boolean"),
+    body("defaultLicenseType")
+      .optional()
+      .isIn(["personal", "commercial", "one_time", "unlimited"])
+      .withMessage("Invalid license type"),
+    body("autoEmailPurchaseConfirmation")
+      .optional()
+      .isBoolean()
+      .withMessage("Auto email purchase confirmation must be a boolean"),
+    body("priceBrackets")
+      .optional()
+      .isArray()
+      .withMessage("Price brackets must be an array"),
+  ],
+  validateInput,
+  updateProjectSettings,
 );
 
 export default router;

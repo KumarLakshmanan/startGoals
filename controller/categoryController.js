@@ -26,7 +26,7 @@ export const createCategory = async (req, res) => {
         categoryCode: !categoryCode ? "Category code is required" : undefined
       });
     }
-    
+
     // Validate length constraints
     if (categoryName.length < 2 || categoryName.length > 100) {
       await transaction.rollback();
@@ -34,14 +34,14 @@ export const createCategory = async (req, res) => {
         categoryName: "Category name must be between 2 and 100 characters"
       });
     }
-    
+
     if (categoryCode.length < 2 || categoryCode.length > 20) {
       await transaction.rollback();
       return sendValidationError(res, "Invalid category code length", {
         categoryCode: "Category code must be between 2 and 20 characters"
       });
     }
-    
+
     // Validate parentCategoryId format if provided
     if (parentCategoryId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentCategoryId)) {
       await transaction.rollback();
@@ -49,7 +49,7 @@ export const createCategory = async (req, res) => {
         parentCategoryId: "Invalid parent category ID format. Must be a valid UUID"
       });
     }
-    
+
     // Check if parent category exists
     if (parentCategoryId) {
       const parentCategory = await Category.findByPk(parentCategoryId, { transaction });
@@ -71,8 +71,8 @@ export const createCategory = async (req, res) => {
 
     if (existing) {
       await transaction.rollback();
-      return sendConflict(res, 
-        existing.categoryName === categoryName ? "categoryName" : "categoryCode", 
+      return sendConflict(res,
+        existing.categoryName === categoryName ? "categoryName" : "categoryCode",
         existing.categoryName === categoryName ? categoryName : categoryCode
       );
     }
@@ -147,7 +147,26 @@ export const createCategory = async (req, res) => {
 // Get all categories
 export const getAllCategories = async (req, res) => {
   try {
-    const categories = await Category.findAll();
+    const {
+      search = "",
+      sortBy = "createdAt",
+      sortOrder = "DESC",
+    } = req.query;
+
+    const whereClause = {};
+    if (search) {
+      whereClause[Op.or] = [
+        { categoryName: { [Op.iLike]: `%${search}%` } },
+        { categoryCode: { [Op.iLike]: `%${search}%` } },
+        { description: { [Op.iLike]: `%${search}%` } },
+      ];
+    }
+
+    const { count, rows: categories } = await Category.findAndCountAll({
+      where: whereClause,
+      order: [[sortBy, sortOrder.toUpperCase()]],
+    });
+
     return sendSuccess(res, 200, "Categories fetched successfully", categories);
   } catch (error) {
     return sendServerError(res, error);
@@ -302,11 +321,11 @@ export const deleteCategoryById = async (req, res) => {
 
 export const saveAllCategories = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const requestBody = req.body;
     let categories;
-    
+
     // Handle both direct array and wrapper object formats
     if (Array.isArray(requestBody)) {
       categories = requestBody;
@@ -316,12 +335,12 @@ export const saveAllCategories = async (req, res) => {
       await transaction.rollback();
       return sendValidationError(res, "Request body must be an array of categories or an object with a 'categories' array property");
     }
-    
+
     if (categories.length === 0) {
       await transaction.rollback();
       return sendValidationError(res, "Categories array cannot be empty");
     }
-    
+
     // Ensure the categories table exists
     try {
       await Category.sync({ alter: false });
@@ -329,14 +348,14 @@ export const saveAllCategories = async (req, res) => {
       await transaction.rollback();
       return sendServerError(res, error);
     }
-    
+
     // Process categories
     const categoriesToCreate = [];
     const validationErrors = [];
-    
+
     for (let i = 0; i < categories.length; i++) {
       const category = categories[i];
-      
+
       // Validate required fields
       if (!category.name || !category.code) {
         validationErrors.push({
@@ -345,7 +364,7 @@ export const saveAllCategories = async (req, res) => {
         });
         continue;
       }
-      
+
       // Check for existing categories with the same name or code
       const existing = await Category.findOne({
         where: {
@@ -356,7 +375,7 @@ export const saveAllCategories = async (req, res) => {
         },
         transaction
       });
-      
+
       if (existing) {
         validationErrors.push({
           index: i,
@@ -368,38 +387,155 @@ export const saveAllCategories = async (req, res) => {
         });
         continue;
       }
-      
+
       // Create category object
       const categoryData = {
         categoryName: category.name,
         categoryCode: category.code,
         description: category.description || null,
         parentCategoryId: category.parentCategoryId || null,
-        icon: category.icon || null,
         displayOrder: category.displayOrder || 0
       };
-      
+
       categoriesToCreate.push(categoryData);
     }
-    
+
     // Return validation errors if any
     if (validationErrors.length > 0) {
       await transaction.rollback();
       return sendValidationError(res, "Validation failed for one or more categories.", { validationErrors });
     }
-    
+
     // Create categories in bulk
     const createdCategories = await Category.bulkCreate(categoriesToCreate, {
       transaction,
       ignoreDuplicates: false // we already checked for duplicates
     });
-    
+
     await transaction.commit();
-    
+
     return sendSuccess(res, 200, "Categories created successfully", createdCategories);
-    
+
   } catch (error) {
     await transaction.rollback();
+    return sendServerError(res, error);
+  }
+};
+
+
+export const updateCategory = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { id } = req.params;
+    // {
+    //     "categoryName": "Data Science",
+    //     "categoryCode": "DATA_SCIENCE",
+    //     "description": "Data science, machine learning, and analytics courses."
+    // }
+    const { categoryName, categoryCode, description } = req.body;
+
+    // Validate required fields
+    if (!categoryName || !categoryCode) {
+      await transaction.rollback();
+      return sendValidationError(res, "Missing required fields", {
+        categoryName: !categoryName ? "Category name is required" : undefined,
+        categoryCode: !categoryCode ? "Category code is required" : undefined
+      });
+    }
+
+    // Validate length constraints
+    if (categoryName.length < 2 || categoryName.length > 100) {
+      await transaction.rollback();
+      return sendValidationError(res, "Invalid category name length", {
+        categoryName: "Category name must be between 2 and 100 characters"
+      });
+    }
+
+    if (categoryCode.length < 2 || categoryCode.length > 20) {
+      await transaction.rollback();
+      return sendValidationError(res, "Invalid category code length", {
+        categoryCode: "Category code must be between 2 and 20 characters"
+      });
+    }
+
+    // Validate category exists
+    const category = await Category.findByPk(id, { transaction });
+    if (!category) {
+      await transaction.rollback();
+      return sendNotFound(res, "Category not found", { id });
+    }
+    // Check for existing categories with the same name or code
+    const existing = await Category.findOne({
+      where: {
+        [Op.or]: [
+          { categoryCode: categoryCode, categoryId: { [Op.ne]: id } },
+          { categoryName: categoryName, categoryId: { [Op.ne]: id } },
+        ],
+      },
+      transaction,
+    });
+    if (existing) {
+      await transaction.rollback();
+      return sendConflict(res,
+        existing.categoryName === categoryName ? "categoryName" : "categoryCode",
+        existing.categoryName === categoryName ? categoryName : categoryCode
+      );
+    }
+    // Update category
+    category.categoryName = categoryName;
+    category.categoryCode = categoryCode;
+    category.description = description || null;
+
+    await category.save({ transaction });
+    await transaction.commit();
+
+    return sendSuccess(res, 200, "Category updated successfully", category);
+  } catch (error) {
+    await transaction.rollback();
+    return sendServerError(res, error);
+  }
+};
+// Controller to reorder categories (update displayOrder)
+export const reorderCategories = async (req, res) => {
+  const { categoryIds } = req.body;
+
+  if (!Array.isArray(categoryIds) || categoryIds.length === 0) {
+    return sendValidationError(res, "Category IDs array is required and cannot be empty", {
+      categoryIds: "Provide a non-empty array of category IDs"
+    });
+  }
+
+  const transaction = await sequelize.transaction();
+  try {
+    // Validate all category IDs exist
+    const categories = await Category.findAll({
+      where: {
+        categoryId: {
+          [Op.in]: categoryIds
+        }
+      },
+      transaction
+    });
+    if (categories.length !== categoryIds.length) {
+      await transaction.rollback();
+      return sendValidationError(res, "Some category IDs do not exist", {
+        categoryIds: "Some category IDs provided do not exist in the database"
+      });
+    }
+    // Update each category's displayOrder
+    for (let i = 0; i < categoryIds.length; i++) {
+      const categoryId = categoryIds[i];
+      await Category.update(
+        { displayOrder: i + 1 }, // Set displayOrder to 1-based index
+        { where: { categoryId }, transaction }
+      );
+    }
+    await transaction.commit();
+    return sendSuccess(res, 200, "Categories reordered successfully");
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error reordering categories:", error);
     return sendServerError(res, error);
   }
 };

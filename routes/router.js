@@ -25,6 +25,9 @@ import projectRatingRoutes from "./projectRatingRoutes.js";
 import fileUploadRoutes from "./fileUploadRoutes.js";
 import teacherRoutes from "./teacherRoutes.js";
 import coursePurchaseRoutes from "./coursePurchaseRoutes.js";
+import notificationRoutes from "./notificationRoutes.js";
+import certificateRoutes from "./certificateRoutes.js";
+import analyticsRoutes from "./analyticsRoutes.js";
 
 const router = express.Router();
 
@@ -62,7 +65,11 @@ router.use("/project-files", projectFileRoutes);
 router.use("/project-ratings", projectRatingRoutes);
 router.use("/discounts", discountRoutes);
 router.use("/upload", fileUploadRoutes);
+// Admin routes
 router.use("/admin/teachers", teacherRoutes);
+router.use("/admin/analytics", analyticsRoutes);
 router.use("/course-purchase", coursePurchaseRoutes);
+router.use("/notifications", notificationRoutes);
+router.use("/certificates", certificateRoutes);
 
 export default router;

@@ -6,16 +6,11 @@ import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerEr
 export const getAllBanners = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 10,
       search = "",
       sortBy = "createdAt",
       sortOrder = "DESC",
     } = req.query;
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    // Build where condition for search
     const whereClause = {};
     if (search) {
       whereClause.title = {
@@ -36,27 +31,16 @@ export const getAllBanners = async (req, res) => {
         "createdAt",
         "updatedAt",
       ],
-      limit: parseInt(limit),
-      offset,
       order: [
         ["order", "ASC"],
         [sortBy, sortOrder.toUpperCase()],
       ],
     });
 
-    const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(res, 200, "Banners fetched successfully", {
+    return sendSuccess(res, 200, "Banners fetched successfully",
       banners,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages,
-        totalItems: count,
-        itemsPerPage: parseInt(limit),
-        hasNextPage: parseInt(page) < totalPages,
-        hasPrevPage: parseInt(page) > 1,
-      },
-    });
+    );
   } catch (error) {
     console.error("Get all banners error:", error);
     return sendServerError(res, error);
@@ -120,10 +104,11 @@ export const createBanner = async (req, res) => {
       isActive = isActive === "true";
     }
 
-    // Validation      if (!title) {
-    console.log("Validation failed: Title is required");
-    return sendValidationError(res, "Title is required", { title: "Title is required" });
-
+    // Validation
+    if (!title) {
+      console.log("Validation failed: Title is required");
+      return sendValidationError(res, "Title is required", { title: "Title is required" });
+    }
     // Check if image was uploaded through fileUploadMiddleware
     if (req.file) {
       // Standard fileUploadMiddleware puts the URL in location property
@@ -190,22 +175,9 @@ export const createBanner = async (req, res) => {
       order,
       image: imageUrl, // Keep for backward compatibility
     };
+    await Banner.create(bannerData);
 
-    console.log("Attempting to create banner with data:", bannerData);
-
-    // Create banner in a try/catch block to catch any database errors
-    let banner;
-    try {
-      banner = await Banner.create(bannerData);
-      console.log("Banner created successfully:", banner.id);
-    } catch (dbError) {
-      console.error("Database error creating banner:", dbError);
-      return sendError(res, 500, "Database error: " + dbError.message, { database: dbError.message });
-    }
-
-    // Explicitly flush response to client
-    console.log("Sending success response");
-    return sendSuccess(res, 201, "Banner created successfully", banner);
+    return sendSuccess(res, 200, "Banner created successfully", bannerData);
   } catch (error) {
     console.error("Create banner error:", error);
     // Ensure we send a response even if there's an error
@@ -333,6 +305,7 @@ export const updateBanner = async (req, res) => {
     console.error("Update banner error:", error);
     return sendServerError(res, error);
   }
+  return sendError(res, 500, "An unexpected error occurred while updating the banner");
 };
 
 // Delete banner by ID (soft delete)

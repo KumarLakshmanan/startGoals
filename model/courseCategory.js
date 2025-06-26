@@ -17,7 +17,7 @@ const Category = sequelize.define(
       unique: true,
     },
     categoryCode: {
-      type: DataTypes.STRING(50), // Increased length to accommodate longer codes
+      type: DataTypes.STRING(50),
       allowNull: false,
       unique: true,
       validate: {
@@ -36,20 +36,16 @@ const Category = sequelize.define(
         key: "category_id",
       },
     },
-    icon: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
     displayOrder: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: 0,
     },
-    ...commonFields, // ✅ shared fields like createdAt, updatedAt, deletedAt
+    ...commonFields,
   },
   {
     tableName: "course_categories",
-    ...commonOptions, // ✅ shared options: timestamps, paranoid, underscored
+    ...commonOptions,
   },
 );
 

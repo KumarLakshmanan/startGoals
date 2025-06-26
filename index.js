@@ -24,16 +24,17 @@ app.use('/live-session/assets', express.static('web/assets'));
 
 app.use(
   cors({
-    origin: "*"
+    origin: [
+      "https://startgoals.netlify.app/",
+      "http://localhost:3030",
+      "http://localhost:5173",
+      "https://psychometrics.onrender.com",
+      "http://startgoals.in",
+      "https://startgoals.in",
+    ],
+    credentials: true,
   })
 );
-
-app.use(function (req, res, next) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, GET, PATCH, DELETE, OPTIONS');
-  next();
-});
 
 app.use(express.json({ limit: '50mb' }));
 
@@ -88,22 +89,35 @@ app.post('/sync-db', syncDbMiddleware, async (req, res) => {
     console.log('Received sync request with options:', JSON.stringify(options, null, 2));
 
     if (!models || !Array.isArray(models) || models.length === 0) {
-      return sendError(res, 400, "Please select at least one model to synchronize", { logs: ["Error: No models selected"] });
+      return res.status(200).json({
+        status: false,
+        success: false,
+        message: "Please select at least one model to synchronize",
+        logs: ["Error: No models selected"],
+        error: "No models selected"
+      });
     }
 
     console.log(`Starting manual database sync with options:`, options);
     const result = await syncModels(models, options);
 
-    if (result.success) {
-      console.log("✅ Database synced successfully");
-      return sendSuccess(res, 200, "Database synced successfully", result);
-    } else {
-      console.error("💥 Failed to sync database:", result.error);
-      return sendError(res, 500, "Failed to sync database", { error: result.error, logs: result.logs });
-    }
+    // Always return a consistent response
+    return res.status(200).json({
+      status: result.status,
+      success: result.success,
+      message: result.message,
+      logs: result.logs,
+      error: result.error || null
+    });
   } catch (error) {
     console.error("💥 Failed to sync database:", error);
-    return sendServerError(res, error);
+    return res.status(200).json({
+      status: false,
+      success: false,
+      message: error.message || "Failed to sync database",
+      logs: [error.message],
+      error: error.message
+    });
   }
 });
 
@@ -123,6 +137,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
     origin: [
+      "https://startgoals.netlify.app/",
+      "http://localhost:3030",
       "http://localhost:5173",
       "https://psychometrics.onrender.com",
       "http://startgoals.in",

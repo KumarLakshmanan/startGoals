@@ -21,10 +21,6 @@ const Skill = sequelize.define(
           msg: "Skill name must be between 1 and 100 characters",
         },
       },
-    },    categoryId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      field: "category_id",
     },
     levelId: {
       type: DataTypes.UUID,
@@ -34,10 +30,6 @@ const Skill = sequelize.define(
     description: {
       type: DataTypes.TEXT,
       allowNull: true,
-    },    goalId: {
-      type: DataTypes.UUID,
-      allowNull: true, // Made optional
-      field: "goal_id",
     },
     ...commonFields,
   },

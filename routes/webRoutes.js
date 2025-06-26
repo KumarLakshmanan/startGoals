@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 import pkg from "agora-access-token";
 const { RtcRole } = pkg;
 import agoraService from "../services/agoraService.js";
+import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -94,6 +95,78 @@ router.post("/api/agora-token", async (req, res) => {
     console.error("Token generation error:", error);
     res.status(500).json({ error: "Failed to generate token" });
   }
+});
+
+// ===================== ANALYTICS DASHBOARD API ENDPOINTS =====================
+// These endpoints are for the analytics dashboard and require admin authentication
+
+// Get basic dashboard stats
+router.get("/api/dashboard/stats", authenticateToken, isAdmin, (req, res) => {
+  // This would connect to your analytics service
+  // For now, return mock data
+  const stats = {
+    totalUsers: 2500,
+    activeUsers: 1800,
+    totalCourses: 150,
+    totalRevenue: 325000,
+    newUsersToday: 35,
+    completedCourses: 780
+  };
+  
+  res.json({ success: true, data: stats });
+});
+
+// Get user activity graph data
+router.get("/api/dashboard/user-activity", authenticateToken, isAdmin, (req, res) => {
+  // This would connect to your analytics service
+  // For now, return mock data
+  const userActivity = {
+    labels: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    datasets: [
+      {
+        label: "Active Users",
+        data: [650, 730, 690, 810, 880, 720, 680]
+      },
+      {
+        label: "New Registrations",
+        data: [120, 135, 110, 150, 180, 90, 85]
+      }
+    ]
+  };
+  
+  res.json({ success: true, data: userActivity });
+});
+
+// Get revenue graph data
+router.get("/api/dashboard/revenue", authenticateToken, isAdmin, (req, res) => {
+  // This would connect to your analytics service
+  // For now, return mock data
+  const revenue = {
+    labels: ["Jan", "Feb", "Mar", "Apr", "May", "Jun"],
+    datasets: [
+      {
+        label: "Revenue",
+        data: [35000, 42000, 38000, 45000, 50000, 55000]
+      }
+    ]
+  };
+  
+  res.json({ success: true, data: revenue });
+});
+
+// Get course popularity data
+router.get("/api/dashboard/popular-courses", authenticateToken, isAdmin, (req, res) => {
+  // This would connect to your analytics service
+  // For now, return mock data
+  const popularCourses = [
+    { name: "JavaScript Fundamentals", enrollments: 256, rating: 4.7 },
+    { name: "React Mastery", enrollments: 212, rating: 4.8 },
+    { name: "Node.js Backend", enrollments: 187, rating: 4.7 },
+    { name: "Python for Beginners", enrollments: 145, rating: 4.5 },
+    { name: "Data Science Essentials", enrollments: 132, rating: 4.6 }
+  ];
+  
+  res.json({ success: true, data: popularCourses });
 });
 
 export default router;

@@ -3,20 +3,36 @@ import express from "express";
 import {
   bulkUploadSkills,
   getAllSkills,
-  getSkillsByGoal,
-  getSkillsByCategory,
   getSkillsByLevel,
   getSkillOptions,
+  getSkill,
+  createSkill,
+  updateSkill,
+  deleteSkill
 } from "../controller/skillcontroller.js";
 import { isAdmin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
+
+// Legacy routes for backward compatibility (STATIC FIRST)
 router.post("/saveAllSkills", isAdmin, bulkUploadSkills);
+router.post("/createSkill", isAdmin, createSkill);
 router.get("/getAllSkills", getAllSkills);
-router.get("/getSkillsByGoal/:goalId", getSkillsByGoal);
-router.get("/getSkillsByCategory/:categoryId", getSkillsByCategory);
+router.get("/getSkill/:skillId", getSkill);
 router.get("/getSkillsByLevel/:levelId", getSkillsByLevel);
+router.put("/updateSkill/:skillId", isAdmin, updateSkill);
+router.delete("/deleteSkill/:skillId", isAdmin, deleteSkill);
+
+// Special routes
+router.get("/level/:levelId", getSkillsByLevel);
 router.get("/options", getSkillOptions);
+
+// Modern RESTful routes
+router.get("/", getAllSkills);
+router.post("/", isAdmin, createSkill);
+router.get("/:skillId", getSkill);
+router.put("/:skillId", isAdmin, updateSkill);
+router.delete("/:skillId", isAdmin, deleteSkill);
 
 export default router;

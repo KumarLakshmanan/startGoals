@@ -1,7 +1,5 @@
 // controller/skillController.js
 import Skill from "../model/skill.js";
-import Goal from "../model/goal.js";
-import CourseCategory from "../model/courseCategory.js";
 import CourseLevel from "../model/courseLevel.js";
 import { validateSkillInput } from "../utils/commonUtils.js";
 import { Op } from "sequelize";
@@ -11,7 +9,7 @@ export const bulkUploadSkills = async (req, res) => {
   try {
     const requestBody = req.body;
     let skills;
-    
+
     // Handle both direct array and wrapper object formats
     if (Array.isArray(requestBody)) {
       skills = requestBody;
@@ -28,7 +26,7 @@ export const bulkUploadSkills = async (req, res) => {
         skills: "Request body must be a non-empty array of skills"
       });
     }
-    
+
     // Check if skills table exists, if not create it
     try {
       await Skill.sync({ alter: false });
@@ -81,25 +79,10 @@ export const bulkUploadSkills = async (req, res) => {
         levelId = skill.levelId;
       }
 
-      // Validate goalId if provided
-      let validGoalId = null;
-      if (skill.goalId) {
-        const goal = await Goal.findByPk(skill.goalId);
-        if (!goal) {
-          validationErrors.push({
-            index: i,
-            errors: [`Goal with ID '${skill.goalId}' not found`],
-          });
-          continue;
-        }
-        validGoalId = skill.goalId;
-      }      // Create skill object with new structure
       const skillData = {
         skillName: skill.skillName,
-        categoryId: skill.categoryId || null,
         levelId: levelId,
         description: skill.description || null,
-        goalId: validGoalId, // Use validated goalId
       };
 
       skillsToCreate.push(skillData);
@@ -113,7 +96,7 @@ export const bulkUploadSkills = async (req, res) => {
     }
 
     const createdSkills = await Skill.bulkCreate(skillsToCreate, {
-      ignoreDuplicates: true, // Ignore duplicates instead of failing
+      ignoreDuplicates: true,
     });
 
     return sendSuccess(res, "Skills uploaded successfully", {
@@ -127,28 +110,29 @@ export const bulkUploadSkills = async (req, res) => {
 
 export const getAllSkills = async (req, res) => {
   try {
-    const skills = await Skill.findAll({
+    const {
+      search = "",
+      sortBy = "createdAt",
+      sortOrder = "ASC",
+    } = req.query;
+
+    // Build where condition for search
+    const whereClause = {};
+    if (search) {
+      whereClause.skillName = {
+        [Op.iLike]: `%${search}%`,
+      };
+    }
+
+    const { count, rows: skills } = await Skill.findAndCountAll({
+      where: whereClause,
       attributes: [
         "skillId",
         "skillName",
-        "categoryId",
         "levelId",
         "description",
-        "goalId",
       ],
       include: [
-        {
-          model: Goal,
-          as: "goal",
-          attributes: ["goalId", "goalName"],
-          required: false, // LEFT JOIN since goalId is now optional
-        },
-        {
-          model: CourseCategory,
-          as: "category",
-          attributes: ["categoryId", "categoryName"],
-          required: false, // LEFT JOIN since categoryId is optional
-        },
         {
           model: CourseLevel,
           as: "level",
@@ -156,150 +140,19 @@ export const getAllSkills = async (req, res) => {
           required: false, // LEFT JOIN since levelId is optional
         },
       ],
-      order: [["createdAt", "ASC"]],
+      order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    return sendSuccess(res, "Skills fetched successfully", {
-      data: skills
-    });
+    return sendSuccess(res, 200, "Skills fetched successfully", skills);
   } catch (error) {
     console.error("Fetch error:", error);
     return sendServerError(res, "Failed to fetch skills", error.message);
   }
 };
 
-export const getSkillsByGoal = async (req, res) => {
-  try {
-    const { goalId } = req.params;
-
-    // Validate UUID format
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(goalId)) {
-      return sendValidationError(res, `Invalid goalId format: ${goalId}. Must be a valid UUID.`);
-    }
-
-    // ✅ Step 1: Validate if goal exists
-    const goal = await Goal.findByPk(goalId);
-    if (!goal) {
-      return sendNotFound(res, "Goal not found");
-    }// ✅ Step 2: Fetch all skills for that goal
-    const skills = await Skill.findAll({
-      where: { goalId },
-      attributes: [
-        "skillId",
-        "skillName",
-        "categoryId",
-        "levelId",
-        "description",
-      ],
-      include: [
-        {
-          model: CourseCategory,
-          as: "category",
-          attributes: ["categoryId", "categoryName"],
-          required: false,
-        },
-        {
-          model: CourseLevel,
-          as: "level",
-          attributes: ["levelId", "name"],
-          required: false,
-        },
-      ],
-      order: [["createdAt", "ASC"]],
-    });
-
-    return sendSuccess(res, "Skills fetched successfully", {
-      data: skills
-    });
-  } catch (error) {
-    console.error("Error fetching skills by goal:", error);
-    return sendServerError(res, "Failed to fetch skills by goal", error.message);
-  }
-};
-
-export const getSkillsByCategory = async (req, res) => {
-  try {
-    const { categoryId } = req.params;
-    const { levelId } = req.query; // Optional level filter
-
-    // Validate UUID format for categoryId
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
-      return sendValidationError(res, `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`);
-    }
-
-    // Validate category exists
-    const category = await CourseCategory.findByPk(categoryId);
-    if (!category) {
-      return sendNotFound(res, "Category not found");
-    }
-
-    // Validate levelId if provided
-    if (levelId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
-      return sendValidationError(res, `Invalid levelId format: ${levelId}. Must be a valid UUID.`);
-    }
-    
-    // If levelId is provided, validate it exists
-    if (levelId) {
-      const level = await CourseLevel.findByPk(levelId);
-      if (!level) {
-        return sendNotFound(res, "Level not found");
-      }
-    }
-
-    const whereClause = { categoryId };
-    if (levelId) {
-      whereClause.levelId = levelId;
-    }
-
-    const skills = await Skill.findAll({
-      where: whereClause,
-      attributes: [
-        "skillId",
-        "skillName",
-        "categoryId",
-        "levelId",
-        "description",
-        "goalId",
-      ],
-      include: [
-        {
-          model: Goal,
-          as: "goal",
-          attributes: ["goalId", "goalName"],
-          required: false,
-        },
-        {
-          model: CourseCategory,
-          as: "category",
-          attributes: ["categoryId", "categoryName"],
-          required: false,
-        },
-        {
-          model: CourseLevel,
-          as: "level",
-          attributes: ["levelId", "name"],
-          required: false,
-        },
-      ],
-      order: [
-        ["levelId", "ASC"],
-        ["skillName", "ASC"],
-      ],
-    });
-
-    return sendSuccess(res, "Skills fetched successfully", {
-      data: skills
-    });
-  } catch (error) {
-    console.error("Error fetching skills by category:", error);
-    return sendServerError(res, "Failed to fetch skills by category", error.message);
-  }
-};
-
 export const getSkillsByLevel = async (req, res) => {
   try {
     const { levelId } = req.params;
-    const { categoryId } = req.query; // Optional category filter
 
     // Validate UUID format for levelId
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(levelId)) {
@@ -312,47 +165,17 @@ export const getSkillsByLevel = async (req, res) => {
       return sendNotFound(res, "Level not found");
     }
 
-    // Validate categoryId if provided
-    if (categoryId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
-      return sendValidationError(res, `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`);
-    }
-    
-    // If categoryId is provided, validate it exists
-    if (categoryId) {
-      const category = await CourseCategory.findByPk(categoryId);
-      if (!category) {
-        return sendNotFound(res, "Category not found");
-      }
-    }
-
     const whereClause = { levelId };
-    if (categoryId) {
-      whereClause.categoryId = categoryId;
-    }
 
     const skills = await Skill.findAll({
       where: whereClause,
       attributes: [
         "skillId",
         "skillName",
-        "categoryId",
         "levelId",
         "description",
-        "goalId",
       ],
       include: [
-        {
-          model: Goal,
-          as: "goal",
-          attributes: ["goalId", "goalName"],
-          required: false,
-        },
-        {
-          model: CourseCategory,
-          as: "category",
-          attributes: ["categoryId", "categoryName"],
-          required: false,
-        },
         {
           model: CourseLevel,
           as: "level",
@@ -374,33 +197,211 @@ export const getSkillsByLevel = async (req, res) => {
 
 export const getSkillOptions = async (req, res) => {
   try {
-    // Get all categories
-    const categories = await CourseCategory.findAll({
-      attributes: ["categoryId", "categoryName"],
-      order: [["categoryName", "ASC"]],
-    });
-
     // Get all levels
     const levels = await CourseLevel.findAll({
       attributes: ["levelId", "name"],
       order: [["order", "ASC"]],
     });
 
-    // Get all goals
-    const goals = await Goal.findAll({
-      attributes: ["goalId", "goalName"],
-      order: [["goalName", "ASC"]],
-    });
-
     return sendSuccess(res, "Skill options fetched successfully", {
       data: {
-        categories,
         levels,
-        goals,
       }
     });
   } catch (error) {
     console.error("Error fetching skill options:", error);
     return sendServerError(res, "Failed to fetch skill options", error.message);
+  }
+};
+
+// Get skill by ID
+export const getSkill = async (req, res) => {
+  try {
+    const { skillId } = req.params;
+
+    // Validate UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(skillId)) {
+      return sendValidationError(res, `Invalid skillId format: ${skillId}. Must be a valid UUID.`);
+    }
+
+    const skill = await Skill.findByPk(skillId, {
+      attributes: [
+        "skillId",
+        "skillName",
+        "description",
+        "levelId"
+      ],
+      include: [
+        {
+          model: CourseLevel,
+          as: "level",
+          attributes: ["levelId", "name"],
+          required: false,
+        }
+      ]
+    });
+
+    if (!skill) {
+      return sendNotFound(res, "Skill not found");
+    }
+
+    return sendSuccess(res, 200, "Skill fetched successfully", skill);
+  } catch (error) {
+    console.error("Error fetching skill by ID:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Create a new skill
+export const createSkill = async (req, res) => {
+  try {
+    const {
+      skillName,
+      description,
+      levelId
+    } = req.body;
+
+    // Validate required fields
+    if (!skillName) {
+      return sendValidationError(res, "Missing required fields", {
+        skillName: "Skill name is required"
+      });
+    }
+
+    if (levelId) {
+      const level = await CourseLevel.findByPk(levelId);
+      if (!level) {
+        return sendNotFound(res, `Level with ID '${levelId}' not found`);
+      }
+    }
+
+    // Check for existing skill with same name
+    const existingSkill = await Skill.findOne({
+      where: {
+        skillName
+      }
+    });
+
+    if (existingSkill) {
+      return sendConflict(res, "A skill with this name already exists");
+    }
+
+    // Create the skill
+    const newSkill = await Skill.create({
+      skillName,
+      description,
+      levelId
+    });
+
+    // Fetch the created skill with associations
+    const createdSkill = await Skill.findByPk(newSkill.skillId, {
+      include: [
+        {
+          model: CourseLevel,
+          as: "level",
+          attributes: ["levelId", "name"],
+          required: false,
+        }
+      ]
+    });
+
+    return sendSuccess(res, 201, "Skill created successfully", createdSkill);
+  } catch (error) {
+    console.error("Error creating skill:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Update an existing skill
+export const updateSkill = async (req, res) => {
+  try {
+    const { skillId } = req.params;
+    const {
+      skillName,
+      description,
+      levelId
+    } = req.body;
+
+    // Validate UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(skillId)) {
+      return sendValidationError(res, `Invalid skillId format: ${skillId}. Must be a valid UUID.`);
+    }
+
+    // Find the skill
+    const skill = await Skill.findByPk(skillId);
+    if (!skill) {
+      return sendNotFound(res, "Skill not found");
+    }
+
+    if (levelId) {
+      const level = await CourseLevel.findByPk(levelId);
+      if (!level) {
+        return sendNotFound(res, `Level with ID '${levelId}' not found`);
+      }
+    }
+
+    // Check for conflicting skill name
+    if (skillName && skillName !== skill.skillName) {
+      const existingSkill = await Skill.findOne({
+        where: {
+          skillName,
+          skillId: { [Op.ne]: skillId }
+        }
+      });
+
+      if (existingSkill) {
+        return sendConflict(res, "A skill with this name already exists");
+      }
+    }
+
+    // Update the skill
+    await skill.update({
+      skillName: skillName || skill.skillName,
+      description: description !== undefined ? description : skill.description,
+      levelId: levelId !== undefined ? levelId : skill.levelId
+    });
+
+    // Fetch the updated skill with associations
+    const updatedSkill = await Skill.findByPk(skillId, {
+      include: [
+        {
+          model: CourseLevel,
+          as: "level",
+          attributes: ["levelId", "name"],
+          required: false,
+        }
+      ]
+    });
+
+    return sendSuccess(res, 200, "Skill updated successfully", updatedSkill);
+  } catch (error) {
+    console.error("Error updating skill:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Delete a skill
+export const deleteSkill = async (req, res) => {
+  try {
+    const { skillId } = req.params;
+
+    // Validate UUID format
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(skillId)) {
+      return sendValidationError(res, `Invalid skillId format: ${skillId}. Must be a valid UUID.`);
+    }
+
+    // Find the skill
+    const skill = await Skill.findByPk(skillId);
+    if (!skill) {
+      return sendNotFound(res, "Skill not found");
+    }
+
+    // Delete the skill
+    await skill.destroy();
+
+    return sendSuccess(res, 200, "Skill deleted successfully");
+  } catch (error) {
+    console.error("Error deleting skill:", error);
+    return sendServerError(res, error);
   }
 };

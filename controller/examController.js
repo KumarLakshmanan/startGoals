@@ -88,7 +88,21 @@ export const bulkUploadExams = async (req, res) => {
 
 export const getAllExams = async (req, res) => {
   try {
-    const exams = await Exam.findAll({
+    const {
+      search = "",
+      sortBy = "createdAt",
+      sortOrder = "ASC",
+    } = req.query;
+    // Build where condition for search
+    const whereClause = {};
+    if (search) {
+      whereClause.examName = {
+        [Op.iLike]: `%${search}%`,
+      };
+    }
+
+    const { count, rows: exams } = await Exam.findAndCountAll({
+      where: whereClause,
       attributes: ["examId", "examName", "description", "levelId"],
       include: {
         model: CourseLevel,
@@ -96,8 +110,10 @@ export const getAllExams = async (req, res) => {
         attributes: ["levelId", "name", "order"],
         required: false,
       },
-      order: [["createdAt", "ASC"]],
-    });    return sendSuccess(res, 200, "Exams fetched successfully", exams);
+      order: [[sortBy, sortOrder.toUpperCase()]],
+    });
+
+    return sendSuccess(res, 200, "Exams fetched successfully", exams);
   } catch (error) {
     console.error("Fetch error:", error);
     return sendServerError(res, error);

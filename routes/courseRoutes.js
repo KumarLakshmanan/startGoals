@@ -35,27 +35,28 @@ const router = express.Router();
 // ===================== ADMIN/OWNER COURSE MANAGEMENT =====================
 
 // Admin dashboard and overview
-router.get("/admin/dashboard", isAdmin, getAllCoursesAdmin);
-router.get("/admin/overview", isAdmin, getAdminDashboardOverview);
+router.get("/dashboard", isAdmin, getAllCoursesAdmin);
+router.get("/overview", isAdmin, getAdminDashboardOverview);
+router.get("/list", isAdmin, getAllCoursesAdmin); // Add specific route for list view
 
 // Course management
-router.get("/admin/manage/:courseId", isAdmin, getCourseManagementData);
+router.get("/manage/:courseId", isAdmin, getCourseManagementData);
 
 // Create courses (Admin/Owner only)
-router.post("/admin/create/live", isAdmin, createLiveCourse);
-router.post("/admin/create/recorded", isAdmin, createRecordedCourse);
+router.post("/create/live", isAdmin, createLiveCourse);
+router.post("/create/recorded", isAdmin, createRecordedCourse);
 
 // Update/Delete courses (Admin/Owner only)
-router.put("/admin/:courseId", isAdmin, updateCourseAdmin);
-router.delete("/admin/:courseId", isAdmin, deleteCourseAdmin);
+router.put("/:courseId", isAdmin, updateCourseAdmin);
+router.delete("/:courseId", isAdmin, deleteCourseAdmin);
 
 // Course settings management (Admin/Owner only)
-router.patch("/admin/:courseId/settings", isAdmin, updateCourseSettings);
+router.patch("/:courseId/settings", isAdmin, updateCourseSettings);
 
 // Analytics and Reporting (Admin/Owner only)
-router.get("/admin/analytics/:courseId", isAdmin, getCourseAnalytics);
-router.get("/admin/revenue-analytics", isAdmin, getRevenueAnalytics);
-router.post("/admin/export/:courseId", isAdmin, exportCourseData);
+router.get("/analytics/:courseId", isAdmin, getCourseAnalytics);
+router.get("/revenue-analytics", isAdmin, getRevenueAnalytics);
+router.post("/export/:courseId", isAdmin, exportCourseData);
 
 // ===================== PUBLIC AND GENERAL ROUTES =====================
 
