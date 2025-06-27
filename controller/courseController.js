@@ -14,7 +14,16 @@ import Resource from "../model/resource.js";
 import User from "../model/user.js";
 import Enrollment from "../model/enrollment.js";
 import { Op } from "sequelize";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 export const getCourseById = async (req, res) => {
   const { courseId } = req.params;

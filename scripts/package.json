@@ -1,0 +1,16 @@
+{
+  "name": "startgoals-seeders",
+  "version": "1.0.0",
+  "description": "Data seeding scripts for StartGoals",
+  "type": "module",
+  "scripts": {
+    "seed": "node seedData.js"
+  },  "dependencies": {
+    "@faker-js/faker": "^8.4.1",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.7",
+    "sequelize": "^6.37.7",
+    "mysql2": "^3.9.3",
+    "uuid": "^9.0.1"
+  }
+}

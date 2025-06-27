@@ -2,7 +2,16 @@ import CourseLevel from "../model/courseLevel.js";
 import { validateCourseLevelInput } from "../utils/commonUtils.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 // Controller for Bulk Upload of Course Levels
 export const bulkUploadCourseLevels = async (req, res) => {

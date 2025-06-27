@@ -9,7 +9,16 @@ import UserSkills from "../model/userSkills.js";
 import UserExams from "../model/userExams.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 // Select Languages
 export const selectLanguages = async (req, res) => {

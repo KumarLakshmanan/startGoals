@@ -10,7 +10,16 @@ import Language from "../model/language.js";
 import SearchAnalytics from "../model/searchAnalytics.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 // ===================== UNIFIED SEARCH WITH PROJECTS =====================
 

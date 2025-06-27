@@ -2,7 +2,16 @@ import { Op } from "sequelize";
 import Language from "../model/language.js";
 import { validateLanguageInput } from "../utils/commonUtils.js";
 import sequelize from "../config/db.js";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 // ❌ DELETE: Soft delete
 export const deleteCourseLanguage = async (req, res) => {

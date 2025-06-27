@@ -14,7 +14,6 @@ import {
   validateDiscountCode,
   getDiscountUsageStatistics,
   getUserDiscountHistory,
-  // Admin management functions
   getAllDiscountCodesAdmin,
   getDiscountAnalytics,
   bulkUpdateDiscountCodes,
@@ -77,7 +76,6 @@ router.post(
       .isBoolean()
       .withMessage("Is active must be a boolean"),
   ],
-  validateInput,
   createDiscountCode,
 );
 
@@ -111,7 +109,6 @@ router.get(
       .isIn(["ASC", "DESC"])
       .withMessage("Sort order must be ASC or DESC"),
   ],
-  validateInput,
   getAllDiscountCodes,
 );
 
@@ -120,7 +117,6 @@ router.get(
   "/:id",
   isAdmin,
   [param("id").isInt().withMessage("Valid discount code ID is required")],
-  validateInput,
   getDiscountCodeById,
 );
 
@@ -179,7 +175,6 @@ router.put(
       .isBoolean()
       .withMessage("Is active must be a boolean"),
   ],
-  validateInput,
   updateDiscountCode,
 );
 
@@ -188,7 +183,6 @@ router.delete(
   "/:id",
   isAdmin,
   [param("id").isInt().withMessage("Valid discount code ID is required")],
-  validateInput,
   deleteDiscountCode,
 );
 
@@ -212,7 +206,6 @@ router.post(
       .isInt()
       .withMessage("Valid project ID is required"),
   ],
-  validateInput,
   validateDiscountCode,
 );
 
@@ -232,7 +225,6 @@ router.get(
       .isInt()
       .withMessage("Valid discount code ID is required"),
   ],
-  validateInput,
   getDiscountUsageStatistics,
 );
 
@@ -250,7 +242,6 @@ router.get(
       .isInt({ min: 1, max: 50 })
       .withMessage("Limit must be between 1 and 50"),
   ],
-  validateInput,
   getUserDiscountHistory,
 );
 
@@ -290,7 +281,6 @@ router.get(
       .isJSON()
       .withMessage("Date range must be valid JSON"),
   ],
-  validateInput,
   getAllDiscountCodesAdmin,
 );
 
@@ -313,7 +303,6 @@ router.get(
       .isIn(["day", "week", "month"])
       .withMessage("Invalid groupBy value"),
   ],
-  validateInput,
   getDiscountAnalytics,
 );
 
@@ -334,7 +323,6 @@ router.put(
       .withMessage("All discount IDs must be integers"),
     body("updateData").isObject().withMessage("Update data object is required"),
   ],
-  validateInput,
   bulkUpdateDiscountCodes,
 );
 
@@ -358,7 +346,6 @@ router.get(
     query("dateFrom").optional().isISO8601().withMessage("Invalid date format"),
     query("dateTo").optional().isISO8601().withMessage("Invalid date format"),
   ],
-  validateInput,
   exportDiscountData,
 );
 

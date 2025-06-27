@@ -14,7 +14,16 @@ import Enrollment from "../model/enrollment.js";
 import ProjectPurchase from "../model/projectPurchase.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 // Create or update course rating
 export const rateCourse = async (req, res) => {

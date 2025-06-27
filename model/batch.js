@@ -14,6 +14,10 @@ const Batch = sequelize.define(
     courseId: {
       type: DataTypes.UUID,
       allowNull: false,
+      references: {
+        model: "courses",
+        key: "course_id",
+      },
     },
     title: {
       type: DataTypes.STRING,
@@ -23,13 +27,42 @@ const Batch = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    startTime: {
+    startDate: {
       type: DataTypes.DATE,
       allowNull: false,
+      comment: "Start date of the batch",
     },
-    endTime: {
+    endDate: {
       type: DataTypes.DATE,
       allowNull: false,
+      comment: "End date of the batch",
+    },
+    enrollmentCapacity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 30,
+      comment: "Maximum number of students allowed in the batch",
+    },
+    currentEnrollment: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+      comment: "Current number of enrolled students",
+    },
+    status: {
+      type: DataTypes.ENUM("upcoming", "ongoing", "completed", "cancelled"),
+      allowNull: false,
+      defaultValue: "upcoming",
+    },
+    hasChatEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      comment: "Whether batch-level chat is enabled",
+    },
+    chatChannelId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "External chat channel identifier",
     },
     createdBy: {
       type: DataTypes.UUID,

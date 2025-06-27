@@ -28,6 +28,7 @@ import coursePurchaseRoutes from "./coursePurchaseRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
 import certificateRoutes from "./certificateRoutes.js";
 import analyticsRoutes from "./analyticsRoutes.js";
+import liveCourseRoutes from "./liveCourseRoutes.js";
 
 const router = express.Router();
 
@@ -68,6 +69,7 @@ router.use("/upload", fileUploadRoutes);
 // Admin routes
 router.use("/admin/teachers", teacherRoutes);
 router.use("/admin/analytics", analyticsRoutes);
+router.use("/admin/courses", liveCourseRoutes);
 router.use("/course-purchase", coursePurchaseRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/certificates", certificateRoutes);

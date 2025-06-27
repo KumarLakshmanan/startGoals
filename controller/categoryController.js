@@ -3,7 +3,16 @@ import Skill from "../model/skill.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
 import Goal from "../model/goal.js";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 // Create a new category with skills
 export const createCategory = async (req, res) => {

@@ -1,6 +1,15 @@
 // controllers/uploadController.js
 import crypto from "crypto";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 // Helper function to construct public S3 URL
 const constructS3PublicUrl = (bucketName, key, region = "us-east-1") => {

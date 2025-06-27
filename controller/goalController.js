@@ -3,7 +3,16 @@ import Goal from "../model/goal.js";
 import CourseLevel from "../model/courseLevel.js";
 import { validateGoalInput } from "../utils/commonUtils.js";
 import { Op } from "sequelize";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 export const bulkUploadGoals = async (req, res) => {
   try {

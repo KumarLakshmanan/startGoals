@@ -24,8 +24,10 @@ import {
   sendError,
   sendValidationError,
   sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
   sendServerError,
-  sendConflict,
+  sendConflict
 } from "../utils/responseHelper.js";
 
 export const userRegistration = async (req, res) => {

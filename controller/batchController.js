@@ -7,7 +7,16 @@ import Enrollment from "../model/enrollment.js";
 import LiveSession from "../model/liveSession.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 
 export const createBatch = async (req, res) => {
   const t = await sequelize.transaction();

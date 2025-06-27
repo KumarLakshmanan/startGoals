@@ -55,7 +55,7 @@ const Project = sequelize.define(
         model: "languages",
         key: "language_id",
       },
-      comment: "Programming/source language if applicable",
+      comment: "Language used English, Spanish, etc.",
     },
     linkedTeacherId: {
       type: DataTypes.UUID,

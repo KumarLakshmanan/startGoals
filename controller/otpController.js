@@ -8,7 +8,16 @@ import {
   sendOtp,
 } from "../utils/sendOtp.js";
 import User from "../model/user.js";
-import { sendSuccess, sendError, sendValidationError, sendNotFound, sendServerError, sendConflict } from "../utils/responseHelper.js";
+import {
+  sendSuccess,
+  sendError,
+  sendValidationError,
+  sendNotFound,
+  sendUnauthorized,
+  sendForbidden,
+  sendServerError,
+  sendConflict
+} from "../utils/responseHelper.js";
 import { Op } from "sequelize";
 import bcrypt from "bcryptjs";
 import { generateOtp } from "../utils/commonUtils.js";

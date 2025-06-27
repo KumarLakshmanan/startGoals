@@ -6,6 +6,7 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import User from "./user.js";
+import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
 const Notification = sequelize.define(
   "notification",
@@ -20,7 +21,7 @@ const Notification = sequelize.define(
       allowNull: false,
       references: {
         model: User,
-        key: "userId",
+        key: "user_id",
       },
     },
     title: {
@@ -54,33 +55,14 @@ const Notification = sequelize.define(
     expiresAt: {
       type: DataTypes.DATE,
       allowNull: true,
-    }
+    },
+    ...commonFields,
   },
   {
-    timestamps: true,
-    paranoid: true,
-    indexes: [
-      {
-        fields: ["userId"],
-      },
-      {
-        fields: ["type"],
-      },
-      {
-        fields: ["isRead"],
-      },
-      {
-        fields: ["priority"],
-      },
-      {
-        fields: ["createdAt"],
-      },
-    ],
-  }
+    tableName: "notifications",
+    ...commonOptions,
+  },
 );
 
-// Set up the relationship with User model
-Notification.belongsTo(User, { foreignKey: "userId" });
-User.hasMany(Notification, { foreignKey: "userId" });
 
 export default Notification;

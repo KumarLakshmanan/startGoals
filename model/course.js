@@ -39,7 +39,7 @@ const Course = sequelize.define(
       defaultValue: false,
     },
     type: {
-      type: DataTypes.ENUM("recorded", "live", "hybrid"),
+      type: DataTypes.ENUM("recorded", "live"),
       allowNull: false,
     },
     isPaid: {
@@ -55,6 +55,16 @@ const Course = sequelize.define(
       allowNull: true,
       comment: "Discounted price for the course",
     },
+    // For live courses - monthly payment
+    isMonthlyPayment: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    durationDays: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: "Duration in days for live courses",
+    },
     liveStartDate: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -63,16 +73,24 @@ const Course = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
-    wasLive: {
+    hasIntroVideo: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    recordedFromId: {
-      type: DataTypes.UUID,
+    introVideoUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    hasCertificate: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    certificateTemplateUrl: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
     status: {
-      type: DataTypes.ENUM("active", "inactive", "draft", "deleted"),
+      type: DataTypes.ENUM("active", "draft", "archived"),
       defaultValue: "draft",
       allowNull: false,
     },

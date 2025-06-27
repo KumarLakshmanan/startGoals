@@ -1,12 +1,12 @@
-// models/courseTag.js
+// models/courseWhatYouLearn.js
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
-const CourseTag = sequelize.define(
-  "courseTag",
+const CourseWhatYouLearn = sequelize.define(
+  "course_what_you_learn",
   {
-    courseTagId: {
+    whatYouLearnId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
@@ -19,16 +19,25 @@ const CourseTag = sequelize.define(
         key: "course_id",
       },
     },
-    tag: {
+    title: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    order: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
     },
     ...commonFields,
   },
   {
-    tableName: "course_tags",
+    tableName: "course_what_you_learn",
     ...commonOptions,
   },
 );
 
-export default CourseTag;
+export default CourseWhatYouLearn;

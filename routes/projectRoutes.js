@@ -44,7 +44,7 @@ router.post(
     body("title").notEmpty().withMessage("Title is required"),
     body("description").notEmpty().withMessage("Description is required"),
     body("price").isFloat({ min: 0 }).withMessage("Valid price is required"),
-    body("categoryId").isInt().withMessage("Valid category ID is required"),
+    body("categoryId").isUUID().withMessage("Valid category ID is required"),
     body("techStack")
       .optional()
       .isArray()
@@ -137,17 +137,17 @@ router.get(
 // Get single project by ID (Public)
 router.get(
   "/get/:id",
-  [param("id").isInt().withMessage("Valid project ID is required")],
+  [param("id").isUUID().withMessage("Valid project ID is required")],
   validateInput,
   getProjectById,
 );
 
-// Update project (Admin/Creator only)
+// Update project (Creator only)
 router.put(
   "/update/:id",
   isAdmin, // Add authentication
   [
-    param("id").isInt().withMessage("Valid project ID is required"),
+    param("id").isUUID().withMessage("Valid project ID is required"),
     body("title").optional().notEmpty().withMessage("Title cannot be empty"),
     body("description")
       .optional()
@@ -163,7 +163,7 @@ router.put(
       .withMessage("Valid sale price is required"),
     body("categoryId")
       .optional()
-      .isInt()
+      .isUUID()
       .withMessage("Valid category ID is required"),
     body("techStack")
       .optional()
@@ -210,11 +210,11 @@ router.put(
   updateProject,
 );
 
-// Delete project (Admin/Creator only)
+// Delete project (Creator only)
 router.delete(
   "/delete/:id",
   isAdmin, // Add authentication
-  [param("id").isInt().withMessage("Valid project ID is required")],
+  [param("id").isUUID().withMessage("Valid project ID is required")],
   validateInput,
   deleteProject,
 );
@@ -226,7 +226,7 @@ router.post(
   "/purchase",
   verifyToken, // Add authentication for purchase
   [
-    body("projectId").isInt().withMessage("Valid project ID is required"),
+    body("projectId").isUUID().withMessage("Valid project ID is required"),
     body("discountCode")
       .optional()
       .isString()
@@ -240,7 +240,7 @@ router.post(
 router.post(
   "/purchase/complete",
   [
-    body("purchaseId").isInt().withMessage("Valid purchase ID is required"),
+    body("purchaseId").isUUID().withMessage("Valid purchase ID is required"),
     body("paymentId").notEmpty().withMessage("Payment ID is required"),
     body("paymentStatus")
       .isIn(["completed", "failed", "cancelled"])
@@ -276,7 +276,7 @@ router.get(
 
 // Get project statistics (Admin only)
 router.get(
-  "/admin/statistics",
+  "/statistics",
   isAdmin,
   [
     query("period")
@@ -288,66 +288,10 @@ router.get(
   getProjectStatistics,
 );
 
-// ===================== COMPREHENSIVE ADMIN MANAGEMENT ROUTES =====================
-
-/**
- * @route GET /api/admin/projects
- * @desc Get all projects with comprehensive analytics and filtering
- * @access Private (Super Admin, Project Manager, Course Manager)
- */
-router.get("/admin/projects", verifyToken, isAdmin, getAllProjectsAdmin);
-
-/**
- * @route GET /api/admin/projects/:projectId
- * @desc Get detailed project information with analytics
- * @access Private (Super Admin, Project Manager, Course Manager)
- */
-router.get(
-  "/admin/projects/:projectId",
-  verifyToken,
-  isAdmin,
-  getProjectDetailsAdmin,
-);
-
-/**
- * @route GET /api/admin/projects/:projectId/buyers
- * @desc View project buyer history and analytics
- * @access Private (Super Admin, Project Manager, Payment Manager)
- */
-router.get(
-  "/admin/projects/:projectId/buyers",
-  verifyToken,
-  isAdmin,
-  getProjectBuyers,
-);
-
-/**
- * @route GET /api/admin/projects/:projectId/downloads
- * @desc Track project downloads and file statistics
- * @access Private (Super Admin, Project Manager)
- */
-router.get(
-  "/admin/projects/:projectId/downloads",
-  verifyToken,
-  isAdmin,
-  getProjectDownloads,
-);
-
-/**
- * @route POST /api/admin/projects/:projectId/apply-discount
- * @desc Apply discount codes to projects
- * @access Private (Super Admin, Project Manager, Payment Manager)
- */
-router.post(
-  "/admin/projects/:projectId/apply-discount",
-  verifyToken,
-  isAdmin,
-);
-
 // ===================== ADMIN PANEL PROJECT MANAGEMENT ROUTES =====================
 
 /**
- * @route GET /api/projects/admin/all
+ * @route GET /admin/projects
  * @desc Get all projects for admin panel with detailed information
  * @access Private (Admin)
  */
@@ -382,7 +326,7 @@ router.get(
 );
 
 /**
- * @route GET /api/projects/admin/:id
+ * @route GET /admin/projects/:id
  * @desc Get detailed project information for admin panel
  * @access Private (Admin)
  */
@@ -396,7 +340,7 @@ router.get(
 );
 
 /**
- * @route GET /api/projects/admin/:id/buyers
+ * @route GET /admin/projects/:id/buyers
  * @desc Get all buyers of a specific project
  * @access Private (Admin)
  */
@@ -410,7 +354,7 @@ router.get(
 );
 
 /**
- * @route GET /api/projects/admin/:id/downloads
+ * @route GET /admin/projects/:id/downloads
  * @desc Get download statistics for a specific project
  * @access Private (Admin)
  */
@@ -424,7 +368,7 @@ router.get(
 );
 
 /**
- * @route PATCH /api/projects/admin/:id/status
+ * @route PATCH /admin/projects/:id/status
  * @desc Update project status (publish/hide/archive)
  * @access Private (Admin)
  */
@@ -443,7 +387,7 @@ router.patch(
 );
 
 /**
- * @route POST /api/projects/admin/bulk-status
+ * @route POST /admin/projects/bulk-status
  * @desc Bulk update project statuses
  * @access Private (Admin)
  */
@@ -462,7 +406,7 @@ router.post(
 );
 
 /**
- * @route GET /api/projects/admin/reviews
+ * @route GET /admin/projects/reviews
  * @desc Get project reviews for admin moderation
  * @access Private (Admin)
  */
@@ -497,7 +441,7 @@ router.get(
 );
 
 /**
- * @route PATCH /api/projects/admin/reviews/:id/status
+ * @route PATCH /admin/projects/reviews/:id/status
  * @desc Update review moderation status
  * @access Private (Admin)
  */
@@ -516,7 +460,7 @@ router.patch(
 );
 
 /**
- * @route POST /api/projects/admin/reviews/bulk-status
+ * @route POST /admin/projects/reviews/bulk-status
  * @desc Bulk update review statuses
  * @access Private (Admin)
  */
@@ -535,7 +479,7 @@ router.post(
 );
 
 /**
- * @route GET /api/projects/admin/settings
+ * @route GET /admin/projects/settings
  * @desc Get project settings
  * @access Private (Admin)
  */
@@ -547,7 +491,7 @@ router.get(
 );
 
 /**
- * @route PUT /api/projects/admin/settings
+ * @route PUT /admin/projects/settings
  * @desc Update project settings
  * @access Private (Admin)
  */
