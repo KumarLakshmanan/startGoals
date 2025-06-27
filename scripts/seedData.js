@@ -100,6 +100,8 @@ async function initBasicData() {
       isVerified: true,
       isOnboarded: true,
       firstLogin: false,
+      androidRegId: faker.string.alphanumeric(32), // Sample Android registration ID
+      iosRegId: faker.string.uuid(), // Sample iOS registration ID
     }
   });
   
@@ -117,7 +119,10 @@ async function initBasicData() {
         role: 'teacher',
         isVerified: true,
         isOnboarded: true,
-        firstLogin: false,        profileImage: faker.image.avatarLegacy(),
+        firstLogin: false,
+        androidRegId: faker.datatype.boolean() ? faker.string.alphanumeric(32) : null, // Random Android registration ID
+        iosRegId: faker.datatype.boolean() ? faker.string.uuid() : null, // Random iOS registration ID
+        profileImage: faker.image.avatarLegacy(),
         averageRating: faker.number.float({ min: 3.5, max: 5.0, multipleOf: 0.1 }),
         totalRatings: faker.number.int({ min: 10, max: 100 }),
       }
@@ -139,6 +144,8 @@ async function initBasicData() {
         isVerified: true,
         isOnboarded: true,
         firstLogin: false,
+        androidRegId: faker.datatype.boolean() ? faker.string.alphanumeric(32) : null, // Random Android registration ID
+        iosRegId: faker.datatype.boolean() ? faker.string.uuid() : null, // Random iOS registration ID
         profileImage: faker.image.avatarLegacy(),
         // Removed bio, country, city as they don't exist in the User model
       }

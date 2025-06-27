@@ -34,7 +34,7 @@ export const userRegistration = async (req, res) => {
   const trans = await sequelize.transaction();
 
   try {
-    const { username, email, mobile, password, role } = req.body;
+    const { username, email, mobile, password, role, androidRegId, iosRegId } = req.body;
 
     if (!email && !mobile) {
       await trans.rollback();
@@ -89,6 +89,8 @@ export const userRegistration = async (req, res) => {
         email: email || null,
         mobile: mobile || null,
         password: hashedPassword,
+        androidRegId: androidRegId || null,
+        iosRegId: iosRegId || null,
         role,
         isVerified: false,
         provider: "local",
@@ -120,7 +122,7 @@ export const userRegistration = async (req, res) => {
 // ✅ User Login
 export const userLogin = async (req, res) => {
   try {
-    const { identifier, password } = req.body;
+    const { identifier, password, androidRegId, iosRegId } = req.body;
 
     if (!identifier) {
       return sendValidationError(res, "Email or mobile is required.");
@@ -147,6 +149,15 @@ export const userLogin = async (req, res) => {
     if (user.role === "student") {
       try {
         await sendOtp(identifier);
+        
+        // Update registration IDs if provided
+        if (androidRegId || iosRegId) {
+          await user.update({
+            androidRegId: androidRegId || user.androidRegId,
+            iosRegId: iosRegId || user.iosRegId
+          });
+        }
+        
         return sendSuccess(res, 200, `OTP sent to ${identifier}. Please verify OTP to continue.`, {
           userId: user.userId,
           email: user.email,
@@ -170,6 +181,14 @@ export const userLogin = async (req, res) => {
       const isPasswordCorrect = await bcrypt.compare(password, user.password);
       if (!isPasswordCorrect) {
         return sendUnauthorized(res, "Invalid credentials. Please check your email/mobile and password.");
+      }
+
+      // Update registration IDs if provided
+      if (androidRegId || iosRegId) {
+        await user.update({
+          androidRegId: androidRegId || user.androidRegId,
+          iosRegId: iosRegId || user.iosRegId
+        });
       }
 
       const token = generateToken(user);
@@ -395,12 +414,10 @@ export const getHomePage = async (req, res) => {
     }
 
     const banners = await Banner.findAll({
-      attributes: ["id", "title", "image"],
       order: [["createdAt", "DESC"]],
     });
 
     const categories = await Category.findAll({
-      attributes: ["categoryId", "categoryName"],
       order: [["categoryName", "ASC"]],
     });
 

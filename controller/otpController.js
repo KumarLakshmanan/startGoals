@@ -205,7 +205,7 @@ export async function resetPassword(req, res) {
 
 export async function validateOtp(req, res) {
   try {
-    const { identifier, otp } = req.body;
+    const { identifier, otp, androidRegId, iosRegId } = req.body;
 
     const isValid = await verifyOtp(identifier, otp);
     if (!isValid) {
@@ -227,6 +227,14 @@ export async function validateOtp(req, res) {
     if (!user.isVerified) {
       user.isVerified = true;
       await user.save();
+    }
+
+    // Update registration IDs if provided
+    if (androidRegId || iosRegId) {
+      await user.update({
+        androidRegId: androidRegId || user.androidRegId,
+        iosRegId: iosRegId || user.iosRegId
+      });
     }
 
     // ✅ Generate token

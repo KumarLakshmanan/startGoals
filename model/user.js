@@ -64,6 +64,16 @@ const User = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    androidRegId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Android device registration ID for push notifications",
+    },
+    iosRegId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "iOS device registration ID for push notifications",
+    },
     firstLogin: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
