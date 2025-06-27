@@ -29,6 +29,7 @@ import {
   sendServerError,
   sendConflict
 } from "../utils/responseHelper.js";
+import CourseLevel from "../model/courseLevel.js";
 
 export const userRegistration = async (req, res) => {
   const trans = await sequelize.transaction();
@@ -441,25 +442,9 @@ export const getHomePage = async (req, res) => {
       order: [["createdAt", "DESC"]],
     });
 
-    const recommendedList = recommendedCourses.map((course) => ({
-      id: course.courseId,
-      course_code: course.title.substring(0, 10).toUpperCase(),
-      course_title: course.title,
-      course_sub_title: null,
-      course_description: course.description,
-      category: course.category?.categoryName || null,
-      language: "English",
-      course_price: parseFloat(course.price) || 0,
-      image: course.thumbnailUrl,
-      reviews: 0,
-      rating: 0,
-      purchase_status: false,
-    }));
+    const recommendedList = recommendedCourses;
 
-    const popularCategories = categories.slice(0, 2).map((cat) => ({
-      id: cat.categoryId,
-      category_name: cat.categoryName,
-    }));
+    const popularCategories = categories.slice(0, 2);
 
     const contactSettings = await Settings.findAll({
       where: {
@@ -477,15 +462,8 @@ export const getHomePage = async (req, res) => {
     });
 
     const response = {
-      banners: banners.map((banner) => ({
-        id: banner.id,
-        title: banner.title,
-        image: banner.image,
-      })),
-      categories: categories.map((cat) => ({
-        id: cat.categoryId,
-        category_name: cat.categoryName,
-      })),
+      banners: banners,
+      categories: categories,
       courses: [
         {
           title: "My Classes",
