@@ -30,16 +30,12 @@ import {
 export const getAllTeachers = async (req, res) => {
   try {
     const {
-      page = 1,
-      limit = 20,
       search,
       status,
       sortBy = "createdAt",
       sortOrder = "DESC",
       includeStats = true,
     } = req.query;
-
-    const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // Build where conditions
     const whereConditions = {
@@ -48,9 +44,9 @@ export const getAllTeachers = async (req, res) => {
 
     if (search) {
       whereConditions[Op.or] = [
-        { username: { [Op.iLike]: `%${search}%` } },
-        { email: { [Op.iLike]: `%${search}%` } },
-        { mobile: { [Op.iLike]: `%${search}%` } },
+        { username: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } },
+        { mobile: { [Op.like]: `%${search}%` } },
       ];
     }
 
@@ -81,7 +77,7 @@ export const getAllTeachers = async (req, res) => {
       });
     }
 
-    const teachers = await User.findAndCountAll({
+    const teachers = await User.findAll({
       where: whereConditions,
       include: includeOptions,
       attributes: [
@@ -98,20 +94,10 @@ export const getAllTeachers = async (req, res) => {
         "updatedAt",
       ],
       order: [[sortBy, sortOrder]],
-      limit: parseInt(limit),
-      offset: offset,
       distinct: true,
     });
 
-    return sendSuccess(res, 200, "Teachers fetched successfully", {
-      teachers: teachers.rows,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(teachers.count / parseInt(limit)),
-        totalItems: teachers.count,
-        itemsPerPage: parseInt(limit),
-      },
-    });
+    return sendSuccess(res, 200, "Teachers fetched successfully", teachers);
   } catch (error) {
     console.error("Get all teachers error:", error);
     return sendServerError(res, error);
@@ -131,131 +117,13 @@ export const getTeacherById = async (req, res) => {
         userId: teacherId,
         role: "teacher",
       },
-      include: [
-        {
-          model: Course,
-          as: "courses",
-          include: [
-            {
-              model: CourseCategory,
-              as: "category",
-              attributes: ["categoryId", "categoryName"],
-            },
-            {
-              model: Enrollment,
-              as: "enrollments",
-              attributes: ["enrollmentId", "status", "progressPercentage"],
-            },
-          ],
-        },
-        {
-          model: Batch,
-          as: "batches",
-          include: [
-            {
-              model: BatchStudents,
-              as: "batchStudents",
-              where: { role: "student" },
-              required: false,
-              include: [
-                {
-                  model: User,
-                  as: "user",
-                  attributes: ["userId", "username", "email"],
-                },
-              ],
-            },
-          ],
-        },
-        {
-          model: InstructorRating,
-          as: "instructorRatings",
-          include: [
-            {
-              model: User,
-              as: "ratedBy",
-              attributes: ["userId", "username"],
-            },
-          ],
-        },
-      ],
-      attributes: [
-        "userId",
-        "username",
-        "email",
-        "mobile",
-        "profileImage",
-        "bio",
-        "isVerified",
-        "createdAt",
-        "updatedAt",
-      ],
     });
 
     if (!teacher) {
       return sendNotFound(res, "Teacher not found");
     }
 
-    // Calculate comprehensive statistics
-    const courses = teacher.courses || [];
-    const batches = teacher.batches || [];
-    const ratings = teacher.instructorRatings || [];
-
-    const statistics = {
-      courses: {
-        total: courses.length,
-        published: courses.filter((c) => c.status === "published").length,
-        draft: courses.filter((c) => c.status === "draft").length,
-        totalEnrollments: courses.reduce(
-          (sum, c) => sum + (c.enrollments?.length || 0),
-          0,
-        ),
-        averageRating:
-          courses.length > 0
-            ? courses.reduce((sum, c) => sum + (c.averageRating || 0), 0) /
-              courses.length
-            : 0,
-      },
-      students: {
-        total: batches.reduce(
-          (sum, b) => sum + (b.batchStudents?.length || 0),
-          0,
-        ),
-        activeBatches: batches.filter((b) => b.status === "active").length,
-      },
-      ratings: {
-        total: ratings.length,
-        average:
-          ratings.length > 0
-            ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
-            : 0,
-        distribution: ratings.reduce((dist, r) => {
-          dist[`star${r.rating}`] = (dist[`star${r.rating}`] || 0) + 1;
-          return dist;
-        }, {}),
-      },
-      performance: {
-        coursesCreatedThisMonth: courses.filter((c) => {
-          const courseDate = new Date(c.createdAt);
-          const now = new Date();
-          return (
-            courseDate.getMonth() === now.getMonth() &&
-            courseDate.getFullYear() === now.getFullYear()
-          );
-        }).length,
-        recentActivity: courses.filter((c) => {
-          const courseDate = new Date(c.updatedAt);
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          return courseDate >= thirtyDaysAgo;
-        }).length,
-      },
-    };
-
-    return sendSuccess(res, 200, "Teacher fetched successfully", {
-      teacher: teacher.toJSON(),
-      statistics,
-    });
+    return sendSuccess(res, 200, "Teacher fetched successfully", teacher);
   } catch (error) {
     console.error("Get teacher by ID error:", error);
     return sendServerError(res, error);
@@ -719,13 +587,13 @@ export const getTeacherPerformanceReport = async (req, res) => {
         averageRating:
           courses.length > 0
             ? courses.reduce((sum, c) => {
-                const ratings = c.courseRatings || [];
-                const avg =
-                  ratings.length > 0
-                    ? ratings.reduce((s, r) => s + r.rating, 0) / ratings.length
-                    : 0;
-                return sum + avg;
-              }, 0) / courses.length
+              const ratings = c.courseRatings || [];
+              const avg =
+                ratings.length > 0
+                  ? ratings.reduce((s, r) => s + r.rating, 0) / ratings.length
+                  : 0;
+              return sum + avg;
+            }, 0) / courses.length
             : 0,
         totalRatings: courses.reduce(
           (sum, c) => sum + (c.courseRatings?.length || 0),
@@ -736,7 +604,7 @@ export const getTeacherPerformanceReport = async (req, res) => {
         averageRating:
           instructorRatings.length > 0
             ? instructorRatings.reduce((sum, r) => sum + r.rating, 0) /
-              instructorRatings.length
+            instructorRatings.length
             : 0,
         totalRatings: instructorRatings.length,
         ratingDistribution: instructorRatings.reduce((dist, r) => {
@@ -752,9 +620,9 @@ export const getTeacherPerformanceReport = async (req, res) => {
         averageRevenuePerCourse:
           courses.length > 0
             ? courses.reduce(
-                (sum, c) => sum + c.price * (c.enrollments?.length || 0),
-                0,
-              ) / courses.length
+              (sum, c) => sum + c.price * (c.enrollments?.length || 0),
+              0,
+            ) / courses.length
             : 0,
       },
     };

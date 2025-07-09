@@ -108,8 +108,10 @@ const upload = multer({
       resource: /pdf|doc|docx|ppt|pptx|txt|zip|rar/,
       artical: /pdf|doc|docx|txt/,
       banner: /jpeg|jpg|png|gif|webp/,
-      files: /pdf|doc|docx|ppt|pptx|txt|zip|rar|jpeg|jpg|png|gif|webp|mp4|avi|mov|wmv|flv|webm/, // More restricted file types for security
-      projectFiles: /pdf|doc|docx|ppt|pptx|txt|zip|rar|jpeg|jpg|png|gif|webp|mp4|avi|mov|wmv|flv|webm/, // More restricted file types for security
+      // allow all extensions for project files
+      files: /.*/,
+      projectFiles: /.*/,
+      file: /.*/,
     };
 
     // Check if the field name is valid
@@ -126,9 +128,10 @@ const upload = multer({
     const extname = fieldType.test(
       path.extname(file.originalname).toLowerCase(),
     );
-    const mimetype = fieldType.test(file.mimetype);
-
-    if (extname && mimetype) {
+    console.log(
+      `File upload check for field ${file.fieldname} field ${file.originalname}: extname=${extname}`,
+    );
+    if (extname) {
       return cb(null, true);
     } else {
       // Provide more detailed error message about allowed file types

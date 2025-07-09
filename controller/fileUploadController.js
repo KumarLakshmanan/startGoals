@@ -125,50 +125,30 @@ export const uploadFiles = async (req, res) => {
   }
 };
 
-// Upload single file
+/**
+ * Upload a single file and return its URL
+ * Used primarily for project images and files
+ */
 export const uploadSingleFile = async (req, res) => {
   try {
-    // Check if a file was uploaded
+    // Check if file was uploaded
     if (!req.file) {
       return sendValidationError(res, "No file uploaded");
     }
 
-    // Validate file size (optional additional check)
-    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB limit
-
-    if (req.file.size > MAX_FILE_SIZE) {
-      return sendValidationError(res, "File size exceeds the maximum allowed limit", {
-        fileName: req.file.originalname,
-        fileSize: req.file.size,
-        maxAllowed: MAX_FILE_SIZE,
-      });
-    }
-
     const file = req.file;
-
+    const fileType = req.body.type || 'other';
+    
     // Generate unique file ID
     const fileId = `file_${crypto.randomBytes(8).toString("hex")}`;
-
-    // Extract file name without timestamp prefix
+    
+    // Extract file information
     const originalFileName = file.originalname;
     const uploadedFileName = file.key
       ? file.key.split("/").pop()
       : file.filename || originalFileName;
-
-    // Determine category based on field name
-    const categoryMap = {
-      thumbnail: "thumbnail",
-      video: "video",
-      profileImage: "profile_image",
-      resource: "resource",
-      artical: "article",
-      banner: "banner",
-      files: "project_file",
-      projectFiles: "project_file",
-    };
-
-    const category = categoryMap[file.fieldname] || "other";
-
+    
+    // Create response with file data
     const fileData = {
       fileId: fileId,
       originalName: originalFileName,
@@ -176,26 +156,16 @@ export const uploadSingleFile = async (req, res) => {
       fileSize: file.size,
       mimeType: file.mimetype,
       url: file.location,
-      category: category,
+      category: fileType,
       uploadedAt: new Date().toISOString(),
-      uploadedBy: req.user?.id || req.userId || null,
+      uploadedBy: req.user?.userId || null,
     };
-
-    const responseData = {
-      uploadedFiles: [fileData],
-      totalFiles: 1,
-      totalSize: file.size,
-      uploadStats: {
-        successful: 1,
-        failed: 0,
-        skipped: 0,
-      },
-    };
-
-    return sendSuccess(res, 200, "File uploaded successfully", responseData);
+    
+    // Send successful response
+    return sendSuccess(res, 200, "File uploaded successfully", fileData);
   } catch (error) {
-    console.error("Upload error:", error);
-    return sendServerError(res, error);
+    console.error("Error uploading single file:", error);
+    return sendServerError(res, "Failed to upload file", error);
   }
 };
 

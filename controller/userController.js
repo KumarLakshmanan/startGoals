@@ -922,6 +922,82 @@ export const deleteStudent = async (req, res) => {
   }
 };
 
+// Bulk delete students
+export const bulkDeleteStudents = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { ids } = req.body;
+    const { permanent = false } = req.query;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      await transaction.rollback();
+      return sendValidationError(res, "No student IDs provided");
+    }
+
+    const students = await User.findAll({
+      where: { 
+        userId: { [Op.in]: ids },
+        role: "student" 
+      },
+    });
+
+    if (students.length === 0) {
+      await transaction.rollback();
+      return sendNotFound(res, "No students found with the provided IDs");
+    }
+
+    const studentIds = students.map(s => s.userId);
+
+    if (permanent === "true") {
+      // Hard delete - remove all related records first
+      await BatchStudents.destroy({
+        where: { userId: { [Op.in]: studentIds } },
+        transaction,
+      });
+      
+      await Enrollment.destroy({ 
+        where: { userId: { [Op.in]: studentIds } }, 
+        transaction 
+      });
+      
+      await User.destroy({ 
+        where: { 
+          userId: { [Op.in]: studentIds },
+          role: "student"
+        }, 
+        transaction 
+      });
+    } else {
+      // Soft delete - just mark as inactive
+      await User.update(
+        { isActive: false, isVerified: false },
+        { 
+          where: { 
+            userId: { [Op.in]: studentIds },
+            role: "student"
+          },
+          transaction 
+        }
+      );
+    }
+
+    await transaction.commit();
+
+    return sendSuccess(
+      res,
+      200,
+      permanent === "true"
+        ? `${students.length} students permanently deleted`
+        : `${students.length} students deactivated successfully`
+    );
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Bulk delete students error:", error);
+    return sendServerError(res, error);
+  }
+};
+
 export const getStudentAnalytics = async (req, res) => {
   try {
     const { timeRange = "30d" } = req.query;

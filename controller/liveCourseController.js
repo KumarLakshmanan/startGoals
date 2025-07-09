@@ -31,6 +31,7 @@ export const createLiveCourse = async (req, res) => {
     const {
       title,
       description,
+      shortDescription,
       whatYouLearn = [],
       requirements = [],
       levelId,
@@ -40,83 +41,123 @@ export const createLiveCourse = async (req, res) => {
       isPaid,
       price,
       hasDiscount,
+      discountEnabled,
       salePrice,
       thumbnailUrl,
+      coverImage,
       introVideoUrl,
+      demoUrl,
+      screenshots = [],
+      techStack = [],
+      programmingLanguages = [],
+      features,
+      prerequisites,
+      whatYouGet,
       hasCertificate,
       certificateTemplateUrl,
+      supportIncluded = false,
+      supportDuration,
+      supportEmail,
+      version = "1.0",
       status = "draft",
+      featured = false,
       tags = [],
       languages = [],
       skills = [],
     } = req.body;
 
-    // Validation
-    if (!title || !description || !levelId || !categoryId || !durationDays) {
+    // Validation - only essential fields required
+    if (!title || !description || !levelId || !categoryId) {
       await transaction.rollback();
       return sendValidationError(res, "Missing required fields", {
         title: !title ? "Title is required" : undefined,
         description: !description ? "Description is required" : undefined,
         levelId: !levelId ? "Level is required" : undefined,
         categoryId: !categoryId ? "Category is required" : undefined,
-        durationDays: !durationDays ? "Duration is required" : undefined,
       });
     }
 
-    if (isPaid && !price) {
+    // Validate title length
+    if (title.length < 3 || title.length > 200) {
       await transaction.rollback();
-      return sendValidationError(res, "Price is required for paid courses", {
-        price: "Price is required for paid courses",
+      return sendValidationError(res, "Title must be between 3 and 200 characters", {
+        title: "Title must be between 3 and 200 characters"
       });
     }
 
-    if (hasDiscount && (!salePrice || salePrice >= price)) {
+    // Validate description length
+    if (description.length < 10) {
       await transaction.rollback();
-      return sendValidationError(res, "Valid sale price is required", {
-        salePrice: "Sale price must be less than regular price",
+      return sendValidationError(res, "Description must be at least 10 characters", {
+        description: "Description must be at least 10 characters"
       });
     }
 
-    if (teacherIds.length === 0) {
+    // Validate shortDescription if provided
+    if (shortDescription && shortDescription.length > 500) {
       await transaction.rollback();
-      return sendValidationError(res, "At least one teacher is required", {
-        teacherIds: "At least one teacher is required",
+      return sendValidationError(res, "Short description cannot exceed 500 characters", {
+        shortDescription: "Short description cannot exceed 500 characters"
       });
     }
 
-    // Create the course
+    // Validate support duration if support is included
+    if (supportIncluded && (!supportDuration || supportDuration < 0)) {
+      await transaction.rollback();
+      return sendValidationError(res, "Valid support duration is required when support is included", {
+        supportDuration: "Valid support duration is required when support is included"
+      });
+    }
+
+    // Create the course with enhanced fields
     const course = await Course.create(
       {
         title,
         description,
+        shortDescription: shortDescription || null,
         levelId,
         categoryId,
         type: "live",
-        isPaid,
-        price: isPaid ? price : 0,
-        salePrice: hasDiscount && isPaid ? salePrice : null,
+        isPaid: isPaid !== undefined ? isPaid : false,
+        price: isPaid && price ? parseFloat(price) : 0,
+        salePrice: hasDiscount && isPaid && salePrice ? parseFloat(salePrice) : null,
+        discountEnabled: discountEnabled !== undefined ? discountEnabled : true,
         isMonthlyPayment: true,
-        durationDays,
-        thumbnailUrl,
+        durationDays: durationDays || 30, // Default to 30 days if not provided
+        thumbnailUrl: thumbnailUrl || null,
+        coverImage: coverImage || null,
         hasIntroVideo: !!introVideoUrl,
-        introVideoUrl,
-        hasCertificate,
-        certificateTemplateUrl,
-        status,
+        introVideoUrl: introVideoUrl || null,
+        demoUrl: demoUrl || null,
+        screenshots: screenshots || [],
+        techStack: techStack || [],
+        programmingLanguages: programmingLanguages || [],
+        features: features || null,
+        prerequisites: prerequisites || null,
+        whatYouGet: whatYouGet || null,
+        hasCertificate: hasCertificate !== undefined ? hasCertificate : false,
+        certificateTemplateUrl: certificateTemplateUrl || null,
+        supportIncluded: supportIncluded || false,
+        supportDuration: supportIncluded ? (supportDuration || 30) : null,
+        supportEmail: supportEmail || null,
+        version: version || "1.0",
+        status: status || "draft",
+        featured: featured || false,
+        publishedAt: status === 'active' ? new Date() : null,
         createdBy: req.user.userId,
       },
       { transaction }
     );
 
-    // Add What You'll Learn items
-    if (whatYouLearn.length > 0) {
+    // Add What You'll Learn items if provided
+    if (whatYouLearn && whatYouLearn.length > 0) {
       await Promise.all(
         whatYouLearn.map((item, index) =>
           CourseWhatYouLearn.create(
             {
               courseId: course.courseId,
-              title: item.title,
-              description: item.description,
+              title: item.title || `Item ${index + 1}`,
+              description: item.description || '',
               order: index,
             },
             { transaction }
@@ -125,14 +166,14 @@ export const createLiveCourse = async (req, res) => {
       );
     }
 
-    // Add Requirements
-    if (requirements.length > 0) {
+    // Add Requirements if provided
+    if (requirements && requirements.length > 0) {
       await Promise.all(
         requirements.map((requirement, index) =>
           CourseRequirement.create(
             {
               courseId: course.courseId,
-              requirement,
+              requirementText: requirement,
               order: index,
             },
             { transaction }
@@ -141,31 +182,33 @@ export const createLiveCourse = async (req, res) => {
       );
     }
 
-    // Add Teachers
-    await Promise.all(
-      teacherIds.map((teacherId, index) =>
-        CourseTeacher.create(
-          {
-            courseId: course.courseId,
-            teacherId,
-            isPrimary: index === 0, // First teacher is primary
-            assignedBy: req.user.userId,
-          },
-          { transaction }
+    // Add Teachers if provided
+    if (teacherIds && teacherIds.length > 0) {
+      await Promise.all(
+        teacherIds.map((teacherId, index) =>
+          CourseTeacher.create(
+            {
+              courseId: course.courseId,
+              teacherId,
+              isPrimary: index === 0, // First teacher is primary
+              assignedBy: req.user.userId,
+            },
+            { transaction }
+          )
         )
-      )
-    );
+      );
+    }
 
-    // Associate tags, languages and skills (assuming these helpers exist)
-    if (tags.length > 0) {
+    // Associate tags, languages and skills if provided
+    if (tags && tags.length > 0) {
       await associateCourseTags(course.courseId, tags, transaction);
     }
 
-    if (languages.length > 0) {
+    if (languages && languages.length > 0) {
       await associateCourseLanguages(course.courseId, languages, transaction);
     }
 
-    if (skills.length > 0) {
+    if (skills && skills.length > 0) {
       await associateCourseSkills(course.courseId, skills, transaction);
     }
 
@@ -201,6 +244,7 @@ export const createRecordedCourse = async (req, res) => {
     const {
       title,
       description,
+      shortDescription,
       whatYouLearn = [],
       requirements = [],
       levelId,
@@ -209,75 +253,128 @@ export const createRecordedCourse = async (req, res) => {
       isPaid,
       price,
       hasDiscount,
+      discountEnabled,
       salePrice,
       thumbnailUrl,
+      coverImage,
       introVideoUrl,
+      demoUrl,
+      screenshots = [],
+      techStack = [],
+      programmingLanguages = [],
+      features,
+      prerequisites,
+      whatYouGet,
       hasCertificate,
       certificateTemplateUrl,
+      supportIncluded = false,
+      supportDuration,
+      supportEmail,
+      durationMinutes,
+      totalSections,
+      totalLessons,
+      version = "1.0",
       status = "draft",
+      featured = false,
       tags = [],
       languages = [],
       skills = [],
     } = req.body;
 
-    // Validation
-    if (!title || !description || !levelId || !categoryId || !teacherId) {
+    // Validation - only essential fields required
+    if (!title || !description || !levelId || !categoryId) {
       await transaction.rollback();
       return sendValidationError(res, "Missing required fields", {
         title: !title ? "Title is required" : undefined,
         description: !description ? "Description is required" : undefined,
         levelId: !levelId ? "Level is required" : undefined,
         categoryId: !categoryId ? "Category is required" : undefined,
-        teacherId: !teacherId ? "Teacher is required" : undefined,
       });
     }
 
-    if (isPaid && !price) {
+    // Validate title length
+    if (title.length < 3 || title.length > 200) {
       await transaction.rollback();
-      return sendValidationError(res, "Price is required for paid courses", {
-        price: "Price is required for paid courses",
+      return sendValidationError(res, "Title must be between 3 and 200 characters", {
+        title: "Title must be between 3 and 200 characters"
       });
     }
 
-    if (hasDiscount && (!salePrice || salePrice >= price)) {
+    // Validate description length
+    if (description.length < 10) {
       await transaction.rollback();
-      return sendValidationError(res, "Valid sale price is required", {
-        salePrice: "Sale price must be less than regular price",
+      return sendValidationError(res, "Description must be at least 10 characters", {
+        description: "Description must be at least 10 characters"
       });
     }
 
-    // Create the course
+    // Validate shortDescription if provided
+    if (shortDescription && shortDescription.length > 500) {
+      await transaction.rollback();
+      return sendValidationError(res, "Short description cannot exceed 500 characters", {
+        shortDescription: "Short description cannot exceed 500 characters"
+      });
+    }
+
+    // Validate support duration if support is included
+    if (supportIncluded && (!supportDuration || supportDuration < 0)) {
+      await transaction.rollback();
+      return sendValidationError(res, "Valid support duration is required when support is included", {
+        supportDuration: "Valid support duration is required when support is included"
+      });
+    }
+
+    // Create the course with enhanced fields
     const course = await Course.create(
       {
         title,
         description,
+        shortDescription: shortDescription || null,
         levelId,
         categoryId,
         type: "recorded",
-        isPaid,
-        price: isPaid ? price : 0,
-        salePrice: hasDiscount && isPaid ? salePrice : null,
+        isPaid: isPaid !== undefined ? isPaid : false,
+        price: isPaid && price ? parseFloat(price) : 0,
+        salePrice: hasDiscount && isPaid && salePrice ? parseFloat(salePrice) : null,
+        discountEnabled: discountEnabled !== undefined ? discountEnabled : true,
         isMonthlyPayment: false,
-        thumbnailUrl,
+        durationMinutes: durationMinutes || null,
+        totalSections: totalSections || 0,
+        totalLessons: totalLessons || 0,
+        thumbnailUrl: thumbnailUrl || null,
+        coverImage: coverImage || null,
         hasIntroVideo: !!introVideoUrl,
-        introVideoUrl,
-        hasCertificate,
-        certificateTemplateUrl,
-        status,
+        introVideoUrl: introVideoUrl || null,
+        demoUrl: demoUrl || null,
+        screenshots: screenshots || [],
+        techStack: techStack || [],
+        programmingLanguages: programmingLanguages || [],
+        features: features || null,
+        prerequisites: prerequisites || null,
+        whatYouGet: whatYouGet || null,
+        hasCertificate: hasCertificate !== undefined ? hasCertificate : false,
+        certificateTemplateUrl: certificateTemplateUrl || null,
+        supportIncluded: supportIncluded || false,
+        supportDuration: supportIncluded ? (supportDuration || 30) : null,
+        supportEmail: supportEmail || null,
+        version: version || "1.0",
+        status: status || "draft",
+        featured: featured || false,
+        publishedAt: status === 'active' ? new Date() : null,
         createdBy: req.user.userId,
       },
       { transaction }
     );
 
-    // Add What You'll Learn items
-    if (whatYouLearn.length > 0) {
+    // Add What You'll Learn items if provided
+    if (whatYouLearn && whatYouLearn.length > 0) {
       await Promise.all(
         whatYouLearn.map((item, index) =>
           CourseWhatYouLearn.create(
             {
               courseId: course.courseId,
-              title: item.title,
-              description: item.description,
+              title: item.title || `Item ${index + 1}`,
+              description: item.description || '',
               order: index,
             },
             { transaction }
@@ -286,14 +383,14 @@ export const createRecordedCourse = async (req, res) => {
       );
     }
 
-    // Add Requirements
-    if (requirements.length > 0) {
+    // Add Requirements if provided
+    if (requirements && requirements.length > 0) {
       await Promise.all(
         requirements.map((requirement, index) =>
           CourseRequirement.create(
             {
               courseId: course.courseId,
-              requirement,
+              requirementText: requirement,
               order: index,
             },
             { transaction }
@@ -302,27 +399,29 @@ export const createRecordedCourse = async (req, res) => {
       );
     }
 
-    // Add Single Teacher
-    await CourseTeacher.create(
-      {
-        courseId: course.courseId,
-        teacherId,
-        isPrimary: true,
-        assignedBy: req.user.userId,
-      },
-      { transaction }
-    );
+    // Add Single Teacher if provided
+    if (teacherId) {
+      await CourseTeacher.create(
+        {
+          courseId: course.courseId,
+          teacherId,
+          isPrimary: true,
+          assignedBy: req.user.userId,
+        },
+        { transaction }
+      );
+    }
 
-    // Associate tags, languages and skills (assuming these helpers exist)
-    if (tags.length > 0) {
+    // Associate tags, languages and skills if provided
+    if (tags && tags.length > 0) {
       await associateCourseTags(course.courseId, tags, transaction);
     }
 
-    if (languages.length > 0) {
+    if (languages && languages.length > 0) {
       await associateCourseLanguages(course.courseId, languages, transaction);
     }
 
-    if (skills.length > 0) {
+    if (skills && skills.length > 0) {
       await associateCourseSkills(course.courseId, skills, transaction);
     }
 
@@ -379,71 +478,83 @@ export const createCourseBatch = async (req, res) => {
       return sendValidationError(res, "Batches can only be created for live courses");
     }
 
-    // Validation
-    if (!title || !startDate || !endDate) {
+    // Validation - only title is required
+    if (!title) {
       await transaction.rollback();
       return sendValidationError(res, "Missing required fields", {
         title: !title ? "Title is required" : undefined,
-        startDate: !startDate ? "Start date is required" : undefined,
-        endDate: !endDate ? "End date is required" : undefined,
       });
     }
 
-    if (new Date(startDate) >= new Date(endDate)) {
+    // Validate title length
+    if (title.length < 3 || title.length > 200) {
       await transaction.rollback();
-      return sendValidationError(res, "End date must be after start date");
+      return sendValidationError(res, "Title must be between 3 and 200 characters", {
+        title: "Title must be between 3 and 200 characters"
+      });
     }
 
-    if (teacherIds.length === 0) {
-      await transaction.rollback();
-      return sendValidationError(res, "At least one teacher is required");
+    // Calculate default dates if not provided
+    let batchStartDate = startDate ? new Date(startDate) : new Date();
+    let batchEndDate = endDate ? new Date(endDate) : new Date();
+    
+    if (!endDate) {
+      // Default end date: start date + 30 days
+      batchEndDate.setDate(batchStartDate.getDate() + 30);
     }
 
-    // Create batch
+    // Create batch with nullable fields
     const batch = await Batch.create(
       {
         courseId,
         title,
-        description,
-        startDate,
-        endDate,
+        description: description || null,
+        startDate: batchStartDate,
+        endDate: batchEndDate,
         enrollmentCapacity: enrollmentCapacity || 30,
         currentEnrollment: 0,
-        hasChatEnabled,
+        hasChatEnabled: hasChatEnabled !== undefined ? hasChatEnabled : true,
         status: "upcoming",
         createdBy: req.user.userId,
       },
       { transaction }
     );
 
-    // Add teachers to batch
-    await Promise.all(
-      teacherIds.map((teacherId, index) =>
-        BatchTeacher.create(
-          {
-            batchId: batch.batchId,
-            teacherId,
-            isPrimary: index === 0, // First teacher is primary
-            assignedBy: req.user.userId,
-          },
-          { transaction }
+    // Add teachers to batch if provided
+    if (teacherIds && teacherIds.length > 0) {
+      await Promise.all(
+        teacherIds.map((teacherId, index) =>
+          BatchTeacher.create(
+            {
+              batchId: batch.batchId,
+              teacherId,
+              isPrimary: index === 0, // First teacher is primary
+              assignedBy: req.user.userId,
+            },
+            { transaction }
+          )
         )
-      )
-    );
+      );
+    }
 
     // Add schedules if provided
-    if (schedules.length > 0) {
+    if (schedules && schedules.length > 0) {
       await Promise.all(
-        schedules.map((schedule) =>
+        schedules.map((schedule, index) =>
           BatchSchedule.create(
             {
               batchId: batch.batchId,
-              title: schedule.title,
-              description: schedule.description,
-              startDateTime: schedule.startDateTime,
-              endDateTime: schedule.endDateTime,
-              teacherId: schedule.teacherId,
-              status: "scheduled",
+              title: schedule.title || `Class ${index + 1}`,
+              sessionDate: schedule.sessionDate || new Date(),
+              startTime: schedule.startTime || '09:00:00',
+              endTime: schedule.endTime || '10:00:00',
+              meetingLink: schedule.meetingLink || null,
+              platform: schedule.platform || 'zoom',
+              platformSessionId: schedule.platformSessionId || null,
+              description: schedule.description || null,
+              recordingUrl: schedule.recordingUrl || null,
+              status: schedule.status || 'scheduled',
+              createdBy: req.user.userId,
             },
             { transaction }
           )
@@ -456,12 +567,9 @@ export const createCourseBatch = async (req, res) => {
     // Fetch the created batch with associations
     const createdBatch = await Batch.findByPk(batch.batchId, {
       include: [
-        { 
-          model: BatchTeacher, 
-          as: "batchTeachers",
-          include: [{ model: User, as: "teacher", attributes: ["userId", "firstName", "lastName", "email", "profileImage"] }]
-        },
+        { model: BatchTeacher, as: "teachers", include: [{ model: User, as: "teacher" }] },
         { model: BatchSchedule, as: "schedules" },
+        { model: Course, as: "course" },
       ],
     });
 

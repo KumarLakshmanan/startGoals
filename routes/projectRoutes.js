@@ -11,12 +11,11 @@ import {
   getProjectById,
   updateProject,
   deleteProject,
+  bulkDeleteProjects,
   initiateProjectPurchase,
   completeProjectPurchase,
   getUserPurchases,
   getProjectStatistics,
-  // Admin management functions
-  getAllProjectsAdmin,
   getProjectDetailsAdmin,
   getProjectBuyers,
   getProjectDownloads,
@@ -44,29 +43,47 @@ router.post(
     body("title").notEmpty().withMessage("Title is required"),
     body("description").notEmpty().withMessage("Description is required"),
     body("shortDescription").optional().isLength({ max: 500 }).withMessage("Short description cannot exceed 500 characters"),
-    body("price").isFloat({ min: 0 }).withMessage("Valid price is required"),
-    body("categoryId").isUUID().withMessage("Valid category ID is required"),
-    body("levelId").isUUID().withMessage("Valid level ID is required"),
-    body("languageId").optional().isUUID().withMessage("Valid language ID is required"),
+    body("price").optional().isFloat({ min: 0 }).withMessage("Price must be a valid non-negative number"),
+    body("categoryId").notEmpty().withMessage("Valid category ID is required"),
+    body("levelId").notEmpty().withMessage("Valid level ID is required"),
+    body("languageId").optional(),
     body("techStack")
       .optional()
       .custom((value) => {
-        if (typeof value === "string") value = JSON.parse(value);
-        if (!Array.isArray(value)) throw new Error("Tech stack must be an array");
+        if (value && typeof value === "string") {
+          try {
+            value = JSON.parse(value);
+          } catch (e) {
+            throw new Error("Tech stack must be a valid JSON array");
+          }
+        }
+        if (value && !Array.isArray(value)) throw new Error("Tech stack must be an array");
         return true;
       }),
     body("programmingLanguages")
       .optional()
       .custom((value) => {
-        if (typeof value === "string") value = JSON.parse(value);
-        if (!Array.isArray(value)) throw new Error("Programming languages must be an array");
+        if (value && typeof value === "string") {
+          try {
+            value = JSON.parse(value);
+          } catch (e) {
+            throw new Error("Programming languages must be a valid JSON array");
+          }
+        }
+        if (value && !Array.isArray(value)) throw new Error("Programming languages must be an array");
         return true;
       }),
     body("goals")
       .optional()
       .custom((value) => {
-        if (typeof value === "string") value = JSON.parse(value);
-        if (!Array.isArray(value)) throw new Error("Goals must be an array");
+        if (value && typeof value === "string") {
+          try {
+            value = JSON.parse(value);
+          } catch (e) {
+            throw new Error("Goals must be a valid JSON array");
+          }
+        }
+        if (value && !Array.isArray(value)) throw new Error("Goals must be an array");
         return true;
       }),
     body("requirements")
@@ -107,24 +124,24 @@ router.post(
       .isBoolean()
       .withMessage("Discount enabled must be a boolean"),
     body("demoUrl")
-      .optional()
-      .isString()
+      .optional({ nullable: true })
+      .custom((value) => value === null || typeof value === "string")
       .withMessage("Demo URL must be a string"),
     body("documentation")
       .optional()
       .isString()
       .withMessage("Documentation must be a string"),
     body("supportEmail")
-      .optional()
-      .isString()
+      .optional({ nullable: true })
+      .custom((value) => value === null || typeof value === "string")
       .withMessage("Support email must be a string"),
     body("linkedTeacherId")
       .optional()
       .isUUID()
       .withMessage("Linked teacher ID must be a valid UUID"),
     body("previewVideo")
-      .optional()
-      .isString()
+      .optional({ nullable: true })
+      .custom((value) => value === null || typeof value === "string")
       .withMessage("Preview video must be a string"),
     body("featured")
       .optional()
@@ -225,24 +242,24 @@ router.put(
       .isBoolean()
       .withMessage("Discount enabled must be a boolean"),
     body("demoUrl")
-      .optional()
-      .isString()
+      .optional({ nullable: true })
+      .custom((value) => value === null || typeof value === "string")
       .withMessage("Demo URL must be a string"),
     body("documentation")
       .optional()
       .isString()
       .withMessage("Documentation must be a string"),
     body("supportEmail")
-      .optional()
-      .isString()
+      .optional({ nullable: true })
+      .custom((value) => value === null || typeof value === "string")
       .withMessage("Support email must be a string"),
     body("linkedTeacherId")
       .optional()
       .isUUID()
       .withMessage("Linked teacher ID must be a valid UUID"),
     body("previewVideo")
-      .optional()
-      .isString()
+      .optional({ nullable: true })
+      .custom((value) => value === null || typeof value === "string")
       .withMessage("Preview video must be a string"),
     body("featured")
       .optional()
@@ -318,6 +335,13 @@ router.delete(
   deleteProject,
 );
 
+// Bulk delete projects (Admin only)
+router.delete(
+  "/bulk-delete",
+  isAdmin,
+  bulkDeleteProjects
+);
+
 // ===================== PROJECT PURCHASE ROUTES =====================
 
 // Initiate project purchase (Authenticated users only)
@@ -385,6 +409,42 @@ router.get(
   ],
   validateInput,
   getProjectStatistics,
+);
+
+router.get(
+  "/:id",
+  isAdmin,
+  [param("id").isUUID().withMessage("Valid project ID is required")],
+  validateInput,
+  getProjectDetailsAdmin
+);
+
+router.put(
+  "/:id",
+  isAdmin,
+  [param("id").isUUID().withMessage("Valid project ID is required")],
+  validateInput,
+  updateProject
+);
+
+router.delete(
+  "/:id",
+  isAdmin,
+  [param("id").isUUID().withMessage("Valid project ID is required")],
+  validateInput,
+  deleteProject
+);
+
+// Bulk delete projects (Admin only)
+router.delete(
+  "/bulk-delete",
+  isAdmin,
+  [
+    body("ids").isArray().withMessage("IDs must be an array"),
+    body("ids.*").isUUID().withMessage("Each ID must be a valid UUID"),
+  ],
+  validateInput,
+  bulkDeleteProjects
 );
 
 export default router;

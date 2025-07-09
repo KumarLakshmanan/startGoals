@@ -20,16 +20,22 @@ const router = express.Router();
 
 // ===================== TEACHER MANAGEMENT ROUTES (Admin/Owner only) =====================
 
-// Legacy routes
-router.post("/createTeacher", isAdmin, createTeacher);
-router.get("/getAllTeachers", getAllTeachers);
-router.get("/getAll", getAllTeachers);
-
+// CRUD operations
+router.get("/getAll", isAdmin, getAllTeachers); // Match frontend API endpoint
+router.get("/getAllTeachers", isAdmin, getAllTeachers); // Legacy support
+router.get("/:teacherId", isAdmin, getTeacherById); // Get detailed teacher profile
 router.post("/create", isAdmin, createTeacher); // Create new teacher
+router.post("/createTeacher", isAdmin, createTeacher); // Legacy support
 router.put("/:teacherId", isAdmin, updateTeacher); // Update teacher information
 router.delete("/:teacherId", isAdmin, deleteTeacher); // Delete teacher (soft/hard delete)
 
-router.get("/:teacherId", isAdmin, getTeacherById); // Get detailed teacher profile
+// Assignment operations
+router.post("/assign-course", isAdmin, assignTeacherToCourse); // Assign teacher to course
+router.post("/assign-batch", isAdmin, assignTeacherToBatch); // Assign teacher to batch
 
+// Analytics and performance
+router.get("/:teacherId/performance", isAdmin, getTeacherPerformanceReport); // Teacher performance
+router.get("/:teacherId/feedback", isAdmin, getTeacherStudentFeedback); // Student feedback
+router.get("/:teacherId/courses", isAdmin, getTeacherAssignedCourses); // Teacher's courses
 
 export default router;

@@ -43,4 +43,11 @@ router.post(
 // Legacy endpoint (keep for backward compatibility)
 router.post("/upload-file", authenticateToken, upload.any(), uploadFiles);
 
+// Simple file upload endpoint for project assets (no auth required for easier testing)
+router.post(
+  "/project-asset",
+  upload.single("file"),
+  uploadSingleFile
+);
+
 export default router;

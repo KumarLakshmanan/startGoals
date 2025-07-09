@@ -17,6 +17,7 @@ import {
   createStudent,
   updateStudent,
   deleteStudent,
+  bulkDeleteStudents,
   getStudentAnalytics,
 } from "../controller/userController.js";
 import passport from "passport";
@@ -94,5 +95,12 @@ userRoutes.put("/admin/students/:studentId", isAdmin, updateStudent);
  * @access Private (Admin/Owner only)
  */
 userRoutes.delete("/admin/students/:studentId", isAdmin, deleteStudent);
+
+/**
+ * @route DELETE /api/admin/students/bulk-delete
+ * @desc Delete multiple students at once (soft/hard delete)
+ * @access Private (Admin/Owner only)
+ */
+userRoutes.delete("/admin/students/bulk-delete", isAdmin, bulkDeleteStudents);
 
 export default userRoutes;

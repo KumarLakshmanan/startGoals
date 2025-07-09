@@ -69,17 +69,18 @@ export const createProject = async (req, res) => {
 
     const userId = req.user.userId; // From auth middleware
 
-    // Validate required fields
-    if (!title || !description || !price || !categoryId || !levelId) {
+    // Validate required fields - making only these fields required
+    if (!title || !description || !categoryId || !levelId) {
       await transaction.rollback();
       return sendValidationError(res, "Missing required fields", {
         title: !title ? "Title is required" : undefined,
         description: !description ? "Description is required" : undefined,
-        price: !price ? "Price is required" : undefined,
         categoryId: !categoryId ? "Category is required" : undefined,
         levelId: !levelId ? "Level is required" : undefined,
       });
-    }    // Validate title length
+    }
+
+    // Validate title length
     if (title.length < 3 || title.length > 200) {
       await transaction.rollback();
       return sendValidationError(res, "Title must be between 3 and 200 characters", {
@@ -181,11 +182,11 @@ export const createProject = async (req, res) => {
         title,
         description,
         shortDescription: shortDescription || null,
-        price: parseFloat(price),
+        price: price ? parseFloat(price) : 0,
         categoryId,
         levelId,
         languageId: languageId || null,
-        coverImage: typeof coverImage === 'string' ? coverImage : null,
+        coverImage: coverImage || null,
         previewVideo: previewVideo || null,
         demoUrl: demoUrl || null,
         screenshots: Array.isArray(screenshots) ? screenshots : [],
@@ -194,13 +195,13 @@ export const createProject = async (req, res) => {
         whatYouGet: whatYouGet || null,
         documentationUrl: documentationUrl || null,
         supportEmail: supportEmail || null,
-        supportIncluded,
+        supportIncluded: supportIncluded || false,
         supportDuration: supportIncluded ? (supportDuration || 30) : null,
-        licenseType,
-        version,
-        discountEnabled,
-        featured,
-        status,
+        licenseType: licenseType || 'personal',
+        version: version || '1.0',
+        discountEnabled: discountEnabled ?? true,
+        featured: featured || false,
+        status: status || 'draft',
         readmeFileUrl: readmeFile || null,
         linkedTeacherId: linkedTeacherId || null,
         createdBy: userId,
@@ -336,16 +337,17 @@ export const getAllProjects = async (req, res) => {
       search,
       sortBy = "createdAt",
       sortOrder = "DESC",
-      status = "published",
+      status,
       difficulty,
       tags,
       programmingLanguages,
     } = req.query;
 
     // Build where conditions
-    const whereConditions = {
-      status: status === "all" ? { [Op.ne]: null } : status,
-    };
+    const whereConditions = {};
+    if (typeof status !== "undefined") {
+      whereConditions.status = status === "all" ? { [Op.ne]: null } : status;
+    }
 
     if (category) {
       whereConditions.categoryId = category;
@@ -358,10 +360,11 @@ export const getAllProjects = async (req, res) => {
     }
 
     if (search) {
+      const likeOperator = Op.iLike || Op.like;
       whereConditions[Op.or] = [
-        { title: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } },
-        { shortDescription: { [Op.iLike]: `%${search}%` } },
+        { title: { [likeOperator]: `%${search}%` } },
+        { description: { [likeOperator]: `%${search}%` } },
+        { shortDescription: { [likeOperator]: `%${search}%` } },
       ];
     }
 
@@ -529,7 +532,7 @@ export const getProjectById = async (req, res) => {
         projectData.ratings.reduce((sum, r) => sum + r.rating, 0) /
         projectData.ratings.length;
       projectData.averageRating = Math.round(avgRating * 10) / 10;
-      projectData.totalRatings = projectData.ratings.length;
+      projectData.totalRatings = 0;
     } else {
       projectData.averageRating = 0;
       projectData.totalRatings = 0;
@@ -1052,134 +1055,6 @@ export const getProjectStatistics = async (req, res) => {
     });
   } catch (error) {
     console.error("Get project statistics error:", error);
-    return sendServerError(res, error);
-  }
-};
-
-// ===================== ADMIN PANEL PROJECT MANAGEMENT =====================
-
-// Get all projects for admin panel with detailed information
-export const getAllProjectsAdmin = async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 20,
-      category,
-      minPrice,
-      maxPrice,
-      search,
-      sortBy = "createdAt",
-      sortOrder = "DESC",
-      status,
-      teacherId,
-      skillLevel,
-    } = req.query;
-
-    // Build where conditions
-    const whereConditions = {};
-
-    if (status) {
-      whereConditions.status = status;
-    }
-
-    if (category) {
-      whereConditions.categoryId = category;
-    }
-
-    if (minPrice || maxPrice) {
-      whereConditions.price = {};
-      if (minPrice) whereConditions.price[Op.gte] = parseFloat(minPrice);
-      if (maxPrice) whereConditions.price[Op.lte] = parseFloat(maxPrice);
-    }
-
-    if (search) {
-      whereConditions[Op.or] = [
-        { title: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } },
-        { shortDescription: { [Op.iLike]: `%${search}%` } },
-      ];
-    }
-
-    if (skillLevel) {
-      whereConditions.skillLevel = skillLevel;
-    }
-
-    if (teacherId) {
-      whereConditions.linkedTeacherId = teacherId;
-    }
-
-    // Include conditions
-    const includeOptions = [
-      {
-        model: User,
-        as: "creator",
-        attributes: ["userId", "username", "profileImage"],
-      },
-      {
-        model: User,
-        as: "linkedTeacher",
-        attributes: ["userId", "username", "email", "profileImage"],
-      },
-      {
-        model: CourseCategory,
-        as: "category",
-        attributes: ["categoryId", "categoryName"],
-      },
-      {
-        model: CourseTag,
-        as: "projectTags",
-        attributes: ["courseTagId", "tag"],
-        through: { attributes: [] },
-      },
-      {
-        model: ProjectRating,
-        as: "ratings",
-        attributes: ["rating"],
-        required: false,
-      },
-    ];
-
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    const { count, rows: projects } = await Project.findAndCountAll({
-      where: whereConditions,
-      include: includeOptions,
-      limit: parseInt(limit),
-      offset: offset,
-      order: [[sortBy, sortOrder.toUpperCase()]],
-      distinct: true,
-    });
-
-    // Calculate average ratings and format response
-    const formattedProjects = projects.map((project) => {
-      const projectData = project.toJSON();
-      const ratings = projectData.ratings || [];
-
-      if (ratings.length > 0) {
-        const avgRating =
-          ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length;
-        projectData.averageRating = Math.round(avgRating * 10) / 10;
-        projectData.totalRatings = ratings.length;
-      } else {
-        projectData.averageRating = 0;
-        projectData.totalRatings = 0;
-      }
-
-      delete projectData.ratings; // Remove individual ratings from response
-      return projectData;
-    });
-
-    return sendSuccess(res, 200, "Projects retrieved successfully", {
-      projects: formattedProjects,
-      pagination: {
-        total: count,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(count / parseInt(limit)),
-      },
-    });
-  } catch (error) {
-    console.error("Get all projects admin error:", error);
     return sendServerError(res, error);
   }
 };
@@ -1748,6 +1623,104 @@ export const updateProjectSettings = async (req, res) => {
   }
 };
 
+// Bulk delete projects
+export const bulkDeleteProjects = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { ids } = req.body;
+
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      await transaction.rollback();
+      return sendValidationError(res, "Valid project IDs are required", {
+        ids: "Please provide valid project IDs for deletion"
+      });
+    }
+
+    // Validate all IDs are in UUID format
+    for (const id of ids) {
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+        await transaction.rollback();
+        return sendValidationError(res, `Invalid project ID format: ${id}`, {
+          ids: "All IDs must be valid UUIDs"
+        });
+      }
+    }
+
+    // Check if any of the projects have associated purchases
+    const projectsWithPurchases = await ProjectPurchase.findAll({
+      where: {
+        projectId: {
+          [Op.in]: ids
+        }
+      },
+      attributes: ['projectId'],
+      group: ['projectId'],
+      transaction
+    });
+
+    if (projectsWithPurchases.length > 0) {
+      const purchasedIds = projectsWithPurchases.map(p => p.projectId);
+      await transaction.rollback();
+      return sendConflict(res, "Cannot delete projects with existing purchases", {
+        conflictingIds: purchasedIds,
+        message: "Some projects have already been purchased and cannot be deleted"
+      });
+    }
+
+    // Delete project associations
+    await Promise.all([
+      ProjectGoal.destroy({
+        where: { projectId: { [Op.in]: ids } },
+        transaction
+      }),
+      ProjectTechStack.destroy({
+        where: { projectId: { [Op.in]: ids } },
+        transaction
+      }),
+      ProjectProgrammingLanguage.destroy({
+        where: { projectId: { [Op.in]: ids } },
+        transaction
+      }),
+      ProjectFile.destroy({
+        where: { projectId: { [Op.in]: ids } },
+        transaction
+      }),
+      ProjectRating.destroy({
+        where: { projectId: { [Op.in]: ids } },
+        transaction
+      }),
+      ProjectSettings.destroy({
+        where: { projectId: { [Op.in]: ids } },
+        transaction
+      })
+    ]);
+
+    // Delete the projects
+    const deleteCount = await Project.destroy({
+      where: {
+        projectId: {
+          [Op.in]: ids
+        }
+      },
+      transaction
+    });
+
+    await transaction.commit();
+
+    return sendSuccess(res, {
+      message: `Successfully deleted ${deleteCount} projects`,
+      deletedCount: deleteCount,
+      deletedIds: ids
+    });
+
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error in bulkDeleteProjects:", error);
+    return sendServerError(res, "Failed to delete projects", error);
+  }
+};
+
 export default {
   createProject,
   getAllProjects,
@@ -1758,8 +1731,8 @@ export default {
   completeProjectPurchase,
   getUserPurchases,
   getProjectStatistics,
-  getAllProjectsAdmin,
   getProjectDetailsAdmin,
   getProjectBuyers,
   getProjectDownloads,
+  bulkDeleteProjects,
 };
