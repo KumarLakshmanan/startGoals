@@ -48,10 +48,9 @@ export const getAllTeachers = async (req, res) => {
 
     if (search) {
       whereConditions[Op.or] = [
-        { firstName: { [Op.iLike]: `%${search}%` } },
-        { lastName: { [Op.iLike]: `%${search}%` } },
         { username: { [Op.iLike]: `%${search}%` } },
         { email: { [Op.iLike]: `%${search}%` } },
+        { mobile: { [Op.iLike]: `%${search}%` } },
       ];
     }
 
@@ -87,13 +86,13 @@ export const getAllTeachers = async (req, res) => {
       include: includeOptions,
       attributes: [
         "userId",
-        "firstName",
-        "lastName",
         "username",
         "email",
         "mobile",
         "profileImage",
         "bio",
+        "experience",
+        "qualification",
         "isVerified",
         "createdAt",
         "updatedAt",
@@ -104,64 +103,8 @@ export const getAllTeachers = async (req, res) => {
       distinct: true,
     });
 
-    // Calculate statistics for each teacher
-    const teachersWithStats = await Promise.all(
-      teachers.rows.map(async (teacher) => {
-        const teacherData = teacher.toJSON();
-
-        if (includeStats === "true") {
-          // Calculate course statistics
-          const courseStats = {
-            totalCourses: teacher.courses?.length || 0,
-            activeCourses:
-              teacher.courses?.filter((c) => c.status === "published").length ||
-              0,
-            averageCourseRating:
-              teacher.courses?.length > 0
-                ? teacher.courses.reduce(
-                    (sum, c) => sum + (c.averageRating || 0),
-                    0,
-                  ) / teacher.courses.length
-                : 0,
-          };
-
-          // Calculate instructor rating statistics
-          const instructorRatingStats = {
-            totalRatings: teacher.instructorRatings?.length || 0,
-            averageRating:
-              teacher.instructorRatings?.length > 0
-                ? teacher.instructorRatings.reduce(
-                    (sum, r) => sum + r.rating,
-                    0,
-                  ) / teacher.instructorRatings.length
-                : 0,
-          };
-
-          // Get student count
-          const studentCount = await BatchStudents.count({
-            where: { role: "student" },
-            include: [
-              {
-                model: Batch,
-                where: { createdBy: teacher.userId },
-                required: true,
-              },
-            ],
-          });
-
-          teacherData.statistics = {
-            courses: courseStats,
-            ratings: instructorRatingStats,
-            students: studentCount,
-          };
-        }
-
-        return teacherData;
-      }),
-    );
-
     return sendSuccess(res, 200, "Teachers fetched successfully", {
-      teachers: teachersWithStats,
+      teachers: teachers.rows,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(teachers.count / parseInt(limit)),
@@ -218,7 +161,7 @@ export const getTeacherById = async (req, res) => {
                 {
                   model: User,
                   as: "user",
-                  attributes: ["userId", "firstName", "lastName", "email"],
+                  attributes: ["userId", "username", "email"],
                 },
               ],
             },
@@ -231,15 +174,13 @@ export const getTeacherById = async (req, res) => {
             {
               model: User,
               as: "ratedBy",
-              attributes: ["userId", "firstName", "lastName"],
+              attributes: ["userId", "username"],
             },
           ],
         },
       ],
       attributes: [
         "userId",
-        "firstName",
-        "lastName",
         "username",
         "email",
         "mobile",
@@ -330,8 +271,6 @@ export const createTeacher = async (req, res) => {
 
   try {
     const {
-      firstName,
-      lastName,
       username,
       email,
       mobile,
@@ -342,11 +281,11 @@ export const createTeacher = async (req, res) => {
     } = req.body;
 
     // Validate required fields
-    if (!firstName || !lastName || !username || !email || !password) {
+    if (!username || !email || !password) {
       await transaction.rollback();
       return sendValidationError(
         res,
-        "First name, last name, username, email, and password are required"
+        "Username, email, and password are required"
       );
     }
 
@@ -372,8 +311,6 @@ export const createTeacher = async (req, res) => {
     // Create teacher
     const teacher = await User.create(
       {
-        firstName,
-        lastName,
         username,
         email,
         mobile,
@@ -412,8 +349,6 @@ export const updateTeacher = async (req, res) => {
   try {
     const { teacherId } = req.params;
     const {
-      firstName,
-      lastName,
       username,
       email,
       mobile,
@@ -458,8 +393,6 @@ export const updateTeacher = async (req, res) => {
 
     // Prepare update data
     const updateData = {};
-    if (firstName !== undefined) updateData.firstName = firstName;
-    if (lastName !== undefined) updateData.lastName = lastName;
     if (username !== undefined) updateData.username = username;
     if (email !== undefined) updateData.email = email;
     if (mobile !== undefined) updateData.mobile = mobile;
@@ -631,7 +564,7 @@ export const assignTeacherToCourse = async (req, res) => {
       courseTitle: course.title,
       newTeacher: {
         id: teacher.userId,
-        name: `${teacher.firstName} ${teacher.lastName}`,
+        name: teacher.username,
         email: teacher.email,
       },
       previousTeacherId,
@@ -681,7 +614,7 @@ export const assignTeacherToBatch = async (req, res) => {
       batchTitle: batch.title,
       newTeacher: {
         id: teacher.userId,
-        name: `${teacher.firstName} ${teacher.lastName}`,
+        name: teacher.username,
         email: teacher.email,
       },
       previousTeacherId,
@@ -728,7 +661,7 @@ export const getTeacherPerformanceReport = async (req, res) => {
 
     const teacher = await User.findOne({
       where: { userId: teacherId, role: "teacher" },
-      attributes: ["userId", "firstName", "lastName", "email"],
+      attributes: ["userId", "username", "email"],
     });
 
     if (!teacher) {
@@ -843,7 +776,7 @@ export const getTeacherPerformanceReport = async (req, res) => {
     return sendSuccess(res, 200, "Teacher performance report fetched successfully", {
       teacher: {
         id: teacher.userId,
-        name: `${teacher.firstName} ${teacher.lastName}`,
+        name: teacher.username,
         email: teacher.email,
       },
       performance,
@@ -889,7 +822,7 @@ export const getTeacherStudentFeedback = async (req, res) => {
         {
           model: User,
           as: "ratedBy",
-          attributes: ["userId", "firstName", "lastName", "profileImage"],
+          attributes: ["userId", "username", "profileImage"],
         },
         {
           model: Course,

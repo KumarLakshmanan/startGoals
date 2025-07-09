@@ -38,10 +38,14 @@ const Project = sequelize.define(
         key: "category_id",
       },
     },
-    skillLevel: {
-      type: DataTypes.ENUM("beginner", "intermediate", "advanced"),
+    levelId: {
+      type: DataTypes.UUID,
       allowNull: false,
-      defaultValue: "intermediate",
+      references: {
+        model: "course_levels",
+        key: "level_id",
+      },
+      comment: "Level of difficulty (beginner, intermediate, advanced)",
     },
     tags: {
       type: DataTypes.JSON,
@@ -101,22 +105,27 @@ const Project = sequelize.define(
     techStack: {
       type: DataTypes.JSON,
       allowNull: true,
-      comment: "Technologies used in the project",
+      comment: "Technologies used in the project (JSON array of skill IDs)",
+    },
+    programmingLanguages: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: "Programming languages used in the project (JSON array of skill IDs)",
     },
     features: {
-      type: DataTypes.JSON,
+      type: DataTypes.TEXT,
       allowNull: true,
-      comment: "List of project features",
+      comment: "Rich text of project features",
     },
     requirements: {
-      type: DataTypes.JSON,
+      type: DataTypes.TEXT,
       allowNull: true,
-      comment: "System requirements or prerequisites",
+      comment: "Rich text of system requirements or prerequisites",
     },
     whatYouGet: {
-      type: DataTypes.JSON,
+      type: DataTypes.TEXT,
       allowNull: true,
-      comment: "List of files/resources included",
+      comment: "Rich text of files/resources included",
     },
     licenseType: {
       type: DataTypes.ENUM("personal", "commercial", "one_time", "unlimited"),
@@ -208,6 +217,11 @@ const Project = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
       comment: "Support contact email",
+    },
+    readmeFileUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "URL to the project's README file",
     },
     ...commonFields,
   },

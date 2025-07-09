@@ -3,6 +3,7 @@ import { updateUserLanguagesTable } from "./updateUserLanguagesTable.js";
 import { updateUserGoalsTable } from "./updateUserGoalsTable.js";
 import { updateUserSkillsTable } from "./updateUserSkillsTable.js";
 import { createAllAssociationTables } from "./createAllAssociationTables.js";
+import { updateProjectsTable } from "./updateProjectsTable.js";
 import { createRequiredTables } from "../utils/createRequiredTables.js";
 
 const runMigrations = async () => {
@@ -40,13 +41,20 @@ const runMigrations = async () => {
     } else {
       console.log("User goals table migration completed successfully");
     }
-    
-    // Run user skills table migration
+      // Run user skills table migration
     const userSkillsResult = await updateUserSkillsTable();
     if (!userSkillsResult.success) {
       console.error("User skills table migration failed:", userSkillsResult.error);
     } else {
       console.log("User skills table migration completed successfully");
+    }
+    
+    // Run projects table migration
+    try {
+      await updateProjectsTable();
+      console.log("Projects table migration completed successfully");
+    } catch (error) {
+      console.error("Projects table migration failed:", error);
     }
     
     // Add more migrations here as needed

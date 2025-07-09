@@ -43,32 +43,163 @@ router.post(
   [
     body("title").notEmpty().withMessage("Title is required"),
     body("description").notEmpty().withMessage("Description is required"),
+    body("shortDescription").optional().isLength({ max: 500 }).withMessage("Short description cannot exceed 500 characters"),
     body("price").isFloat({ min: 0 }).withMessage("Valid price is required"),
     body("categoryId").isUUID().withMessage("Valid category ID is required"),
+    body("levelId").isUUID().withMessage("Valid level ID is required"),
+    body("languageId").optional().isUUID().withMessage("Valid language ID is required"),
     body("techStack")
       .optional()
-      .isArray()
-      .withMessage("Tech stack must be an array"),
+      .custom((value) => {
+        if (typeof value === "string") value = JSON.parse(value);
+        if (!Array.isArray(value)) throw new Error("Tech stack must be an array");
+        return true;
+      }),
     body("programmingLanguages")
       .optional()
-      .isArray()
-      .withMessage("Programming languages must be an array"),
-    body("features")
+      .custom((value) => {
+        if (typeof value === "string") value = JSON.parse(value);
+        if (!Array.isArray(value)) throw new Error("Programming languages must be an array");
+        return true;
+      }),
+    body("goals")
       .optional()
-      .isArray()
-      .withMessage("Features must be an array"),
+      .custom((value) => {
+        if (typeof value === "string") value = JSON.parse(value);
+        if (!Array.isArray(value)) throw new Error("Goals must be an array");
+        return true;
+      }),
     body("requirements")
       .optional()
-      .isArray()
-      .withMessage("Requirements must be an array"),
+      .isString()
+      .withMessage("Requirements must be a string"),
+    body("features")
+      .optional()
+      .isString()
+      .withMessage("Features must be a string"),
+    body("whatYouGet")
+      .optional()
+      .isString()
+      .withMessage("What you get must be a string"),
+    body("supportIncluded")
+      .optional()
+      .isBoolean()
+      .withMessage("Support included must be a boolean"),
+    body("supportDuration")
+      .optional()
+      .default(0)
+      .isInt({ min: 0 })
+      .withMessage("Support duration must be a non-negative integer"),
+    body("licenseType")
+      .optional()
+      .isIn(["personal", "commercial", "one_time", "unlimited"])
+      .withMessage("Invalid license type"),
+    body("status")
+      .optional()
+      .isIn(["draft", "published", "archived", "hidden", "rejected"])
+      .withMessage("Invalid status"),
+    body("version")
+      .optional()
+      .isString()
+      .withMessage("Version must be a string"),
+    body("discountEnabled")
+      .optional()
+      .isBoolean()
+      .withMessage("Discount enabled must be a boolean"),
+    body("demoUrl")
+      .optional()
+      .isString()
+      .withMessage("Demo URL must be a string"),
+    body("documentation")
+      .optional()
+      .isString()
+      .withMessage("Documentation must be a string"),
+    body("supportEmail")
+      .optional()
+      .isString()
+      .withMessage("Support email must be a string"),
+    body("linkedTeacherId")
+      .optional()
+      .isUUID()
+      .withMessage("Linked teacher ID must be a valid UUID"),
+    body("previewVideo")
+      .optional()
+      .isString()
+      .withMessage("Preview video must be a string"),
+    body("featured")
+      .optional()
+      .isBoolean()
+      .withMessage("Featured must be a boolean"),
+  ],
+  validateInput,
+  createProject,
+);
+
+// Update project (Creator only)
+router.put(
+  "/update/:id",
+  isAdmin, // Add authentication
+  [
+    param("id").isUUID().withMessage("Valid project ID is required"),
+    body("title").optional().notEmpty().withMessage("Title cannot be empty"),
+    body("description")
+      .optional()
+      .notEmpty()
+      .withMessage("Description cannot be empty"),
+    body("price")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Valid price is required"),
+    body("salePrice")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Valid sale price is required"),
+    body("categoryId")
+      .optional()
+      .isUUID()
+      .withMessage("Valid category ID is required"),
+    body("techStack")
+      .optional()
+      .custom((value) => {
+        if (typeof value === "string") value = JSON.parse(value);
+        if (!Array.isArray(value)) throw new Error("Tech stack must be an array");
+        return true;
+      }),
+    body("programmingLanguages")
+      .optional()
+      .custom((value) => {
+        if (typeof value === "string") value = JSON.parse(value);
+        if (!Array.isArray(value)) throw new Error("Programming languages must be an array");
+        return true;
+      }),
+    body("features")
+      .optional()
+      .custom((value) => {
+        if (typeof value === "string") value = JSON.parse(value);
+        if (!Array.isArray(value)) throw new Error("Features must be an array");
+        return true;
+      }),
+    body("requirements")
+      .optional()
+      .custom((value) => {
+        if (typeof value === "string") value = JSON.parse(value);
+        if (!Array.isArray(value)) throw new Error("Requirements must be an array");
+        return true;
+      }),
     body("compatibility")
       .optional()
-      .isArray()
-      .withMessage("Compatibility must be an array"),
+      .custom((value) => {
+        if (typeof value === "string") value = JSON.parse(value);
+        if (!Array.isArray(value)) throw new Error("Compatibility must be an array");
+        return true;
+      }),
     body("previewImages")
       .optional()
-      .isArray()
-      .withMessage("Preview images must be an array"),
+      .custom((value) => {
+        if (typeof value === "string") value = JSON.parse(value);
+        if (!Array.isArray(value)) throw new Error("Preview images must be an array");
+        return true;
+      }),
     body("difficulty")
       .optional()
       .isIn(["beginner", "intermediate", "advanced"])
@@ -77,15 +208,50 @@ router.post(
       .optional()
       .isIn(["Regular License", "Extended License"])
       .withMessage("Invalid license type"),
+    body("status")
+      .optional()
+      .isIn(["draft", "published", "inactive"])
+      .withMessage("Invalid status"),
     body("estimatedTime")
       .optional()
       .isInt({ min: 1 })
       .withMessage("Estimated time must be a positive integer"),
+    body("version")
+      .optional()
+      .isString()
+      .withMessage("Version must be a string"),
+    body("discountEnabled")
+      .optional()
+      .isBoolean()
+      .withMessage("Discount enabled must be a boolean"),
+    body("demoUrl")
+      .optional()
+      .isString()
+      .withMessage("Demo URL must be a string"),
+    body("documentation")
+      .optional()
+      .isString()
+      .withMessage("Documentation must be a string"),
+    body("supportEmail")
+      .optional()
+      .isString()
+      .withMessage("Support email must be a string"),
+    body("linkedTeacherId")
+      .optional()
+      .isUUID()
+      .withMessage("Linked teacher ID must be a valid UUID"),
+    body("previewVideo")
+      .optional()
+      .isString()
+      .withMessage("Preview video must be a string"),
+    body("featured")
+      .optional()
+      .isBoolean()
+      .withMessage("Featured must be a boolean"),
   ],
   validateInput,
-  createProject,
+  updateProject,
 );
-
 // Get all projects with filtering (Public)
 router.get(
   "/getAll",
@@ -142,73 +308,6 @@ router.get(
   getProjectById,
 );
 
-// Update project (Creator only)
-router.put(
-  "/update/:id",
-  isAdmin, // Add authentication
-  [
-    param("id").isUUID().withMessage("Valid project ID is required"),
-    body("title").optional().notEmpty().withMessage("Title cannot be empty"),
-    body("description")
-      .optional()
-      .notEmpty()
-      .withMessage("Description cannot be empty"),
-    body("price")
-      .optional()
-      .isFloat({ min: 0 })
-      .withMessage("Valid price is required"),
-    body("salePrice")
-      .optional()
-      .isFloat({ min: 0 })
-      .withMessage("Valid sale price is required"),
-    body("categoryId")
-      .optional()
-      .isUUID()
-      .withMessage("Valid category ID is required"),
-    body("techStack")
-      .optional()
-      .isArray()
-      .withMessage("Tech stack must be an array"),
-    body("programmingLanguages")
-      .optional()
-      .isArray()
-      .withMessage("Programming languages must be an array"),
-    body("features")
-      .optional()
-      .isArray()
-      .withMessage("Features must be an array"),
-    body("requirements")
-      .optional()
-      .isArray()
-      .withMessage("Requirements must be an array"),
-    body("compatibility")
-      .optional()
-      .isArray()
-      .withMessage("Compatibility must be an array"),
-    body("previewImages")
-      .optional()
-      .isArray()
-      .withMessage("Preview images must be an array"),
-    body("difficulty")
-      .optional()
-      .isIn(["beginner", "intermediate", "advanced"])
-      .withMessage("Invalid difficulty level"),
-    body("license")
-      .optional()
-      .isIn(["Regular License", "Extended License"])
-      .withMessage("Invalid license type"),
-    body("status")
-      .optional()
-      .isIn(["draft", "published", "inactive"])
-      .withMessage("Invalid status"),
-    body("estimatedTime")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Estimated time must be a positive integer"),
-  ],
-  validateInput,
-  updateProject,
-);
 
 // Delete project (Creator only)
 router.delete(
@@ -286,247 +385,6 @@ router.get(
   ],
   validateInput,
   getProjectStatistics,
-);
-
-// ===================== ADMIN PANEL PROJECT MANAGEMENT ROUTES =====================
-
-/**
- * @route GET /admin/projects
- * @desc Get all projects for admin panel with detailed information
- * @access Private (Admin)
- */
-router.get(
-  "/admin/all",
-  verifyToken,
-  isAdmin,
-  [
-    query("page")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Page must be a positive integer"),
-    query("limit")
-      .optional()
-      .isInt({ min: 1, max: 100 })
-      .withMessage("Limit must be between 1 and 100"),
-    query("status")
-      .optional()
-      .isString()
-      .withMessage("Status must be a string"),
-    query("sortBy")
-      .optional()
-      .isString()
-      .withMessage("SortBy must be a string"),
-    query("sortOrder")
-      .optional()
-      .isIn(["ASC", "DESC"])
-      .withMessage("SortOrder must be ASC or DESC"),
-  ],
-  validateInput,
-  getAllProjectsAdmin,
-);
-
-/**
- * @route GET /admin/projects/:id
- * @desc Get detailed project information for admin panel
- * @access Private (Admin)
- */
-router.get(
-  "/admin/:id",
-  verifyToken,
-  isAdmin,
-  param("id").isUUID().withMessage("Invalid project ID"),
-  validateInput,
-  getProjectDetailsAdmin,
-);
-
-/**
- * @route GET /admin/projects/:id/buyers
- * @desc Get all buyers of a specific project
- * @access Private (Admin)
- */
-router.get(
-  "/admin/:id/buyers",
-  verifyToken,
-  isAdmin,
-  param("id").isUUID().withMessage("Invalid project ID"),
-  validateInput,
-  getProjectBuyers,
-);
-
-/**
- * @route GET /admin/projects/:id/downloads
- * @desc Get download statistics for a specific project
- * @access Private (Admin)
- */
-router.get(
-  "/admin/:id/downloads",
-  verifyToken,
-  isAdmin,
-  param("id").isUUID().withMessage("Invalid project ID"),
-  validateInput,
-  getProjectDownloads,
-);
-
-/**
- * @route PATCH /admin/projects/:id/status
- * @desc Update project status (publish/hide/archive)
- * @access Private (Admin)
- */
-router.patch(
-  "/admin/:id/status",
-  verifyToken,
-  isAdmin,
-  [
-    param("id").isUUID().withMessage("Invalid project ID"),
-    body("status")
-      .isIn(["draft", "published", "archived", "hidden", "rejected"])
-      .withMessage("Invalid status"),
-  ],
-  validateInput,
-  updateProjectStatus,
-);
-
-/**
- * @route POST /admin/projects/bulk-status
- * @desc Bulk update project statuses
- * @access Private (Admin)
- */
-router.post(
-  "/admin/bulk-status",
-  verifyToken,
-  isAdmin,
-  [
-    body("projectIds").isArray().withMessage("Project IDs must be an array"),
-    body("status")
-      .isIn(["draft", "published", "archived", "hidden", "rejected"])
-      .withMessage("Invalid status"),
-  ],
-  validateInput,
-  bulkUpdateProjectStatus,
-);
-
-/**
- * @route GET /admin/projects/reviews
- * @desc Get project reviews for admin moderation
- * @access Private (Admin)
- */
-router.get(
-  "/admin/reviews",
-  verifyToken,
-  isAdmin,
-  [
-    query("page")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Page must be a positive integer"),
-    query("limit")
-      .optional()
-      .isInt({ min: 1, max: 100 })
-      .withMessage("Limit must be between 1 and 100"),
-    query("status")
-      .optional()
-      .isString()
-      .withMessage("Status must be a string"),
-    query("sortBy")
-      .optional()
-      .isString()
-      .withMessage("SortBy must be a string"),
-    query("sortOrder")
-      .optional()
-      .isIn(["ASC", "DESC"])
-      .withMessage("SortOrder must be ASC or DESC"),
-  ],
-  validateInput,
-  getProjectReviews,
-);
-
-/**
- * @route PATCH /admin/projects/reviews/:id/status
- * @desc Update review moderation status
- * @access Private (Admin)
- */
-router.patch(
-  "/admin/reviews/:id/status",
-  verifyToken,
-  isAdmin,
-  [
-    param("id").isUUID().withMessage("Invalid review ID"),
-    body("status")
-      .isIn(["pending", "approved", "rejected", "hidden"])
-      .withMessage("Invalid status"),
-  ],
-  validateInput,
-  updateReviewStatus,
-);
-
-/**
- * @route POST /admin/projects/reviews/bulk-status
- * @desc Bulk update review statuses
- * @access Private (Admin)
- */
-router.post(
-  "/admin/reviews/bulk-status",
-  verifyToken,
-  isAdmin,
-  [
-    body("reviewIds").isArray().withMessage("Review IDs must be an array"),
-    body("status")
-      .isIn(["pending", "approved", "rejected", "hidden"])
-      .withMessage("Invalid status"),
-  ],
-  validateInput,
-  bulkUpdateReviewStatus,
-);
-
-/**
- * @route GET /admin/projects/settings
- * @desc Get project settings
- * @access Private (Admin)
- */
-router.get(
-  "/admin/settings",
-  verifyToken,
-  isAdmin,
-  getProjectSettings,
-);
-
-/**
- * @route PUT /admin/projects/settings
- * @desc Update project settings
- * @access Private (Admin)
- */
-router.put(
-  "/admin/settings",
-  verifyToken,
-  isAdmin,
-  [
-    body("globalDownloadLimit")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Global download limit must be a positive integer"),
-    body("enableRatings")
-      .optional()
-      .isBoolean()
-      .withMessage("Enable ratings must be a boolean"),
-    body("enableReviewModeration")
-      .optional()
-      .isBoolean()
-      .withMessage("Enable review moderation must be a boolean"),
-    body("defaultLicenseType")
-      .optional()
-      .isIn(["personal", "commercial", "one_time", "unlimited"])
-      .withMessage("Invalid license type"),
-    body("autoEmailPurchaseConfirmation")
-      .optional()
-      .isBoolean()
-      .withMessage("Auto email purchase confirmation must be a boolean"),
-    body("priceBrackets")
-      .optional()
-      .isArray()
-      .withMessage("Price brackets must be an array"),
-  ],
-  validateInput,
-  updateProjectSettings,
 );
 
 export default router;

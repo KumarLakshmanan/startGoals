@@ -20,6 +20,122 @@ const User = sequelize.define(
         isAlphanumeric: true,
       },
     },
+    dob: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+      validate: {
+        isDate: true,
+        isBefore: new Date().toISOString().split("T")[0], // Ensure date is before today
+      },
+    },
+    bio: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      validate: {
+        len: [0, 500], // Max 500 characters
+      },
+    },
+    experience: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      validate: {
+        min: 0,
+      },
+    },
+    experienceDescription: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      validate: {
+        len: [0, 1000],
+      },
+    },
+    linkedin: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isUrl: true,
+      },
+    },
+    github: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isUrl: true,
+      },
+    },
+    website: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+
+        isUrl: true,
+      },
+    },
+    twitter: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isUrl: true,
+      },
+    },
+    status: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        isIn: [["active", "inactive", "banned"]],
+      },
+      defaultValue: "active",
+      comment: "User status: active, inactive, or banned",
+    },
+    doorNo: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: [0, 100], // Max 100 characters
+      },
+    },
+    street: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: [0, 100], // Max 100 characters
+      },
+    },
+    city: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: [0, 100], // Max 100 characters
+      },
+    },
+    state: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: [0, 100], // Max 100 characters
+      },
+    },
+    zipCode: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: [0, 10], // Max 10 characters
+      },
+    },
+    country: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: [0, 100], // Max 100 characters
+      },
+    },
+    qualification: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: [0, 100],
+      },
+    },
     email: {
       type: DataTypes.STRING,
       allowNull: true,

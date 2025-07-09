@@ -333,7 +333,7 @@ Batch.belongsToMany(User, {
   through: BatchStudents,
   foreignKey: "batchId",
   otherKey: "user_id",
-  as: "students",
+  as: "users",
 });
 
 User.belongsToMany(Batch, {

@@ -6,6 +6,12 @@ import User from "../user.js";
 import CourseCategory from "../courseCategory.js";
 import CourseTag from "../courseTag.js";
 import Language from "../language.js";
+import Goal from "../goal.js";
+import Skill from "../skill.js";
+import CourseLevel from "../courseLevel.js";
+import ProjectGoal from "./projectGoal.js";
+import ProjectTechStack from "./projectTechStack.js";
+import ProjectProgrammingLanguage from "./projectProgrammingLanguage.js";
 
 // Project associations
 Project.belongsTo(User, {
@@ -28,11 +34,61 @@ Project.belongsTo(Language, {
   as: "language",
 });
 
+Project.belongsTo(CourseLevel, {
+  foreignKey: "levelId",
+  as: "level",
+});
+
 Project.belongsToMany(CourseTag, {
   through: "project_tags",
   foreignKey: "projectId",
   otherKey: "tagId",
   as: "projectTags",
+});
+
+// Project goals association
+Project.belongsToMany(Goal, {
+  through: ProjectGoal,
+  foreignKey: "projectId",
+  otherKey: "goalId",
+  as: "goals",
+});
+
+Goal.belongsToMany(Project, {
+  through: ProjectGoal,
+  foreignKey: "goalId",
+  otherKey: "projectId",
+  as: "projects",
+});
+
+// Project tech stack association
+Project.belongsToMany(Skill, {
+  through: ProjectTechStack,
+  foreignKey: "projectId",
+  otherKey: "skillId",
+  as: "techStackSkills",
+});
+
+Skill.belongsToMany(Project, {
+  through: ProjectTechStack,
+  foreignKey: "skillId",
+  otherKey: "projectId",
+  as: "techStackProjects",
+});
+
+// Project programming languages association
+Project.belongsToMany(Skill, {
+  through: ProjectProgrammingLanguage,
+  foreignKey: "projectId",
+  otherKey: "skillId",
+  as: "programmingLanguageSkills",
+});
+
+Skill.belongsToMany(Project, {
+  through: ProjectProgrammingLanguage,
+  foreignKey: "skillId",
+  otherKey: "projectId",
+  as: "programmingLanguageProjects",
 });
 
 // Project files association
@@ -96,4 +152,7 @@ export default {
   ProjectFile,
   ProjectPurchase,
   ProjectRating,
+  ProjectGoal,
+  ProjectTechStack,
+  ProjectProgrammingLanguage
 };

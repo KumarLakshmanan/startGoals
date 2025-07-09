@@ -6,8 +6,15 @@ import ProjectSettings from "../model/projectSettings.js";
 import User from "../model/user.js";
 import CourseCategory from "../model/courseCategory.js";
 import CourseTag from "../model/courseTag.js";
+import CourseLevel from "../model/courseLevel.js";
+import Goal from "../model/goal.js";
+import Skill from "../model/skill.js";
+import Language from "../model/language.js";
 import DiscountCode from "../model/discountCode.js";
 import DiscountUsage from "../model/discountUsage.js";
+import ProjectGoal from "../model/projectGoal.js";
+import ProjectTechStack from "../model/projectTechStack.js";
+import ProjectProgrammingLanguage from "../model/projectProgrammingLanguage.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import path from "path";
@@ -33,137 +40,246 @@ export const createProject = async (req, res) => {
       description,
       shortDescription,
       price,
-      salePrice,
       categoryId,
-      tags,
-      techStack,
-      programmingLanguages,
-      demoUrl,
-      previewImages,
+      levelId,
+      languageId,
+      tags = [],
+      techStack = [],
+      programmingLanguages = [],
+      goals = [],
       requirements,
       features,
-      compatibility,
-      license,
-      liveDemoUrl,
+      whatYouGet,
+      demoUrl,
+      previewVideo,
+      coverImage,
+      screenshots = [],
       documentationUrl,
       supportEmail,
-      version,
-      lastUpdated,
-      difficulty,
-      estimatedTime,
+      supportIncluded = false,
+      supportDuration,
+      version = "1.0",
       linkedTeacherId,
-      licenseType,
-      skillLevel,
-      languageId,
-      discountEnabled,
+      licenseType = "personal",
+      discountEnabled = true,
+      featured = false,
+      status = "draft",
+      readmeFile,
     } = req.body;
 
-    const userId = req.user.id; // From auth middleware
+    const userId = req.user.userId; // From auth middleware
 
     // Validate required fields
-    if (!title || !description || !price || !categoryId) {
+    if (!title || !description || !price || !categoryId || !levelId) {
       await transaction.rollback();
-      return sendValidationError(res, "Title, description, price and category are required", {
-        missingFields: [
-          !title ? 'title' : null,
-          !description ? 'description' : null,
-          !price ? 'price' : null,
-          !categoryId ? 'categoryId' : null
-        ].filter(Boolean)
+      return sendValidationError(res, "Missing required fields", {
+        title: !title ? "Title is required" : undefined,
+        description: !description ? "Description is required" : undefined,
+        price: !price ? "Price is required" : undefined,
+        categoryId: !categoryId ? "Category is required" : undefined,
+        levelId: !levelId ? "Level is required" : undefined,
       });
-    }
-
-    // Validate title length
-    if (title.length < 3 || title.length > 100) {
+    }    // Validate title length
+    if (title.length < 3 || title.length > 200) {
       await transaction.rollback();
-      return sendValidationError(res, "Title must be between 3 and 100 characters");
+      return sendValidationError(res, "Title must be between 3 and 200 characters", {
+        title: "Title must be between 3 and 200 characters"
+      });
     }
 
     // Validate description length
     if (description.length < 10) {
       await transaction.rollback();
-      return sendValidationError(res, "Description must be at least 10 characters");
+      return sendValidationError(res, "Description must be at least 10 characters", {
+        description: "Description must be at least 10 characters"
+      });
+    }
+
+    // Validate shortDescription if provided
+    if (shortDescription && shortDescription.length > 500) {
+      await transaction.rollback();
+      return sendValidationError(res, "Short description cannot exceed 500 characters", {
+        shortDescription: "Short description cannot exceed 500 characters"
+      });
     }
 
     // Validate price
     const priceValue = parseFloat(price);
     if (isNaN(priceValue) || priceValue < 0) {
       await transaction.rollback();
-      return sendValidationError(res, "Price must be a valid positive number");
+      return sendValidationError(res, "Price must be a valid non-negative number", {
+        price: "Price must be a valid non-negative number"
+      });
     }
 
-    // Validate sale price if provided
-    if (salePrice !== undefined && salePrice !== null) {
-      const salePriceValue = parseFloat(salePrice);
-      if (isNaN(salePriceValue) || salePriceValue < 0) {
-        await transaction.rollback();
-        return sendValidationError(res, "Sale price must be a valid positive number");
-      }
-
-      if (salePriceValue >= priceValue) {
-        await transaction.rollback();
-        return sendValidationError(res, "Sale price must be less than regular price");
-      }
-    }
-
-    // Validate categoryId UUID format
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(categoryId)) {
+    // Validate supportDuration if supportIncluded is true
+    if (supportIncluded && (!supportDuration || supportDuration < 0)) {
       await transaction.rollback();
-      return sendValidationError(res, `Invalid categoryId format: ${categoryId}. Must be a valid UUID.`);
+      return sendValidationError(res, "Valid support duration is required when support is included", {
+        supportDuration: "Valid support duration is required when support is included"
+      });
+    }    // Validate UUID format for IDs
+    const validateUUID = (id, field) => {
+      if (id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+        throw new Error(`Invalid ${field} format: ${id}. Must be a valid UUID.`);
+      }
+    };
+
+    try {
+      validateUUID(categoryId, "categoryId");
+      validateUUID(levelId, "levelId");
+      if (languageId) validateUUID(languageId, "languageId");
+      if (linkedTeacherId) validateUUID(linkedTeacherId, "linkedTeacherId");
+    } catch (error) {
+      await transaction.rollback();
+      return sendValidationError(res, error.message, {
+        [error.message.split(" ")[1].toLowerCase()]: error.message
+      });
     }
 
     // Check if category exists
     const category = await CourseCategory.findByPk(categoryId);
     if (!category) {
       await transaction.rollback();
-      return sendNotFound(res, "Category not found");
+      return sendNotFound(res, "Category not found", {
+        categoryId: "Category not found"
+      });
     }
-    
+
+    // Check if level exists
+    const level = await CourseLevel.findByPk(levelId);
+    if (!level) {
+      await transaction.rollback();
+      return sendNotFound(res, "Level not found", {
+        levelId: "Level not found"
+      });
+    }
+
+    // Check if language exists if provided
+    if (languageId) {
+      const language = await Language.findByPk(languageId);
+      if (!language) {
+        await transaction.rollback();
+        return sendNotFound(res, "Language not found", {
+          languageId: "Language not found"
+        });
+      }
+    }
+
     // Validate linked teacher if provided
     if (linkedTeacherId) {
       const teacher = await User.findByPk(linkedTeacherId);
       if (!teacher) {
         await transaction.rollback();
-        return sendNotFound(res, "Linked teacher not found");
+        return sendNotFound(res, "Linked teacher not found", {
+          linkedTeacherId: "Linked teacher not found"
+        });
       }
-    }
-
-    // Create project
+    }    // Create project
     const project = await Project.create(
       {
         title,
         description,
-        shortDescription,
+        shortDescription: shortDescription || null,
         price: parseFloat(price),
-        salePrice: salePrice ? parseFloat(salePrice) : null,
         categoryId,
-        techStack: Array.isArray(techStack) ? techStack : [],
-        programmingLanguages: Array.isArray(programmingLanguages)
-          ? programmingLanguages
-          : [],
-        demoUrl,
-        previewImages: Array.isArray(previewImages) ? previewImages : [],
-        requirements: Array.isArray(requirements) ? requirements : [],
-        features: Array.isArray(features) ? features : [],
-        compatibility: Array.isArray(compatibility) ? compatibility : [],
-        license: license || "Regular License",
-        liveDemoUrl,
-        documentationUrl,
-        supportEmail,
-        version: version || "1.0.0",
-        lastUpdated: lastUpdated || new Date(),
-        difficulty: difficulty || "intermediate",
-        estimatedTime,
+        levelId,
+        languageId: languageId || null,
+        coverImage: typeof coverImage === 'string' ? coverImage : null,
+        previewVideo: previewVideo || null,
+        demoUrl: demoUrl || null,
+        screenshots: Array.isArray(screenshots) ? screenshots : [],
+        requirements: requirements || null,
+        features: features || null,
+        whatYouGet: whatYouGet || null,
+        documentationUrl: documentationUrl || null,
+        supportEmail: supportEmail || null,
+        supportIncluded,
+        supportDuration: supportIncluded ? (supportDuration || 30) : null,
+        licenseType,
+        version,
+        discountEnabled,
+        featured,
+        status,
+        readmeFileUrl: readmeFile || null,
+        linkedTeacherId: linkedTeacherId || null,
         createdBy: userId,
-        status: "draft",
-        linkedTeacherId: linkedTeacherId || userId,
-        licenseType: licenseType || "personal",
-        skillLevel: skillLevel || "intermediate",
-        languageId,
-        discountEnabled: discountEnabled !== undefined ? discountEnabled : true,
       },
-      { transaction },
-    ); // Add tags if provided
+      { transaction }
+    );
+
+    // Add tags if provided
+    if (tags && tags.length > 0) {
+      const tagPromises = tags.map(async (tagId) => {
+        try {
+          validateUUID(tagId, "tagId");
+          const tag = await CourseTag.findByPk(tagId);
+          if (tag) {
+            await project.addProjectTag(tag, { transaction });
+          }
+        } catch (error) {
+          console.warn(`Error adding tag ${tagId}: ${error.message}`);
+        }
+      });
+      await Promise.all(tagPromises);
+    }
+
+    // Add tech stack if provided
+    if (techStack && techStack.length > 0) {
+      const techStackPromises = techStack.map(async (skillId) => {
+        try {
+          validateUUID(skillId, "skillId");
+          const skill = await Skill.findByPk(skillId);
+          if (skill) {
+            await ProjectTechStack.create({
+              projectId: project.projectId,
+              skillId
+            }, { transaction });
+          }
+        } catch (error) {
+          console.warn(`Error adding tech stack skill ${skillId}: ${error.message}`);
+        }
+      });
+      await Promise.all(techStackPromises);
+    }
+
+    // Add programming languages if provided
+    if (programmingLanguages && programmingLanguages.length > 0) {
+      const programmingLanguagePromises = programmingLanguages.map(async (skillId) => {
+        try {
+          validateUUID(skillId, "skillId");
+          const skill = await Skill.findByPk(skillId);
+          if (skill) {
+            await ProjectProgrammingLanguage.create({
+              projectId: project.projectId,
+              skillId
+            }, { transaction });
+          }
+        } catch (error) {
+          console.warn(`Error adding programming language skill ${skillId}: ${error.message}`);
+        }
+      });
+      await Promise.all(programmingLanguagePromises);
+    }
+
+    // Add goals if provided
+    if (goals && goals.length > 0) {
+      const goalPromises = goals.map(async (goalId) => {
+        try {
+          validateUUID(goalId, "goalId");
+          const goal = await Goal.findByPk(goalId);
+          if (goal) {
+            await ProjectGoal.create({
+              projectId: project.projectId,
+              goalId
+            }, { transaction });
+          }
+        } catch (error) {
+          console.warn(`Error adding goal ${goalId}: ${error.message}`);
+        }
+      });
+      await Promise.all(goalPromises);
+    }
     if (tags && Array.isArray(tags) && tags.length > 0) {
       const tagObjects = await CourseTag.findAll({
         where: { id: { [Op.in]: tags } },
@@ -179,23 +295,23 @@ export const createProject = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["userId", "username", "email"],
         },
         {
           model: CourseCategory,
           as: "category",
-          attributes: ["id", "title"],
+          attributes: ["categoryId", "categoryName"],
         },
         {
           model: CourseTag,
           as: "projectTags",
-          attributes: ["id", "title"],
+          attributes: ["courseTagId", "tag"],
           through: { attributes: [] },
         },
         {
           model: User,
           as: "linkedTeacher",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["userId", "username", "email"],
         },
       ],
     });
@@ -267,24 +383,24 @@ export const getAllProjects = async (req, res) => {
       {
         model: User,
         as: "creator",
-        attributes: ["id", "firstName", "lastName", "profilePicture"],
+        attributes: ["userId", "username", "profileImage"],
       },
       {
         model: CourseCategory,
         as: "category",
-        attributes: ["id", "title"],
+        attributes: ["categoryId", "categoryName"],
       },
       {
         model: CourseTag,
         as: "projectTags",
-        attributes: ["id", "title"],
+        attributes: ["courseTagId", "tag"],
         through: { attributes: [] },
       },
       {
         model: ProjectRating,
         as: "ratings",
         attributes: ["rating"],
-        where: { status: "approved" },
+        where: { moderationStatus: "approved" },
         required: false,
       },
     ];
@@ -355,43 +471,41 @@ export const getProjectById = async (req, res) => {
           model: User,
           as: "creator",
           attributes: [
-            "id",
-            "firstName",
-            "lastName",
+            "userId",
+            "username",
             "email",
-            "profilePicture",
-            "bio",
+            "profileImage",
           ],
         },
         {
           model: CourseCategory,
           as: "category",
-          attributes: ["id", "title"],
+          attributes: ["categoryId", "categoryName"],
         },
         {
           model: CourseTag,
           as: "projectTags",
-          attributes: ["id", "title"],
+          attributes: ["courseTagId", "tag"],
           through: { attributes: [] },
         },
         {
           model: ProjectFile,
           as: "files",
-          attributes: ["id", "fileName", "fileType", "fileSize", "isPreview"],
+          attributes: ["fileId", "fileName", "fileType", "fileSize"],
           where: { isPreview: true },
           required: false,
         },
         {
           model: ProjectRating,
           as: "ratings",
-          attributes: ["id", "rating", "review", "createdAt"],
+          attributes: ["ratingId", "rating", "review", "createdAt"],
           where: { status: "approved" },
           required: false,
           include: [
             {
               model: User,
               as: "user",
-              attributes: ["id", "firstName", "lastName", "profilePicture"],
+              attributes: ["userId", "username", "profileImage"],
             },
           ],
         },
@@ -485,17 +599,17 @@ export const updateProject = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["userId", "username", "email"],
         },
         {
           model: CourseCategory,
           as: "category",
-          attributes: ["id", "title"],
+          attributes: ["categoryId", "categoryName"],
         },
         {
           model: CourseTag,
           as: "projectTags",
-          attributes: ["id", "title"],
+          attributes: ["courseTagId", "tag"],
           through: { attributes: [] },
         },
       ],
@@ -772,14 +886,14 @@ export const getUserPurchases = async (req, res) => {
             {
               model: User,
               as: "creator",
-              attributes: ["id", "firstName", "lastName"],
+              attributes: ["userId", "username", "lastName"],
             },
           ],
         },
         {
           model: DiscountCode,
           as: "discountCode",
-          attributes: ["id", "code", "discountType", "discountValue"],
+          attributes: ["discountId", "code", "discountType", "discountValue"],
         },
       ],
       limit: parseInt(limit),
@@ -901,7 +1015,7 @@ export const getProjectStatistics = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["firstName", "lastName"],
+          attributes: ["username", "lastName"],
         },
       ],
     });
@@ -916,7 +1030,7 @@ export const getProjectStatistics = async (req, res) => {
         {
           model: CourseCategory,
           as: "category",
-          attributes: ["id", "title"],
+          attributes: ["categoryId", "categoryName"],
         },
       ],
       group: ["category.id", "category.title"],
@@ -999,22 +1113,22 @@ export const getAllProjectsAdmin = async (req, res) => {
       {
         model: User,
         as: "creator",
-        attributes: ["id", "firstName", "lastName", "profilePicture"],
+        attributes: ["userId", "username", "profileImage"],
       },
       {
         model: User,
         as: "linkedTeacher",
-        attributes: ["id", "firstName", "lastName", "email", "profilePicture"],
+        attributes: ["userId", "username", "email", "profileImage"],
       },
       {
         model: CourseCategory,
         as: "category",
-        attributes: ["id", "title"],
+        attributes: ["categoryId", "categoryName"],
       },
       {
         model: CourseTag,
         as: "projectTags",
-        attributes: ["id", "title"],
+        attributes: ["courseTagId", "tag"],
         through: { attributes: [] },
       },
       {
@@ -1080,22 +1194,22 @@ export const getProjectDetailsAdmin = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["id", "firstName", "lastName", "email", "profilePicture"],
+          attributes: ["userId", "username", "email", "profileImage"],
         },
         {
           model: User,
           as: "linkedTeacher",
-          attributes: ["id", "firstName", "lastName", "email", "profilePicture"],
+          attributes: ["userId", "username", "email", "profileImage"],
         },
         {
           model: CourseCategory,
           as: "category",
-          attributes: ["id", "title"],
+          attributes: ["categoryId", "categoryName"],
         },
         {
           model: CourseTag,
           as: "projectTags",
-          attributes: ["id", "title"],
+          attributes: ["courseTagId", "tag"],
           through: { attributes: [] },
         },
         {
@@ -1120,7 +1234,7 @@ export const getProjectDetailsAdmin = async (req, res) => {
             {
               model: User,
               as: "user",
-              attributes: ["id", "firstName", "lastName", "profilePicture"],
+              attributes: ["userId", "username", "profileImage"],
             },
           ],
         },
@@ -1189,15 +1303,15 @@ export const getProjectBuyers = async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     const { count, rows: purchases } = await ProjectPurchase.findAndCountAll({
-      where: { 
+      where: {
         projectId: id,
-        paymentStatus: "completed" 
+        paymentStatus: "completed"
       },
       include: [
         {
           model: User,
           as: "buyer",
-          attributes: ["id", "firstName", "lastName", "email", "profilePicture"],
+          attributes: ["userId", "username", "email", "profileImage"],
         },
       ],
       limit: parseInt(limit),
@@ -1233,9 +1347,9 @@ export const getProjectDownloads = async (req, res) => {
 
     // Get all purchases for this project
     const purchases = await ProjectPurchase.findAll({
-      where: { 
+      where: {
         projectId: id,
-        paymentStatus: "completed" 
+        paymentStatus: "completed"
       },
       attributes: [
         "purchaseId",
@@ -1247,7 +1361,7 @@ export const getProjectDownloads = async (req, res) => {
         {
           model: User,
           as: "buyer",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["userId", "username", "email"],
         },
       ],
     });
@@ -1322,7 +1436,7 @@ export const updateProjectStatus = async (req, res) => {
 // Bulk update project statuses
 export const bulkUpdateProjectStatus = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { projectIds, status } = req.body;
 
@@ -1400,7 +1514,7 @@ export const getProjectReviews = async (req, res) => {
         {
           model: User,
           as: "user",
-          attributes: ["id", "firstName", "lastName", "email", "profilePicture"],
+          attributes: ["userId", "username", "email", "profileImage"],
         },
         {
           model: Project,
@@ -1491,7 +1605,7 @@ export const updateReviewStatus = async (req, res) => {
 // Bulk update review statuses
 export const bulkUpdateReviewStatus = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { reviewIds, status } = req.body;
     const adminId = req.user.id;
@@ -1582,12 +1696,12 @@ export const getProjectSettings = async (req, res) => {
   try {
     // Get first settings entry (there should only be one)
     let settings = await ProjectSettings.findOne();
-    
+
     // If settings don't exist, create default
     if (!settings) {
       settings = await ProjectSettings.create({});
     }
-    
+
     return sendSuccess(res, 200, "Project settings retrieved successfully", settings);
   } catch (error) {
     console.error("Get project settings error:", error);
@@ -1610,12 +1724,12 @@ export const updateProjectSettings = async (req, res) => {
 
     // Get first settings entry (there should only be one)
     let settings = await ProjectSettings.findOne();
-    
+
     // If settings don't exist, create default
     if (!settings) {
       settings = await ProjectSettings.create({});
     }
-    
+
     // Update settings with new values
     await settings.update({
       globalDownloadLimit: globalDownloadLimit !== undefined ? globalDownloadLimit : settings.globalDownloadLimit,
@@ -1626,7 +1740,7 @@ export const updateProjectSettings = async (req, res) => {
       priceBrackets: priceBrackets || settings.priceBrackets,
       projectEmailTemplate: projectEmailTemplate !== undefined ? projectEmailTemplate : settings.projectEmailTemplate,
     });
-    
+
     return sendSuccess(res, 200, "Project settings updated successfully", settings);
   } catch (error) {
     console.error("Update project settings error:", error);
