@@ -16,7 +16,6 @@ import {
   completeProjectPurchase,
   getUserPurchases,
   getProjectStatistics,
-  getProjectDetailsAdmin,
   getProjectBuyers,
   getProjectDownloads,
   updateProjectStatus,
@@ -26,6 +25,7 @@ import {
   bulkUpdateReviewStatus,
   getProjectSettings,
   updateProjectSettings,
+  getProjectDetailsAdmin,
 } from "../controller/projectController.js";
 import { isAdmin, verifyToken } from "../middleware/authMiddleware.js";
 import { validateInput } from "../middleware/validationMiddleware.js";

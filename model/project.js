@@ -238,10 +238,6 @@ const Project = sequelize.define(
         type: "BTREE",
       },
       {
-        fields: ["skill_level"],
-        type: "BTREE",
-      },
-      {
         fields: ["price"],
         type: "BTREE",
       },

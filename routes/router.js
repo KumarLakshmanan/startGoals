@@ -67,8 +67,6 @@ router.use("/project-ratings", projectRatingRoutes);
 router.use("/discounts", discountRoutes);
 router.use("/upload", fileUploadRoutes);
 router.use("/teachers", teacherRoutes);
-router.use("/analytics", analyticsRoutes);
-router.use("/courses", liveCourseRoutes);
 router.use("/course-purchase", coursePurchaseRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/certificates", certificateRoutes);

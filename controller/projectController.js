@@ -1072,11 +1072,6 @@ export const getProjectDetailsAdmin = async (req, res) => {
           attributes: ["userId", "username", "email", "profileImage"],
         },
         {
-          model: User,
-          as: "linkedTeacher",
-          attributes: ["userId", "username", "email", "profileImage"],
-        },
-        {
           model: CourseCategory,
           as: "category",
           attributes: ["categoryId", "categoryName"],
@@ -1090,17 +1085,6 @@ export const getProjectDetailsAdmin = async (req, res) => {
         {
           model: ProjectFile,
           as: "files",
-          attributes: [
-            "fileId",
-            "fileName",
-            "fileUrl",
-            "fileType",
-            "fileSize",
-            "isMain",
-            "downloadOrder",
-            "version",
-            "createdAt",
-          ],
         },
         {
           model: ProjectRating,

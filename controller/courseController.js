@@ -47,7 +47,7 @@ export const getCourseById = async (req, res) => {
         {
           model: CourseLevel,
           as: "level",
-          attributes: ["levelId", "level", "order"],
+          attributes: ["levelId", "name", "order"],
         },
         {
           model: CourseCategory,
@@ -449,10 +449,80 @@ export const updateCourse = async (req, res) => {
     return sendServerError(res, error);
   }
 };
-
 export const getAllCourses = async (req, res) => {
   try {
-    // ... (existing logic)
+    const {
+      page = 1,
+      limit = 10,
+      categoryId,
+      levelId,
+      type,
+      isPaid,
+      status = "active",
+      sortBy = "createdAt",
+      sortOrder = "DESC",
+      search = "",
+    } = req.query;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Build where condition
+    const whereCondition = {};
+
+    if (typeof status !== "undefined" && status !== "") whereCondition.status = status;
+    if (typeof categoryId !== "undefined" && categoryId !== "") whereCondition.categoryId = categoryId;
+    if (typeof levelId !== "undefined" && levelId !== "") whereCondition.levelId = levelId;
+    if (typeof type !== "undefined" && type !== "") whereCondition.type = type;
+    if (typeof isPaid !== "undefined" && isPaid !== "") {
+      if (isPaid === "true" || isPaid === true) whereCondition.isPaid = true;
+      else if (isPaid === "false" || isPaid === false) whereCondition.isPaid = false;
+    }
+
+    // Search condition
+    if (search && search.trim().length > 0) {
+      whereCondition[Op.or] = [
+        { title: { [Op.iLike]: `%${search.trim()}%` } },
+        { description: { [Op.iLike]: `%${search.trim()}%` } },
+      ];
+    }
+
+    const { count, rows: courses } = await Course.findAndCountAll({
+      where: whereCondition,
+      include: [
+        {
+          model: CourseLevel,
+          as: "level",
+          attributes: ["levelId", "name", "order"],
+        },
+        {
+          model: CourseCategory,
+          as: "category",
+          attributes: ["categoryId", "categoryName"],
+        },
+        {
+          model: User,
+          as: "instructor",
+          attributes: ["userId", "username", "email", "profileImage"],
+        },
+        {
+          model: CourseTag,
+          as: "tags",
+          attributes: ["tag"],
+        },
+        {
+          model: Language,
+          through: { attributes: [] },
+          attributes: ["languageId", "language", "languageCode"],
+        },
+      ],
+      limit: parseInt(limit),
+      offset,
+      order: [[sortBy, sortOrder.toUpperCase()]],
+      distinct: true,
+    });
+
+    const totalPages = Math.ceil(count / parseInt(limit));
+
     return sendSuccess(res, 200, "Courses fetched successfully", {
       courses,
       pagination: {
@@ -565,7 +635,7 @@ export const searchCourses = async (req, res) => {
         {
           model: CourseLevel,
           as: "level",
-          attributes: ["levelId", "level"],
+          attributes: ["levelId", "name"],
         },
         {
           model: CourseCategory,
@@ -623,7 +693,7 @@ export const getCoursesByInstructor = async (req, res) => {
         {
           model: CourseLevel,
           as: "level",
-          attributes: ["levelId", "level"],
+          attributes: ["levelId", "name"],
         },
         {
           model: CourseCategory,
@@ -673,7 +743,7 @@ export const getCoursesByCategory = async (req, res) => {
         {
           model: CourseLevel,
           as: "level",
-          attributes: ["levelId", "level"],
+          attributes: ["levelId", "name"],
         },
         {
           model: CourseCategory,
@@ -1305,75 +1375,6 @@ export const updateCourseSettings = async (req, res) => {
   }
 };
 
-export const getAllCoursesAdmin = async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 20,
-      search,
-      type,
-      status,
-      category,
-      instructor,
-      sortBy = "createdAt",
-      sortOrder = "DESC",
-    } = req.query;
-
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    const whereConditions = {};
-
-    if (search) {
-      whereConditions[Op.or] = [
-        { title: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } },
-      ];
-    }
-
-    if (type) whereConditions.type = type;
-    if (status) whereConditions.status = status;
-    if (category) whereConditions.categoryId = category;
-    if (instructor) whereConditions.createdBy = instructor;
-
-    const courses = await Course.findAndCountAll({
-      where: whereConditions,
-      include: [
-        {
-          model: CourseCategory,
-          as: "category",
-          attributes: ["categoryId", "categoryName"],
-        },
-        {
-          model: User,
-          as: "instructor",
-          attributes: ["userId", "username", "email"],
-        },
-        {
-          model: CourseLevel,
-          as: "level",
-          attributes: ["levelId", "level"],
-        },
-      ],
-      order: [[sortBy, sortOrder]],
-      limit: parseInt(limit),
-      offset: offset,
-      distinct: true,
-    });
-
-    return sendSuccess(res, 200, "Courses fetched successfully", {
-      courses: courses.rows,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(courses.count / parseInt(limit)),
-        totalItems: courses.count,
-        itemsPerPage: parseInt(limit),
-      },
-    });
-  } catch (error) {
-    console.error("Get all courses admin error:", error);
-    return sendServerError(res, error);
-  }
-};
 /**
  * ===================== COURSE ANALYTICS & REPORTING =====================
  */

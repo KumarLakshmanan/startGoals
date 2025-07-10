@@ -22,7 +22,6 @@ import {
   deleteCourseAdmin,
   getCourseManagementData,
   updateCourseSettings,
-  getAllCoursesAdmin,
   // Analytics and reporting functions
   getCourseAnalytics,
   getAdminDashboardOverview,
@@ -35,9 +34,9 @@ const router = express.Router();
 // ===================== ADMIN/OWNER COURSE MANAGEMENT =====================
 
 // Admin dashboard and overview
-router.get("/dashboard", isAdmin, getAllCoursesAdmin);
+router.get("/dashboard", isAdmin, getAllCourses);
 router.get("/overview", isAdmin, getAdminDashboardOverview);
-router.get("/list", isAdmin, getAllCoursesAdmin); // Add specific route for list view
+router.get("/list", isAdmin, getAllCourses); // Add specific route for list view
 
 // Course management
 router.get("/manage/:courseId", isAdmin, getCourseManagementData);

@@ -363,7 +363,7 @@ export const searchCourses = async (req, res) => {
       {
         model: CourseLevel,
         as: "level",
-        attributes: ["levelId", "level"],
+        attributes: ["levelId", "name"],
       },
       {
         model: User,
@@ -740,7 +740,7 @@ export const searchInstructors = async (req, res) => {
           {
             model: CourseLevel,
             as: "level",
-            attributes: ["levelId", "level"],
+            attributes: ["levelId", "name"],
             ...(skillLevel && {
               where: {
                 levelId: {
@@ -868,7 +868,7 @@ export const getSearchFilters = async (req, res) => {
     if (type === "all" || type === "courses") {
       // Course levels
       const levels = await CourseLevel.findAll({
-        attributes: ["levelId", "level", "description"],
+        attributes: ["levelId", "name", "description"],
         order: [["level", "ASC"]],
       });
       filters.levels = levels.map((level) => ({
