@@ -11,6 +11,7 @@ import {
   reorderSections,
   getCourseContentManagement,
   bulkPublishContent,
+  uploadLessonVideo,
 } from "../controller/sectionController.js";
 import {
   authenticateToken,
@@ -18,6 +19,7 @@ import {
   isStudent,
   isAdmin,
 } from "../middleware/authMiddleware.js";
+import upload from "../middleware/fileUploadMiddleware.js";
 
 const router = express.Router();
 
@@ -51,5 +53,8 @@ router.get(
   getSectionsByCourseId,
 ); // Get all sections for a course (Students/Teachers)
 router.get("/getSectionById/:sectionId", isStudent, getSectionById); // Get single section by ID (Students/Teachers)
+
+// Video upload for lessons
+router.post("/lessons/:lessonId/video", isTeacher, upload.single("video"), uploadLessonVideo);
 
 export default router;

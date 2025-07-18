@@ -762,3 +762,33 @@ export const bulkPublishContent = async (req, res) => {
     return sendServerError(res, error);
   }
 };
+// Upload lesson video controller
+export const uploadLessonVideo = async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    if (!lessonId) {
+      return sendValidationError(res, "lessonId parameter is required");
+    }
+    if (!req.file || !req.file.location) {
+      return sendValidationError(res, "No video file uploaded or upload failed");
+    }
+
+    // Find lesson
+    const lesson = await Lesson.findByPk(lessonId);
+    if (!lesson) {
+      return sendNotFound(res, "Lesson not found");
+    }
+
+    // Update lesson with video URL
+    lesson.videoUrl = req.file.location;
+    await lesson.save();
+
+    return sendSuccess(res, 200, "Lesson video uploaded successfully", {
+      lessonId: lesson.lessonId,
+      videoUrl: lesson.videoUrl,
+    });
+  } catch (error) {
+    console.error("Upload lesson video error:", error);
+    return sendServerError(res, error);
+  }
+};

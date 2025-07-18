@@ -102,7 +102,26 @@ export const sendServerError = (res, error = null) => {
  */
 export const sendConflict = (res, field, value = "") => {
   const message = `${field} already exists${value ? `: ${value}` : ""}`;
-  return sendError(res, 409, message, { [field]: message });
+  return sendError(res, 409, message, { [field]: message  });
+};
+
+/**
+ * Send a generic response
+ * @param {Object} res - Express response object
+ * @param {Number} statusCode - HTTP status code
+ * @param {Boolean} success - Success status
+ * @param {String} message - Response message
+ * @param {Object|Array|null} data - Response data
+ * @returns {Object} Express response
+ */
+export const sendResponse = (res, statusCode = 200, success = true, message = "Request processed", data = null) => {
+  return res.status(statusCode).json({
+    success,
+    status: success,
+    code: statusCode,
+    message,
+    data
+  });
 };
 
 export default {
@@ -113,5 +132,6 @@ export default {
   sendUnauthorized,
   sendForbidden,
   sendServerError,
-  sendConflict
+  sendConflict,
+  sendResponse
 };

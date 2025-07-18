@@ -15,19 +15,39 @@ import {
   getCoursesByCategory,
   toggleCourseStatus,
   getCoursesStats,
+  getLiveCourses,
+  getRecordedCourses,
   // Admin course management functions
   createLiveCourse,
   createRecordedCourse,
-  updateCourseAdmin,
+  createCourseBatch,
+  getCourseBatches,
   deleteCourseAdmin,
   getCourseManagementData,
-  updateCourseSettings,
   // Analytics and reporting functions
   getCourseAnalytics,
   getAdminDashboardOverview,
   exportCourseData,
-  getRevenueAnalytics,
+  // Course tests management
+  getCourseTests,
+  createCourseTest,
+  updateCourseTest,
+  deleteCourseTest,
+  // Course certificates management
+  getCourseCertificates,
+  createCourseCertificate,
+  updateCourseCertificate,
+  deleteCourseCertificate,
+  // Course purchases management
+  getCoursePurchases,
+  getPurchaseDetails,
+  // Course ratings management
+  getCourseRatings,
+  replyToRating,
+  deleteRating,
+  batchUpdateRatingStatus
 } from "../controller/courseController.js";
+import upload from "../middleware/fileUploadMiddleware.js";
 
 const router = express.Router();
 
@@ -38,23 +58,24 @@ router.get("/dashboard", isAdmin, getAllCourses);
 router.get("/overview", isAdmin, getAdminDashboardOverview);
 router.get("/list", isAdmin, getAllCourses); // Add specific route for list view
 
+// Get courses by type
+router.get("/live", getLiveCourses);
+router.get("/recorded", getRecordedCourses);
+
 // Course management
 router.get("/manage/:courseId", isAdmin, getCourseManagementData);
 
 // Create courses (Admin/Owner only)
-router.post("/create/live", isAdmin, createLiveCourse);
-router.post("/create/recorded", isAdmin, createRecordedCourse);
+router.post("/create/live", isAdmin, createCourse);
+router.post("/create/recorded", isAdmin, createCourse);
+router.post("/", isAdmin, createCourse); // General create endpoint
 
 // Update/Delete courses (Admin/Owner only)
-router.put("/:courseId", isAdmin, updateCourseAdmin);
-router.delete("/:courseId", isAdmin, deleteCourseAdmin);
-
-// Course settings management (Admin/Owner only)
-router.patch("/:courseId/settings", isAdmin, updateCourseSettings);
+router.put("/:courseId", isAdmin, updateCourse);
+router.delete("/:courseId", isAdmin, deleteCourse);
 
 // Analytics and Reporting (Admin/Owner only)
 router.get("/analytics/:courseId", isAdmin, getCourseAnalytics);
-router.get("/revenue-analytics", isAdmin, getRevenueAnalytics);
 router.post("/export/:courseId", isAdmin, exportCourseData);
 
 // ===================== PUBLIC AND GENERAL ROUTES =====================

@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "npm start",
   "type": "module",
-  "main": "index.js",  "scripts": {
+  "main": "index.js",
+  "scripts": {
     "dev": "nodemon index.js",
     "start": "nodemon index.js",
     "production": "node index.js",

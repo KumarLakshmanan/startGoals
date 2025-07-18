@@ -30,6 +30,7 @@ import {
   sendConflict
 } from "../utils/responseHelper.js";
 import CourseLevel from "../model/courseLevel.js";
+import UserExams from "../model/userExams.js";
 
 export const userRegistration = async (req, res) => {
   const trans = await sequelize.transaction();
@@ -352,7 +353,7 @@ export const getUserDetails = async (req, res) => {
         {
           model: Exam,
           as: "exams",
-          through: { attributes: [] },
+          through: { model: UserExams, attributes: [] },
         },
       ],
     });

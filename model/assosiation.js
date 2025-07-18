@@ -9,7 +9,6 @@ import Banner from "./banner.js";
 import Goal from "./goal.js";
 import Skill from "./skill.js";
 import CourseGoal from "./courseGoal.js";
-import CourseRequirement from "./courseRequirement.js";
 import CourseLevel from "./courseLevel.js";
 import Section from "./section.js";
 import UserGoals from "./userGoals.js";
@@ -38,6 +37,14 @@ import UserLanguages from "./userLanguages.js";
 import CourseLanguage from "./courseLanguage.js";
 import Exam from "./exam.js";
 import UserExams from "./userExams.js";
+import CourseTeacher from "./courseTeacher.js";
+import CourseTest from "./courseTest.js";
+import BatchTeacher from "./batchTeacher.js";
+import BatchSchedule from "./batchSchedule.js";
+import CourseCertificate from "./courseCertificate.js";
+import Wishlist from "./wishlist.js";
+import Cart from "./cart.js";
+import Order from "./order.js";
 
 // All models must be defined before we associate them
 const models = {
@@ -49,18 +56,19 @@ const models = {
   CourseTag,
   Banner,
   Goal,
-  Skill,  UserGoals,
+  Skill,
+  UserGoals,
   UserSkills,
   UserLanguages,
   CourseLanguage,
   CourseGoal,
-  CourseRequirement,
   CourseLevel,
   Section,
   Lesson,
   Resource,
   Batch,
-  BatchStudents,  Enrollment,
+  BatchStudents,
+  Enrollment,
   LiveSession,
   LiveSessionParticipant,
   RaisedHand,
@@ -76,6 +84,17 @@ const models = {
   ProjectRating,
   DiscountCode,
   DiscountUsage,
+  CourseTeacher,
+  CourseTest,
+  BatchTeacher,
+  BatchSchedule,
+  Enrollment,
+  CourseCertificate,
+  Wishlist,
+  Cart,
+  Order,
+  Exam,
+  UserExams,
 };
 
 //user to course
@@ -252,20 +271,6 @@ CourseGoal.belongsTo(Course, {
   as: "course",
 });
 
-// course to courseRequirements
-// A course can have many requirements
-Course.hasMany(CourseRequirement, {
-  foreignKey: "courseId",
-  as: "requirements",
-  onDelete: "CASCADE",
-});
-
-// Each requirement belongs to a course
-CourseRequirement.belongsTo(Course, {
-  foreignKey: "courseId",
-  as: "course",
-});
-
 //course to courselevel
 // A courseLevel can be assigned to many courses
 CourseLevel.hasMany(Course, {
@@ -278,48 +283,6 @@ CourseLevel.hasMany(Course, {
 Course.belongsTo(CourseLevel, {
   foreignKey: "levelId",
   as: "level",
-});
-
-//course to section assositaions
-// A course can have many sections
-Course.hasMany(Section, {
-  foreignKey: "courseId",
-  as: "sections",
-  onDelete: "CASCADE",
-});
-
-// A section belongs to one course
-Section.belongsTo(Course, {
-  foreignKey: "courseId",
-  as: "course",
-});
-
-//section to lesson assosiations
-// A section can have many lessons
-Section.hasMany(Lesson, {
-  foreignKey: "sectionId",
-  as: "lessons",
-  onDelete: "CASCADE",
-});
-
-// A lesson belongs to one section
-Lesson.belongsTo(Section, {
-  foreignKey: "sectionId",
-  as: "section",
-});
-
-//lession to resoursce associtaion
-// A lesson can have many resources
-Lesson.hasMany(Resource, {
-  foreignKey: "lessonId",
-  as: "resources",
-  onDelete: "CASCADE",
-});
-
-// A resource belongs to a single lesson
-Resource.belongsTo(Lesson, {
-  foreignKey: "lessonId",
-  as: "lesson",
 });
 
 // Batch belongs to Course
@@ -387,16 +350,6 @@ Course.hasMany(Enrollment, {
   as: "enrollments",
 });
 
-// Course → Batches
-Course.hasMany(Batch, {
-  foreignKey: "courseId",
-  as: "batches",
-});
-Batch.belongsTo(Course, {
-  foreignKey: "courseId",
-  as: "course",
-});
-
 // Course → LiveSessions
 Course.hasMany(LiveSession, {
   foreignKey: "courseId",
@@ -446,25 +399,7 @@ User.hasMany(SearchAnalytics, {
   as: "searchHistory",
 });
 
-// Rating system associations
-
-// Course Rating associations
-Course.hasMany(CourseRating, {
-  foreignKey: "courseId",
-  as: "ratings",
-  onDelete: "CASCADE",
-});
-
-CourseRating.belongsTo(Course, {
-  foreignKey: "courseId",
-  as: "course",
-});
-
-User.hasMany(CourseRating, {
-  foreignKey: "user_id",
-  as: "courseRatings",
-  onDelete: "CASCADE",
-});
+// Rating system associations - removed duplicate, see end of file
 
 CourseRating.belongsTo(User, {
   foreignKey: "user_id",
@@ -763,24 +698,90 @@ Exam.belongsTo(CourseLevel, {
   onUpdate: "CASCADE",
 });
 
-// ===================== EXAM ASSOCIATIONS =====================
-// User to Exam (many-to-many)
+// User <-> Exam many-to-many association via UserExams
 User.belongsToMany(Exam, {
   through: UserExams,
-  foreignKey: "user_id",
-  otherKey: "exam_id",
+  foreignKey: "userId",
+  otherKey: "examId",
   as: "exams",
+});
+Exam.belongsToMany(User, {
+  through: UserExams,
+  foreignKey: "examId",
+  otherKey: "userId",
+  as: "users",
+});
+
+// ===================== WISHLIST ASSOCIATIONS =====================
+User.hasMany(Wishlist, {
+  foreignKey: "userId",
+  as: "wishlists",
   onDelete: "CASCADE",
 });
 
-Exam.belongsToMany(User, {
-  through: UserExams,
-  foreignKey: "exam_id",
-  otherKey: "user_id",
-  as: "users",
+Wishlist.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+Wishlist.belongsTo(Course, {
+  foreignKey: "itemId",
+  constraints: false,
+  as: "course",
+});
+
+Wishlist.belongsTo(Project, {
+  foreignKey: "itemId",
+  constraints: false,
+  as: "project",
+});
+
+// ===================== CART ASSOCIATIONS =====================
+User.hasMany(Cart, {
+  foreignKey: "userId",
+  as: "cartItems",
   onDelete: "CASCADE",
+});
+
+Cart.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+Cart.belongsTo(Course, {
+  foreignKey: "itemId",
+  constraints: false,
+  as: "course",
+});
+
+Cart.belongsTo(Project, {
+  foreignKey: "itemId",
+  constraints: false,
+  as: "project",
+});
+
+// ===================== ORDER ASSOCIATIONS =====================
+User.hasMany(Order, {
+  foreignKey: "userId",
+  as: "orders",
+  onDelete: "CASCADE",
+});
+
+Order.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
 });
 
 // Export all models + sequelize
-export { sequelize };
+export { 
+  sequelize,
+  User,
+  Course,
+  Project,
+  Enrollment,
+  Cart,
+  Wishlist,
+  Order,
+  ProjectPurchase
+ };
 export default models;

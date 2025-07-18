@@ -5,7 +5,6 @@ import Category from "../model/courseCategory.js";
 import CourseLevel from "../model/courseLevel.js";
 import CourseTag from "../model/courseTag.js";
 import CourseGoal from "../model/courseGoal.js";
-import CourseRequirement from "../model/courseRequirement.js";
 import Language from "../model/language.js";
 import SearchAnalytics from "../model/searchAnalytics.js";
 import { Op } from "sequelize";

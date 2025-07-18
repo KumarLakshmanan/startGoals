@@ -2,8 +2,8 @@ import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
-const Course = sequelize.define(
-  "Course", // Internal Sequelize model name
+const CourseEnhanced = sequelize.define(
+  "Course", // Internal Sequelize model name (same as original)
   {
     courseId: {
       type: DataTypes.UUID,
@@ -13,14 +13,22 @@ const Course = sequelize.define(
     title: {
       type: DataTypes.STRING,
       allowNull: false,
-    },
-    thumbnailUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
+      validate: {
+        notEmpty: { msg: "Course title is required" },
+        len: [3, 200],
+      },
     },
     description: {
       type: DataTypes.TEXT,
       allowNull: false,
+      validate: {
+        notEmpty: { msg: "Course description is required" },
+      },
+    },
+    shortDescription: {
+      type: DataTypes.STRING(500),
+      allowNull: true,
+      comment: "Brief description for listing cards",
     },
     levelId: {
       type: DataTypes.UUID,
@@ -55,6 +63,11 @@ const Course = sequelize.define(
       allowNull: true,
       comment: "Discounted price for the course",
     },
+    discountEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      comment: "Whether discount codes can be applied",
+    },
     // For live courses - monthly payment
     isMonthlyPayment: {
       type: DataTypes.BOOLEAN,
@@ -65,6 +78,11 @@ const Course = sequelize.define(
       allowNull: true,
       comment: "Duration in days for live courses",
     },
+    durationMinutes: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: "Total duration in minutes for recorded courses",
+    },
     liveStartDate: {
       type: DataTypes.DATE,
       allowNull: true,
@@ -72,6 +90,16 @@ const Course = sequelize.define(
     liveEndDate: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    thumbnailUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Main course thumbnail",
+    },
+    coverImage: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Large cover image for the course landing page",
     },
     hasIntroVideo: {
       type: DataTypes.BOOLEAN,
@@ -81,6 +109,16 @@ const Course = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    demoUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Live demo URL for course preview",
+    },
+    screenshots: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: "Array of screenshot URLs",
+    },
     hasCertificate: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -89,10 +127,84 @@ const Course = sequelize.define(
       type: DataTypes.STRING,
       allowNull: true,
     },
+    techStack: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: "Technologies taught in the course (JSON array)",
+    },
+    programmingLanguages: {
+      type: DataTypes.JSON,
+      allowNull: true,
+      comment: "Programming languages used (JSON array)",
+    },
+    features: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "Rich text of course features",
+    },
+    prerequisites: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "Rich text of prerequisites or requirements",
+    },
+    whatYouGet: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "Rich text of resources included in the course",
+    },
     status: {
-      type: DataTypes.ENUM("active", "draft", "archived"),
+      type: DataTypes.ENUM("active", "draft", "archived", "rejected", "hidden"),
       defaultValue: "draft",
       allowNull: false,
+    },
+    publishedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    lastUpdated: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "When course content was last updated",
+    },
+    version: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: "1.0",
+    },
+    totalSections: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: "Total number of sections",
+    },
+    totalLessons: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: "Total number of lessons",
+    },
+    totalEnrollments: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: "Total number of enrollments",
+    },
+    totalRevenue: {
+      type: DataTypes.DECIMAL(12, 2),
+      defaultValue: 0.0,
+      comment: "Total revenue generated",
+    },
+    supportIncluded: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: "Whether instructor support is included",
+    },
+    supportDuration: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: "Support duration in days",
+    },
+    supportEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Email for course support inquiries",
     },
     averageRating: {
       type: DataTypes.DECIMAL(3, 2),
@@ -113,6 +225,11 @@ const Course = sequelize.define(
       },
       comment: "Total number of ratings received",
     },
+    featured: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: "Whether course is featured on homepage or category pages",
+    },
     ...commonFields, // includes createdAt, updatedAt, deletedAt
   },
   {
@@ -121,4 +238,4 @@ const Course = sequelize.define(
   },
 );
 
-export default Course;
+export default CourseEnhanced;

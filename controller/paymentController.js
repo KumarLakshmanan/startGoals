@@ -1,15 +1,9 @@
-/**
- * Course Purchase Controller with Razorpay Integration
- * Handles both live and recorded course purchases
- */
-
-import Razorpay from "razorpay";
-import crypto from "crypto";
-import Course from "../model/course.js";
-import User from "../model/user.js";
-import Enrollment from "../model/enrollment.js";
-import sequelize from "../config/db.js";
-import { Op } from "sequelize";
+import Razorpay from 'razorpay';
+import crypto from 'crypto';
+import { Order, Cart, Wishlist, User, Course, Project, ProjectPurchase } from '../model/assosiation.js';
+import Enrollment from '../model/enrollment.js';
+import sequelize from '../config/db.js';
+import { sendResponse } from '../utils/responseHelper.js';
 import {
   sendSuccess,
   sendError,
@@ -19,14 +13,323 @@ import {
   sendConflict,
 } from "../utils/responseHelper.js";
 
-// Initialize Razorpay
+// Initialize Razorpay instance
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID,
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
 /**
- * Create order for course purchase
+ * Create Razorpay order for checkout
+ */
+export const createOrder = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    
+    // Get cart items for the user
+    const cartItems = await Cart.findAll({
+      where: { userId },
+      include: [
+        {
+          model: Course,
+          as: 'course',
+          required: false,
+        },
+        {
+          model: Project,
+          as: 'project',
+          required: false,
+        }
+      ]
+    });
+
+    if (!cartItems || cartItems.length === 0) {
+      return sendResponse(res, 400, false, 'Cart is empty', null);
+    }
+
+    // Calculate total amount
+    let totalAmount = 0;
+    const orderItems = [];
+
+    for (const item of cartItems) {
+      const discountedPrice = item.price - (item.discount || 0);
+      totalAmount += discountedPrice;
+      
+      orderItems.push({
+        itemType: item.itemType,
+        itemId: item.itemId,
+        price: item.price,
+        discount: item.discount || 0,
+        finalPrice: discountedPrice
+      });
+    }
+
+    // Create Razorpay order
+    const razorpayOrder = await razorpay.orders.create({
+      amount: totalAmount * 100, // Amount in paise
+      currency: 'INR',
+      receipt: `order_${userId}_${Date.now()}`,
+      notes: {
+        userId: userId.toString(),
+        itemCount: cartItems.length.toString()
+      }
+    });
+
+    // Save order in database
+    const order = await Order.create({
+      userId,
+      razorpayOrderId: razorpayOrder.id,
+      amount: totalAmount,
+      currency: 'INR',
+      status: 'created',
+      orderItems: JSON.stringify(orderItems)
+    });
+
+    return sendResponse(res, 200, true, 'Order created successfully', {
+      orderId: order.id,
+      razorpayOrderId: razorpayOrder.id,
+      amount: totalAmount,
+      currency: 'INR',
+      key: process.env.RAZORPAY_KEY_ID,
+      orderItems
+    });
+
+  } catch (error) {
+    console.error('Create order error:', error);
+    return sendResponse(res, 500, false, 'Failed to create order', error.message);
+  }
+};
+
+/**
+ * Verify payment and update order status
+ */
+export const verifyPayment = async (req, res) => {
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const { userId } = req.user;
+
+    // Verify signature
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
+      .update(body.toString())
+      .digest("hex");
+
+    if (expectedSignature !== razorpay_signature) {
+      return sendResponse(res, 400, false, 'Invalid payment signature', null);
+    }
+
+    // Find and update order
+    const order = await Order.findOne({
+      where: {
+        razorpayOrderId: razorpay_order_id,
+        userId
+      }
+    });
+
+    if (!order) {
+      return sendResponse(res, 404, false, 'Order not found', null);
+    }
+
+    // Update order status
+    await order.update({
+      paymentId: razorpay_payment_id,
+      status: 'completed',
+      paidAt: new Date()
+    });
+
+    // Grant access to purchased items
+    const orderItems = JSON.parse(order.orderItems);
+    
+    for (const item of orderItems) {
+      if (item.itemType === 'course') {
+        await Enrollment.findOrCreate({
+          where: {
+            userId,
+            courseId: item.itemId
+          },
+          defaults: {
+            userId,
+            courseId: item.itemId,
+            enrollmentDate: new Date(),
+            amountPaid: item.finalPrice,
+            paymentStatus: 'completed',
+            completionStatus: 'not_started',
+            progressPercentage: 0,
+            isActive: true,
+            enrollmentType: 'recorded', // default, should be updated based on course type
+            paymentMethod: 'razorpay'
+          }
+        });
+      } else if (item.itemType === 'project') {
+        await ProjectPurchase.findOrCreate({
+          where: {
+            userId,
+            projectId: item.itemId
+          },
+          defaults: {
+            userId,
+            projectId: item.itemId,
+            purchaseDate: new Date(),
+            amount: item.finalPrice
+          }
+        });
+      }
+    }
+
+    // Clear cart after successful payment
+    await Cart.destroy({
+      where: { userId }
+    });
+
+    return sendResponse(res, 200, true, 'Payment verified successfully', {
+      orderId: order.id,
+      status: 'completed'
+    });
+
+  } catch (error) {
+    console.error('Verify payment error:', error);
+    return sendResponse(res, 500, false, 'Failed to verify payment', error.message);
+  }
+};
+
+/**
+ * Razorpay webhook handler
+ */
+export const handleWebhook = async (req, res) => {
+  try {
+    const webhookSignature = req.headers['x-razorpay-signature'];
+    const webhookBody = JSON.stringify(req.body);
+
+    // Verify webhook signature
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_WEBHOOK_SECRET)
+      .update(webhookBody)
+      .digest('hex');
+
+    if (webhookSignature !== expectedSignature) {
+      return res.status(400).json({ error: 'Invalid webhook signature' });
+    }
+
+    const { event, payload } = req.body;
+
+    if (event === 'payment.captured') {
+      const payment = payload.payment.entity;
+      const orderId = payment.order_id;
+
+      // Update order status
+      const order = await Order.findOne({
+        where: { razorpayOrderId: orderId }
+      });
+
+      if (order && order.status !== 'completed') {
+        await order.update({
+          paymentId: payment.id,
+          status: 'completed',
+          paidAt: new Date()
+        });
+
+        // Grant access to purchased items (same logic as verifyPayment)
+        const orderItems = JSON.parse(order.orderItems);
+        
+        for (const item of orderItems) {
+          if (item.itemType === 'course') {
+            await Enrollment.findOrCreate({
+              where: {
+                userId: order.userId,
+                courseId: item.itemId
+              },
+              defaults: {
+                userId: order.userId,
+                courseId: item.itemId,
+                enrollmentDate: new Date(),
+                amountPaid: item.finalPrice,
+                paymentStatus: 'completed',
+                completionStatus: 'not_started',
+                progressPercentage: 0,
+                isActive: true,
+                enrollmentType: 'recorded', // default, should be updated based on course type
+                paymentMethod: 'razorpay'
+              }
+            });
+          } else if (item.itemType === 'project') {
+            await ProjectPurchase.findOrCreate({
+              where: {
+                userId: order.userId,
+                projectId: item.itemId
+              },
+              defaults: {
+                userId: order.userId,
+                projectId: item.itemId,
+                purchaseDate: new Date(),
+                amount: item.finalPrice
+              }
+            });
+          }
+        }
+
+        // Clear cart
+        await Cart.destroy({
+          where: { userId: order.userId }
+        });
+      }
+    }
+
+    res.status(200).json({ status: 'ok' });
+
+  } catch (error) {
+    console.error('Webhook error:', error);
+    res.status(500).json({ error: 'Webhook processing failed' });
+  }
+};
+
+/**
+ * Get payment status
+ */
+export const getPaymentStatus = async (req, res) => {
+  try {
+    const { paymentId } = req.params;
+
+    const payment = await razorpay.payments.fetch(paymentId);
+
+    return sendResponse(res, 200, true, 'Payment status retrieved', {
+      paymentId: payment.id,
+      orderId: payment.order_id,
+      status: payment.status,
+      method: payment.method,
+      amount: payment.amount / 100, // Convert from paise to rupees
+      currency: payment.currency,
+      createdAt: payment.created_at
+    });
+
+  } catch (error) {
+    console.error('Get payment status error:', error);
+    return sendResponse(res, 500, false, 'Failed to get payment status', error.message);
+  }
+};
+
+/**
+ * Get user's orders
+ */
+export const getUserOrders = async (req, res) => {
+  try {
+    const { userId } = req.user;
+
+    const orders = await Order.findAll({
+      where: { userId },
+      order: [['createdAt', 'DESC']]
+    });
+
+    return sendResponse(res, 200, true, 'Orders retrieved successfully', orders);
+
+  } catch (error) {
+    console.error('Get user orders error:', error);
+    return sendResponse(res, 500, false, 'Failed to get orders', error.message);
+  }
+};
+
+/**
+ * Create order for course purchase specifically
  */
 export const createCourseOrder = async (req, res) => {
   const transaction = await sequelize.transaction();
@@ -117,10 +420,32 @@ export const createCourseOrder = async (req, res) => {
         courseTitle: course.title,
         userEmail: user.email,
         courseType: course.type,
+        orderType: 'course_purchase',
       },
     };
 
     const razorpayOrder = await razorpay.orders.create(orderOptions);
+
+    // Create order record in database
+    const order = await Order.create({
+      userId,
+      razorpayOrderId: razorpayOrder.id,
+      totalAmount: finalPrice,
+      currency: 'INR',
+      status: 'created',
+      receipt: orderOptions.receipt,
+      orderItems: JSON.stringify([{
+        itemType: 'course',
+        itemId: courseId,
+        price: course.price,
+        salePrice: course.salePrice,
+        finalPrice: finalPrice,
+        title: course.title,
+        type: course.type
+      }]),
+      notes: orderOptions.notes,
+      expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes expiry
+    }, { transaction });
 
     await transaction.commit();
 
@@ -259,6 +584,21 @@ export const verifyPaymentAndEnroll = async (req, res) => {
       return sendConflict(res, "course", courseId);
     }
 
+    // Update order status
+    await Order.update({
+      razorpayPaymentId: razorpay_payment_id,
+      razorpaySignature: razorpay_signature,
+      status: 'paid',
+      paymentDate: new Date(),
+      paymentMethod: payment.method
+    }, {
+      where: {
+        razorpayOrderId: razorpay_order_id,
+        userId: userId
+      },
+      transaction
+    });
+
     // Create enrollment record
     const enrollment = await Enrollment.create(
       {
@@ -314,7 +654,7 @@ export const verifyPaymentAndEnroll = async (req, res) => {
 };
 
 /**
- * Get user's purchased courses
+ * Get user's purchased courses (enrollments)
  */
 export const getUserPurchases = async (req, res) => {
   try {
@@ -399,184 +739,33 @@ export const getUserPurchases = async (req, res) => {
         },
       ],
       limit: limitNum,
-      offset,
+      offset: offset,
       order: [["enrollmentDate", "DESC"]],
     });
 
     const totalPages = Math.ceil(count / limitNum);
 
     return sendSuccess(res, 200, "User purchases retrieved successfully", {
-      purchases: enrollments.map((enrollment) => ({
+      enrollments: enrollments.map(enrollment => ({
         enrollmentId: enrollment.enrollmentId,
+        courseId: enrollment.courseId,
         enrollmentDate: enrollment.enrollmentDate,
         completionStatus: enrollment.completionStatus,
         progressPercentage: enrollment.progressPercentage,
+        paymentStatus: enrollment.paymentStatus,
         amountPaid: enrollment.amountPaid,
-        paymentId: enrollment.paymentId,
+        enrollmentType: enrollment.enrollmentType,
         course: enrollment.Course,
       })),
       pagination: {
         currentPage: pageNum,
         totalPages,
-        totalPurchases: count,
-        purchasesPerPage: limitNum,
-        hasNextPage: pageNum < totalPages,
-        hasPrevPage: pageNum > 1,
+        totalItems: count,
+        itemsPerPage: limitNum,
       },
     });
   } catch (error) {
     console.error("Get user purchases error:", error);
-    return sendServerError(res, error);
-  }
-};
-
-/**
- * Get course purchase details
- */
-export const getCoursePurchaseDetails = async (req, res) => {
-  try {
-    const { courseId } = req.params;
-    const userId = req.user?.userId;
-
-    if (!userId) {
-      return sendError(res, 401, "Authentication required");
-    }
-
-    // Validate UUID format for courseId
-    if (
-      !courseId ||
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        courseId,
-      )
-    ) {
-      return sendValidationError(
-        res,
-        `Invalid courseId format: ${courseId}. Must be a valid UUID.`,
-        { courseId: "Must be a valid UUID" },
-      );
-    }
-
-    // Get course details
-    const course = await Course.findOne({
-      where: {
-        courseId: courseId,
-        isPublished: true,
-        status: "active",
-      },
-      attributes: [
-        "courseId",
-        "title",
-        "description",
-        "thumbnailUrl",
-        "type",
-        "duration",
-        "level",
-        "price",
-        "salePrice",
-        "maxStudents",
-        "requirements",
-        "goals",
-      ],
-    });
-
-    if (!course) {
-      return sendNotFound(res, "Course not found or not available");
-    }
-
-    // Check if user is already enrolled
-    const enrollment = await Enrollment.findOne({
-      where: {
-        userId: userId,
-        courseId: courseId,
-      },
-    });
-
-    const finalPrice = course.salePrice || course.price;
-
-    return sendSuccess(res, 200, "Course purchase details retrieved successfully", {
-      course: course,
-      pricing: {
-        originalPrice: course.price,
-        salePrice: course.salePrice,
-        finalPrice: finalPrice,
-        discount: course.salePrice ? course.price - course.salePrice : 0,
-        discountPercentage: course.salePrice
-          ? Math.round(((course.price - course.salePrice) / course.price) * 100)
-          : 0,
-      },
-      enrollment: enrollment
-        ? {
-            isEnrolled: true,
-            enrollmentDate: enrollment.enrollmentDate,
-            completionStatus: enrollment.completionStatus,
-            progressPercentage: enrollment.progressPercentage,
-          }
-        : {
-            isEnrolled: false,
-          },
-    });
-  } catch (error) {
-    console.error("Get course purchase details error:", error);
-    return sendServerError(res, error);
-  }
-};
-
-/**
- * Handle payment failure
- */
-export const handlePaymentFailure = async (req, res) => {
-  try {
-    const { razorpay_order_id, razorpay_payment_id, error } = req.body;
-    const userId = req.user?.userId;
-
-    // Validate user authentication
-    if (!userId) {
-      return sendError(res, 401, "Authentication required");
-    }
-
-    // Validate required fields
-    if (!razorpay_order_id) {
-      return sendValidationError(res, "Razorpay order ID is required", {
-        razorpay_order_id: "Required field",
-      });
-    }
-
-    // Validate format of order_id if present
-    if (
-      razorpay_order_id &&
-      !/^order_[a-zA-Z0-9]+$/i.test(razorpay_order_id)
-    ) {
-      return sendValidationError(res, "Invalid Razorpay order ID format", {
-        razorpay_order_id: "Invalid format",
-      });
-    }
-
-    // Validate format of payment_id if present
-    if (
-      razorpay_payment_id &&
-      !/^pay_[a-zA-Z0-9]+$/i.test(razorpay_payment_id)
-    ) {
-      return sendValidationError(res, "Invalid Razorpay payment ID format", {
-        razorpay_payment_id: "Invalid format",
-      });
-    }
-
-    console.log("Payment failure:", {
-      userId,
-      razorpay_order_id,
-      razorpay_payment_id,
-      error: error?.description || "Unknown error",
-    });
-
-    // You can log this to a payment failures table if needed
-
-    return sendError(res, 400, "Payment failed", {
-      orderId: razorpay_order_id,
-      paymentId: razorpay_payment_id,
-      error: error?.description || "Payment was not completed",
-    });
-  } catch (error) {
-    console.error("Handle payment failure error:", error);
     return sendServerError(res, error);
   }
 };

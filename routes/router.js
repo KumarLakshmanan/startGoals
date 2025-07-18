@@ -24,11 +24,12 @@ import projectFileRoutes from "./projectFileRoutes.js";
 import projectRatingRoutes from "./projectRatingRoutes.js";
 import fileUploadRoutes from "./fileUploadRoutes.js";
 import teacherRoutes from "./teacherRoutes.js";
-import coursePurchaseRoutes from "./coursePurchaseRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
 import certificateRoutes from "./certificateRoutes.js";
 import analyticsRoutes from "./analyticsRoutes.js";
-import liveCourseRoutes from "./liveCourseRoutes.js";
+import paymentRoutes from "./paymentRoutes.js";
+import cartRoutes from "./cartRoutes.js";
+import wishlistRoutes from "./wishlistRoutes.js";
 
 const router = express.Router();
 
@@ -67,8 +68,11 @@ router.use("/project-ratings", projectRatingRoutes);
 router.use("/discounts", discountRoutes);
 router.use("/upload", fileUploadRoutes);
 router.use("/teachers", teacherRoutes);
-router.use("/course-purchase", coursePurchaseRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/certificates", certificateRoutes);
+router.use("/analytics", analyticsRoutes);
+router.use("/payments", paymentRoutes);
+router.use("/cart", cartRoutes);
+router.use("/wishlist", wishlistRoutes);
 
 export default router;
