@@ -45,6 +45,7 @@ import CourseCertificate from "./courseCertificate.js";
 import Wishlist from "./wishlist.js";
 import Cart from "./cart.js";
 import Order from "./order.js";
+import CourseFile from "./courseFile.js";
 
 // All models must be defined before we associate them
 const models = {
@@ -95,6 +96,7 @@ const models = {
   Order,
   Exam,
   UserExams,
+  CourseFile,
 };
 
 //user to course
@@ -784,4 +786,41 @@ export {
   Order,
   ProjectPurchase
  };
+
+// CourseFile associations
+CourseFile.belongsTo(Course, {
+  foreignKey: "courseId",
+  as: "course"
+});
+
+CourseFile.belongsTo(User, {
+  foreignKey: "uploadedBy",
+  as: "uploader"
+});
+
+CourseFile.belongsTo(Section, {
+  foreignKey: "sectionId",
+  as: "section"
+});
+
+CourseFile.belongsTo(Lesson, {
+  foreignKey: "lessonId",
+  as: "lesson"
+});
+
+Course.hasMany(CourseFile, {
+  foreignKey: "courseId",
+  as: "files"
+});
+
+// Course and Section association for eager loading support
+Course.hasMany(Section, { as: "sections", foreignKey: "courseId" });
+Section.belongsTo(Course, { as: "course", foreignKey: "courseId" });
+
+Section.hasMany(Lesson, { as: "lessons", foreignKey: "sectionId" });
+Lesson.belongsTo(Section, { as: "section", foreignKey: "sectionId" });
+
+Lesson.hasMany(Resource, { as: "resources", foreignKey: "lessonId" });
+Resource.belongsTo(Lesson, { as: "lesson", foreignKey: "lessonId" });
+
 export default models;

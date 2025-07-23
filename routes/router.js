@@ -30,6 +30,7 @@ import analyticsRoutes from "./analyticsRoutes.js";
 import paymentRoutes from "./paymentRoutes.js";
 import cartRoutes from "./cartRoutes.js";
 import wishlistRoutes from "./wishlistRoutes.js";
+import courseFileRoutes from "./courseFileRoutes.js";
 
 const router = express.Router();
 
@@ -74,5 +75,6 @@ router.use("/analytics", analyticsRoutes);
 router.use("/payments", paymentRoutes);
 router.use("/cart", cartRoutes);
 router.use("/wishlist", wishlistRoutes);
+router.use("/courses", courseFileRoutes);
 
 export default router;

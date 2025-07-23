@@ -279,3 +279,21 @@ Please implement a comprehensive Discount System with the payment on courses and
 **Goal:**  
 A flexible, robust discount system for all course/project types, with full admin management and seamless student checkout experience.
 
+
+
+
+### Questions & Requests
+
+- Why are there two separate "course create order" functionalities?
+- Please remove the course-specific create order routes and functions.
+- How does a user apply a discount code to their current cart?
+- Is the discount code functionality currently working?
+- The create order feature should support both projects and courses (live & recorded).
+- In the projects get/course get, do not show the files if the user has not purchased the course/project.
+- Do not allow the user to download the files if they have not purchased the course/project.
+- Ensure the user can only access/download/view the course/project if they have purchased it.
+- Please ensure the course and project models are updated to reflect the new discount system.
+- Ensure the course and project models have fields for discounts, promo codes, and other necessary attributes.
+- Only the course/project purchased users can review & rate the course/project.
+- use the courseRating, projectRating, instructorRating models to store the ratings and reviews.
+- and create the necessary APIs to handle the ratings and reviews.

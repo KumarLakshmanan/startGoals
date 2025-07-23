@@ -4,6 +4,7 @@ import {
   uploadFiles,
   uploadSingleFile,
   uploadFieldFiles,
+  uploadLessonVideo,
 } from "../controller/fileUploadController.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
@@ -48,6 +49,14 @@ router.post(
   "/project-asset",
   upload.single("file"),
   uploadSingleFile
+);
+
+// New endpoint for uploading lesson videos
+router.post(
+  "/lesson-video/:courseId/:sectionId/:lessonId",
+  authenticateToken,
+  upload.single("video"),
+  uploadLessonVideo
 );
 
 export default router;

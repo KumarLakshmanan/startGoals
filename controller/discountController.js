@@ -144,11 +144,11 @@ export const createDiscountCode = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["userId", "firstName", "lastName", "email"], // FIXED: use correct PK and attributes
         },
         {
           model: CourseCategory,
-          as: "applicableCategories",
+          as: "discountCategories", // FIXED: use correct alias
           attributes: ["id", "title"],
           through: { attributes: [] },
         },
@@ -215,11 +215,11 @@ export const getAllDiscountCodes = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["id", "firstName", "lastName"],
+          attributes: ["userId", "firstName", "lastName"],
         },
         {
           model: CourseCategory,
-          as: "applicableCategories",
+          as: "discountCategories", // FIXED: use correct alias
           attributes: ["id", "title"],
           through: { attributes: [] },
         },
@@ -281,11 +281,11 @@ export const getDiscountCodeById = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["userId", "firstName", "lastName", "email"],
         },
         {
           model: CourseCategory,
-          as: "applicableCategories",
+          as: "discountCategories", // FIXED: use correct alias
           attributes: ["id", "title"],
           through: { attributes: [] },
         },
@@ -448,11 +448,11 @@ export const updateDiscountCode = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["id", "firstName", "lastName", "email"],
+          attributes: ["userId", "firstName", "lastName", "email"],
         },
         {
           model: CourseCategory,
-          as: "applicableCategories",
+          as: "discountCategories", // FIXED: use correct alias
           attributes: ["id", "title"],
           through: { attributes: [] },
         },

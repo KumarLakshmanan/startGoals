@@ -10,7 +10,10 @@ import {
   getUserAnalytics,
   getCourseAnalytics,
   getRevenueAnalytics,
-  generateCustomReport
+  generateCustomReport,
+  getStudentAnalytics,
+  getTeacherAnalytics,
+  getEngagementAnalytics
 } from "../controller/analyticsController.js";
 
 const router = express.Router();
@@ -29,6 +32,15 @@ router.get("/courses", getCourseAnalytics);
 
 // Revenue analytics
 router.get("/revenue", getRevenueAnalytics);
+
+// Student analytics
+router.get("/students", getStudentAnalytics);
+
+// Teacher analytics
+router.get("/teachers", getTeacherAnalytics);
+
+// Engagement analytics
+router.get("/engagement", getEngagementAnalytics);
 
 // Custom report generation
 router.post("/custom", generateCustomReport);

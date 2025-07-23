@@ -59,15 +59,15 @@ router.get("/overview", isAdmin, getAdminDashboardOverview);
 router.get("/list", isAdmin, getAllCourses); // Add specific route for list view
 
 // Get courses by type
-router.get("/live", getLiveCourses);
-router.get("/recorded", getRecordedCourses);
+router.get("/live", authenticateToken, getLiveCourses);
+router.get("/recorded", authenticateToken, getRecordedCourses);
 
 // Course management
 router.get("/manage/:courseId", isAdmin, getCourseManagementData);
 
 // Create courses (Admin/Owner only)
-router.post("/create/live", isAdmin, createCourse);
-router.post("/create/recorded", isAdmin, createCourse);
+router.post("/create/live", isAdmin, createLiveCourse);
+router.post("/create/recorded", isAdmin, createRecordedCourse);
 router.post("/", isAdmin, createCourse); // General create endpoint
 
 // Update/Delete courses (Admin/Owner only)

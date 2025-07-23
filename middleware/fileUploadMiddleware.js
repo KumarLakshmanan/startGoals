@@ -16,6 +16,7 @@ const folderMap = {
   banner: "banners/",
   files: "project-files/", // For project files
   projectFiles: "project-files/", // Alternative name for project files
+  courseFiles: "course-files/", // For course files
 };
 
 // Custom S3 storage engine for AWS SDK v3
@@ -111,6 +112,7 @@ const upload = multer({
       // allow all extensions for project files
       files: /.*/,
       projectFiles: /.*/,
+      courseFiles: /.*/,
       file: /.*/,
     };
 

@@ -1,6 +1,7 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { Order, Cart, Wishlist, User, Course, Project, ProjectPurchase } from '../model/assosiation.js';
+import DiscountCode from '../model/discountCode.js';
 import Enrollment from '../model/enrollment.js';
 import sequelize from '../config/db.js';
 import { sendResponse } from '../utils/responseHelper.js';
@@ -21,57 +22,234 @@ const razorpay = new Razorpay({
 
 /**
  * Create Razorpay order for checkout
+ * Supports both cart-based checkout and direct purchase of courses or projects
  */
 export const createOrder = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
   try {
     const { userId } = req.user;
+    const { courseId, projectId, discountCode } = req.body;
     
-    // Get cart items for the user
-    const cartItems = await Cart.findAll({
-      where: { userId },
-      include: [
-        {
-          model: Course,
-          as: 'course',
-          required: false,
-        },
-        {
-          model: Project,
-          as: 'project',
-          required: false,
-        }
-      ]
-    });
+    let orderItems = [];
+    let totalAmount = 0;
+    let discountApplied = null;
+    
+    // Option 1: Direct course/project purchase
+    if (courseId || projectId) {
+      // For direct course purchase
+      if (courseId) {
+        // Check if course exists and is published
+        const course = await Course.findOne({
+          where: {
+            courseId: courseId,
+            isPublished: true,
+            status: "active",
+          },
+        });
 
-    if (!cartItems || cartItems.length === 0) {
-      return sendResponse(res, 400, false, 'Cart is empty', null);
+        if (!course) {
+          await transaction.rollback();
+          return sendNotFound(res, "Course not found or not available for purchase");
+        }
+
+        // Check if user already enrolled
+        const existingEnrollment = await Enrollment.findOne({
+          where: {
+            userId: userId,
+            courseId: courseId,
+          },
+        });
+
+        if (existingEnrollment) {
+          await transaction.rollback();
+          return sendConflict(res, "course", courseId);
+        }
+
+        // Calculate price (use salePrice if available, otherwise regular price)
+        let finalPrice = course.salePrice || course.price;
+
+        // Add to order items
+        orderItems.push({
+          itemType: 'course',
+          itemId: courseId,
+          price: course.price,
+          salePrice: course.salePrice,
+          finalPrice,
+          title: course.title,
+          type: course.type
+        });
+
+        totalAmount += finalPrice;
+      } 
+      // For direct project purchase
+      else if (projectId) {
+        // Check if project exists and is published
+        const project = await Project.findOne({
+          where: {
+            projectId: projectId,
+            status: "published",
+          },
+        });
+
+        if (!project) {
+          await transaction.rollback();
+          return sendNotFound(res, "Project not found or not available for purchase");
+        }
+
+        // Check if user already purchased
+        const existingPurchase = await ProjectPurchase.findOne({
+          where: {
+            userId: userId,
+            projectId: projectId,
+          },
+        });
+
+        if (existingPurchase) {
+          await transaction.rollback();
+          return sendConflict(res, "project", projectId);
+        }
+
+        // Add to order items
+        orderItems.push({
+          itemType: 'project',
+          itemId: projectId,
+          price: project.price,
+          finalPrice: project.price,
+          title: project.title,
+        });
+
+        totalAmount += project.price;
+      }
+    } 
+    // Option 2: Cart checkout
+    else {
+      // Get cart items for the user
+      const cartItems = await Cart.findAll({
+        where: { userId },
+        include: [
+          {
+            model: Course,
+            as: 'course',
+            required: false,
+          },
+          {
+            model: Project,
+            as: 'project',
+            required: false,
+          }
+        ],
+        transaction
+      });
+
+      if (!cartItems || cartItems.length === 0) {
+        await transaction.rollback();
+        return sendResponse(res, 400, false, 'Cart is empty', null);
+      }
+
+      // Calculate total amount and prepare order items
+      for (const item of cartItems) {
+        const discountedPrice = item.price - (item.discount || 0);
+        totalAmount += discountedPrice;
+        
+        orderItems.push({
+          itemType: item.itemType,
+          itemId: item.itemId,
+          price: item.price,
+          discount: item.discount || 0,
+          finalPrice: discountedPrice,
+          title: item.itemType === 'course' ? item.course?.title : item.project?.title,
+          type: item.itemType === 'course' ? item.course?.type : null
+        });
+      }
     }
 
-    // Calculate total amount
-    let totalAmount = 0;
-    const orderItems = [];
-
-    for (const item of cartItems) {
-      const discountedPrice = item.price - (item.discount || 0);
-      totalAmount += discountedPrice;
-      
-      orderItems.push({
-        itemType: item.itemType,
-        itemId: item.itemId,
-        price: item.price,
-        discount: item.discount || 0,
-        finalPrice: discountedPrice
+    // Apply discount code if provided
+    if (discountCode) {
+      // Find valid discount code
+      const discount = await DiscountCode.findOne({
+        where: {
+          code: discountCode.toUpperCase(),
+          isActive: true,
+          validFrom: { [Op.lte]: new Date() },
+          validUntil: { [Op.gte]: new Date() },
+          [Op.or]: [
+            { usageLimit: null },
+            { currentUsage: { [Op.lt]: sequelize.col('usageLimit') } },
+          ],
+        },
+        transaction
       });
+
+      if (!discount) {
+        await transaction.rollback();
+        return sendValidationError(res, "Invalid or expired discount code");
+      }
+
+      // Check if user has already used this code
+      if (discount.usageLimitPerUser > 0) {
+        // Implement user-specific discount usage check
+        // This would require a discount usage tracking table
+      }
+
+      // Check applicable types
+      const applicableTypes = discount.applicableTypes ? JSON.parse(discount.applicableTypes) : ['all'];
+      if (!applicableTypes.includes('all')) {
+        const itemTypes = orderItems.map(item => item.itemType);
+        const isApplicable = itemTypes.some(type => applicableTypes.includes(type));
+        
+        if (!isApplicable) {
+          await transaction.rollback();
+          return sendValidationError(res, `Discount code not applicable for ${itemTypes.join(', ')}`);
+        }
+      }
+
+      // Calculate discount amount
+      let discountAmount = 0;
+
+      if (discount.discountType === 'percentage') {
+        discountAmount = totalAmount * (discount.discountValue / 100);
+        
+        // Apply max discount cap if set
+        if (discount.maxDiscountAmount && discountAmount > discount.maxDiscountAmount) {
+          discountAmount = discount.maxDiscountAmount;
+        }
+      } else { // fixed amount
+        discountAmount = Math.min(discount.discountValue, totalAmount);
+      }
+
+      // Check minimum purchase requirement
+      if (discount.minimumPurchaseAmount && totalAmount < discount.minimumPurchaseAmount) {
+        await transaction.rollback();
+        return sendValidationError(res, `Minimum purchase amount of ₹${discount.minimumPurchaseAmount} required for this discount code`);
+      }
+
+      // Apply discount
+      totalAmount -= discountAmount;
+      discountApplied = {
+        code: discount.code,
+        discountType: discount.discountType,
+        discountValue: discount.discountValue,
+        discountAmount,
+      };
+    }
+
+    // Minimum amount check
+    if (totalAmount <= 0) {
+      await transaction.rollback();
+      return sendValidationError(res, "Order total must be greater than zero");
     }
 
     // Create Razorpay order
     const razorpayOrder = await razorpay.orders.create({
-      amount: totalAmount * 100, // Amount in paise
+      amount: Math.round(totalAmount * 100), // Amount in paise, rounded to ensure integer
       currency: 'INR',
       receipt: `order_${userId}_${Date.now()}`,
       notes: {
         userId: userId.toString(),
-        itemCount: cartItems.length.toString()
+        itemCount: orderItems.length.toString(),
+        orderType: courseId ? 'direct_course' : projectId ? 'direct_project' : 'cart',
+        discountCode: discountCode || ''
       }
     });
 
@@ -82,8 +260,21 @@ export const createOrder = async (req, res) => {
       amount: totalAmount,
       currency: 'INR',
       status: 'created',
-      orderItems: JSON.stringify(orderItems)
-    });
+      orderItems: JSON.stringify(orderItems),
+      discountCode: discountCode || null,
+      discountAmount: discountApplied ? discountApplied.discountAmount : null,
+      originalAmount: discountApplied ? totalAmount + discountApplied.discountAmount : totalAmount
+    }, { transaction });
+
+    // If discount was applied, update usage count
+    if (discountApplied && discountCode) {
+      await DiscountCode.increment('currentUsage', { 
+        where: { code: discountCode.toUpperCase() },
+        transaction 
+      });
+    }
+
+    await transaction.commit();
 
     return sendResponse(res, 200, true, 'Order created successfully', {
       orderId: order.id,
@@ -91,10 +282,12 @@ export const createOrder = async (req, res) => {
       amount: totalAmount,
       currency: 'INR',
       key: process.env.RAZORPAY_KEY_ID,
-      orderItems
+      orderItems,
+      discount: discountApplied
     });
 
   } catch (error) {
+    await transaction.rollback();
     console.error('Create order error:', error);
     return sendResponse(res, 500, false, 'Failed to create order', error.message);
   }
@@ -104,6 +297,8 @@ export const createOrder = async (req, res) => {
  * Verify payment and update order status
  */
 export const verifyPayment = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
   try {
     const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
     const { userId } = req.user;
@@ -116,6 +311,7 @@ export const verifyPayment = async (req, res) => {
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
+      await transaction.rollback();
       return sendResponse(res, 400, false, 'Invalid payment signature', null);
     }
 
@@ -124,10 +320,12 @@ export const verifyPayment = async (req, res) => {
       where: {
         razorpayOrderId: razorpay_order_id,
         userId
-      }
+      },
+      transaction
     });
 
     if (!order) {
+      await transaction.rollback();
       return sendResponse(res, 404, false, 'Order not found', null);
     }
 
@@ -136,7 +334,7 @@ export const verifyPayment = async (req, res) => {
       paymentId: razorpay_payment_id,
       status: 'completed',
       paidAt: new Date()
-    });
+    }, { transaction });
 
     // Grant access to purchased items
     const orderItems = JSON.parse(order.orderItems);
@@ -157,9 +355,10 @@ export const verifyPayment = async (req, res) => {
             completionStatus: 'not_started',
             progressPercentage: 0,
             isActive: true,
-            enrollmentType: 'recorded', // default, should be updated based on course type
+            enrollmentType: item.type || 'recorded',
             paymentMethod: 'razorpay'
-          }
+          },
+          transaction
         });
       } else if (item.itemType === 'project') {
         await ProjectPurchase.findOrCreate({
@@ -171,16 +370,23 @@ export const verifyPayment = async (req, res) => {
             userId,
             projectId: item.itemId,
             purchaseDate: new Date(),
-            amount: item.finalPrice
-          }
+            amount: item.finalPrice,
+            paymentStatus: 'completed'
+          },
+          transaction
         });
       }
     }
 
-    // Clear cart after successful payment
-    await Cart.destroy({
-      where: { userId }
-    });
+    // Clear cart after successful payment if it was a cart checkout
+    if (!req.body.courseId && !req.body.projectId) {
+      await Cart.destroy({
+        where: { userId },
+        transaction
+      });
+    }
+
+    await transaction.commit();
 
     return sendResponse(res, 200, true, 'Payment verified successfully', {
       orderId: order.id,
@@ -188,6 +394,7 @@ export const verifyPayment = async (req, res) => {
     });
 
   } catch (error) {
+    await transaction.rollback();
     console.error('Verify payment error:', error);
     return sendResponse(res, 500, false, 'Failed to verify payment', error.message);
   }
@@ -197,6 +404,8 @@ export const verifyPayment = async (req, res) => {
  * Razorpay webhook handler
  */
 export const handleWebhook = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
   try {
     const webhookSignature = req.headers['x-razorpay-signature'];
     const webhookBody = JSON.stringify(req.body);
@@ -208,6 +417,7 @@ export const handleWebhook = async (req, res) => {
       .digest('hex');
 
     if (webhookSignature !== expectedSignature) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'Invalid webhook signature' });
     }
 
@@ -219,7 +429,8 @@ export const handleWebhook = async (req, res) => {
 
       // Update order status
       const order = await Order.findOne({
-        where: { razorpayOrderId: orderId }
+        where: { razorpayOrderId: orderId },
+        transaction
       });
 
       if (order && order.status !== 'completed') {
@@ -227,7 +438,7 @@ export const handleWebhook = async (req, res) => {
           paymentId: payment.id,
           status: 'completed',
           paidAt: new Date()
-        });
+        }, { transaction });
 
         // Grant access to purchased items (same logic as verifyPayment)
         const orderItems = JSON.parse(order.orderItems);
@@ -248,9 +459,10 @@ export const handleWebhook = async (req, res) => {
                 completionStatus: 'not_started',
                 progressPercentage: 0,
                 isActive: true,
-                enrollmentType: 'recorded', // default, should be updated based on course type
+                enrollmentType: item.type || 'recorded',
                 paymentMethod: 'razorpay'
-              }
+              },
+              transaction
             });
           } else if (item.itemType === 'project') {
             await ProjectPurchase.findOrCreate({
@@ -262,22 +474,27 @@ export const handleWebhook = async (req, res) => {
                 userId: order.userId,
                 projectId: item.itemId,
                 purchaseDate: new Date(),
-                amount: item.finalPrice
-              }
+                amount: item.finalPrice,
+                paymentStatus: 'completed'
+              },
+              transaction
             });
           }
         }
 
         // Clear cart
         await Cart.destroy({
-          where: { userId: order.userId }
+          where: { userId: order.userId },
+          transaction
         });
       }
     }
 
+    await transaction.commit();
     res.status(200).json({ status: 'ok' });
 
   } catch (error) {
+    await transaction.rollback();
     console.error('Webhook error:', error);
     res.status(500).json({ error: 'Webhook processing failed' });
   }
@@ -665,10 +882,9 @@ export const getUserPurchases = async (req, res) => {
       return sendError(res, 401, "Authentication required");
     }
 
-    // Validate page and limit parameters
-    const pageNum = parseInt(page);
+    // Validate page and limit parameters    const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
-
+    
     if (isNaN(pageNum) || pageNum < 1) {
       return sendValidationError(res, "Page must be a positive integer", {
         page: "Must be a positive integer",
@@ -683,80 +899,70 @@ export const getUserPurchases = async (req, res) => {
       );
     }
 
-    // Validate status if provided
-    if (
-      status &&
-      !["not_started", "in_progress", "completed", "on_hold"].includes(status)
-    ) {
-      return sendValidationError(
-        res,
-        "Invalid status value. Must be one of: not_started, in_progress, completed, on_hold",
-        { status: "Invalid value" },
-      );
-    }
-
-    // Validate type if provided
-    if (type && !["live", "recorded", "hybrid"].includes(type)) {
-      return sendValidationError(
-        res,
-        "Invalid type value. Must be one of: live, recorded, hybrid",
-        { type: "Invalid value" },
-      );
-    }
-
     const offset = (pageNum - 1) * limitNum;
-
+    
     // Build where conditions
-    const whereConditions = {
-      userId: userId,
-      paymentStatus: "completed",
-    };
-
+    const whereConditions = { userId };
+    
     if (status) {
-      whereConditions.completionStatus = status;
+      whereConditions.status = status;
     }
 
-    if (type) {
-      whereConditions.enrollmentType = type;
-    }
-
-    const { count, rows: enrollments } = await Enrollment.findAndCountAll({
+    // Get orders with pagination
+    const { count, rows: orders } = await Order.findAndCountAll({
       where: whereConditions,
-      include: [
-        {
-          model: Course,
-          attributes: [
-            "courseId",
-            "title",
-            "description",
-            "thumbnailUrl",
-            "type",
-            "duration",
-            "level",
-            "price",
-            "salePrice",
-          ],
-        },
-      ],
       limit: limitNum,
-      offset: offset,
-      order: [["enrollmentDate", "DESC"]],
+      offset,
+      order: [['createdAt', 'DESC']]
     });
-
+    
+    // Format order items
+    const formattedOrders = await Promise.all(orders.map(async (order) => {
+      const orderItems = JSON.parse(order.orderItems);
+      
+      // Fetch item details
+      const itemsWithDetails = await Promise.all(orderItems.map(async (item) => {
+        if (item.itemType === 'course') {
+          const course = await Course.findByPk(item.itemId, {
+            attributes: ['courseId', 'title', 'thumbnailUrl', 'type']
+          });
+          
+          return {
+            ...item,
+            details: course || { title: 'Course not found' }
+          };
+        } else if (item.itemType === 'project') {
+          const project = await Project.findByPk(item.itemId, {
+            attributes: ['projectId', 'title', 'coverImage']
+          });
+          
+          return {
+            ...item,
+            details: project || { title: 'Project not found' }
+          };
+        }
+        
+        return item;
+      }));
+      
+      return {
+        orderId: order.id,
+        razorpayOrderId: order.razorpayOrderId,
+        amount: order.amount,
+        status: order.status,
+        createdAt: order.createdAt,
+        paidAt: order.paidAt,
+        items: itemsWithDetails,
+        discountCode: order.discountCode,
+        discountAmount: order.discountAmount,
+        originalAmount: order.originalAmount
+      };
+    }));
+    
     const totalPages = Math.ceil(count / limitNum);
 
-    return sendSuccess(res, 200, "User purchases retrieved successfully", {
-      enrollments: enrollments.map(enrollment => ({
-        enrollmentId: enrollment.enrollmentId,
-        courseId: enrollment.courseId,
-        enrollmentDate: enrollment.enrollmentDate,
-        completionStatus: enrollment.completionStatus,
-        progressPercentage: enrollment.progressPercentage,
-        paymentStatus: enrollment.paymentStatus,
-        amountPaid: enrollment.amountPaid,
-        enrollmentType: enrollment.enrollmentType,
-        course: enrollment.Course,
-      })),
+    return sendResponse(res, 200, true, 'Orders retrieved successfully', {
+      orders: formattedOrders,
       pagination: {
         currentPage: pageNum,
         totalPages,
@@ -764,8 +970,9 @@ export const getUserPurchases = async (req, res) => {
         itemsPerPage: limitNum,
       },
     });
+
   } catch (error) {
-    console.error("Get user purchases error:", error);
-    return sendServerError(res, error);
+    console.error('Get user orders error:', error);
+    return sendResponse(res, 500, false, 'Failed to get orders', error.message);
   }
 };

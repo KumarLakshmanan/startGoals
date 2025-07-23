@@ -34,20 +34,49 @@ import CourseRating from "../model/courseRating.js";
 // Get live courses only
 export const getLiveCourses = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, status, sortBy = 'createdAt', sortOrder = 'DESC' } = req.query;
+    const { 
+      page = 1, 
+      limit = 10, 
+      search, 
+      status, 
+      sortBy = 'createdAt', 
+      sortOrder = 'DESC',
+      categoryId,
+      levelId,
+      instructorId 
+    } = req.query;
     
     const whereClause = { type: 'live' };
+    
+    // Handle search parameter
     if (search) {
       whereClause[Op.or] = [
         { title: { [Op.iLike]: `%${search}%` } },
         { description: { [Op.iLike]: `%${search}%` } }
       ];
     }
+    
+    // Handle status filter
     if (status && status !== 'all') {
       whereClause.status = status;
     }
+    
+    // Handle category filter
+    if (categoryId) {
+      whereClause.categoryId = categoryId;
+    }
+    
+    // Handle level filter
+    if (levelId) {
+      whereClause.levelId = levelId;
+    }
+    
+    // Handle instructor filter
+    if (instructorId) {
+      whereClause.createdBy = instructorId;
+    }
 
-    const offset = (page - 1) * limit;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     const { count, rows } = await Course.findAndCountAll({
       where: whereClause,
       include: [
@@ -60,13 +89,13 @@ export const getLiveCourses = async (req, res) => {
       offset: parseInt(offset)
     });
 
-    return sendSuccess(res, "Live courses retrieved successfully", {
+    return sendSuccess(res, 200, "Live courses retrieved successfully", {
       courses: rows,
       pagination: {
         total: count,
         page: parseInt(page),
         limit: parseInt(limit),
-        totalPages: Math.ceil(count / limit)
+        totalPages: Math.ceil(count / parseInt(limit))
       }
     });
   } catch (error) {
@@ -78,20 +107,49 @@ export const getLiveCourses = async (req, res) => {
 // Get recorded courses only
 export const getRecordedCourses = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, status, sortBy = 'createdAt', sortOrder = 'DESC' } = req.query;
+    const { 
+      page = 1, 
+      limit = 10, 
+      search, 
+      status, 
+      sortBy = 'createdAt', 
+      sortOrder = 'DESC',
+      categoryId,
+      levelId,
+      instructorId 
+    } = req.query;
     
     const whereClause = { type: 'recorded' };
+    
+    // Handle search parameter
     if (search) {
       whereClause[Op.or] = [
         { title: { [Op.iLike]: `%${search}%` } },
         { description: { [Op.iLike]: `%${search}%` } }
       ];
     }
+    
+    // Handle status filter
     if (status && status !== 'all') {
       whereClause.status = status;
     }
+    
+    // Handle category filter
+    if (categoryId) {
+      whereClause.categoryId = categoryId;
+    }
+    
+    // Handle level filter
+    if (levelId) {
+      whereClause.levelId = levelId;
+    }
+    
+    // Handle instructor filter
+    if (instructorId) {
+      whereClause.createdBy = instructorId;
+    }
 
-    const offset = (page - 1) * limit;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
     const { count, rows } = await Course.findAndCountAll({
       where: whereClause,
       include: [
@@ -104,13 +162,13 @@ export const getRecordedCourses = async (req, res) => {
       offset: parseInt(offset)
     });
 
-    return sendSuccess(res, "Recorded courses retrieved successfully", {
+    return sendSuccess(res, 200, "Recorded courses retrieved successfully", {
       courses: rows,
       pagination: {
         total: count,
         page: parseInt(page),
         limit: parseInt(limit),
-        totalPages: Math.ceil(count / limit)
+        totalPages: Math.ceil(count / parseInt(limit))
       }
     });
   } catch (error) {
@@ -376,7 +434,7 @@ export const createCourse = async (req, res) => {
       ]
     });
 
-    return sendSuccess(res, "Course created successfully", completeCourse);
+    return sendSuccess(res, 200, "Course created successfully", completeCourse);
   } catch (error) {
     await transaction.rollback();
     console.error('Error creating course:', error);
@@ -538,7 +596,7 @@ export const updateCourse = async (req, res) => {
       ]
     });
 
-    return sendSuccess(res, "Course updated successfully", updatedCourse);
+    return sendSuccess(res, 200, "Course updated successfully", updatedCourse);
   } catch (error) {
     await transaction.rollback();
     console.error('Error updating course:', error);
@@ -698,7 +756,7 @@ export const deleteCourse = async (req, res) => {
       // Delete course
       await course.destroy({ transaction });
       await transaction.commit();
-      return sendSuccess(res, "Course permanently deleted successfully.");
+      return sendSuccess(res, 200, "Course permanently deleted successfully.");
     } else {
       // Soft delete - just change status
       await course.update({ status: "deleted" }, { transaction });
@@ -1080,53 +1138,56 @@ export const getAdminDashboardOverview = async (req, res) => {
       peakConcurrentUsers: Math.floor(Math.random() * 200) + 100,
     };
 
+    // Structure the response to match frontend expectations
     return sendSuccess(res, 200, "Admin dashboard overview fetched successfully", {
-      overview: {
-        courses: {
-          total: totalCourses,
-          active: activeCourses,
-          newInPeriod: newCoursesInPeriod,
-          conversionRate:
-            totalCourses > 0 ? (activeCourses / totalCourses) * 100 : 0,
+      DASHBOARD: {
+        overview: {
+          courses: {
+            total: totalCourses,
+            active: activeCourses,
+            newInPeriod: newCoursesInPeriod,
+            conversionRate:
+              totalCourses > 0 ? (activeCourses / totalCourses) * 100 : 0,
+          },
+          enrollments: {
+            total: totalEnrollments,
+            newInPeriod: newEnrollmentsInPeriod,
+            completed: completedEnrollments,
+            completionRate:
+              totalEnrollments > 0
+                ? (completedEnrollments / totalEnrollments) * 100
+                : 0,
+          },
+          users: {
+            total: totalUsers,
+            newInPeriod: newUsersInPeriod,
+            instructors,
+            students,
+            growthRate: Math.floor(Math.random() * 15) + 5, // Simulated growth
+          },
+          revenue: revenueAnalytics,
         },
-        enrollments: {
-          total: totalEnrollments,
-          newInPeriod: newEnrollmentsInPeriod,
-          completed: completedEnrollments,
-          completionRate:
-            totalEnrollments > 0
-              ? (completedEnrollments / totalEnrollments) * 100
-              : 0,
-        },
-        users: {
-          total: totalUsers,
-          newInPeriod: newUsersInPeriod,
-          instructors,
-          students,
-          growthRate: Math.floor(Math.random() * 15) + 5, // Simulated growth
-        },
-        revenue: revenueAnalytics,
-      },
-      topCourses: topCourses.map((course) => ({
-        courseId: course.courseId,
-        title: course.title,
-        price: course.price,
-        enrollments: course.dataValues.enrollmentCount,
-        rating: course.averageRating,
-        reviews: course.totalRatings,
-      })),
-      trends: {
-        enrollmentsByDay: enrollmentTrends.map((trend) => ({
-          date: trend.dataValues.date,
-          enrollments: parseInt(trend.dataValues.count),
+        topCourses: topCourses.map((course) => ({
+          courseId: course.courseId,
+          title: course.title,
+          price: course.price,
+          enrollments: course.dataValues.enrollmentCount,
+          rating: course.averageRating,
+          reviews: course.totalRatings,
         })),
-      },
-      systemMetrics,
-      period: {
-        startDate,
-        endDate,
-        duration: dateRange,
-      },
+        trends: {
+          enrollmentsByDay: enrollmentTrends.map((trend) => ({
+            date: trend.dataValues.date,
+            enrollments: parseInt(trend.dataValues.count),
+          })),
+        },
+        systemMetrics,
+        period: {
+          startDate,
+          endDate,
+          duration: dateRange,
+        }
+      }
     });
   } catch (error) {
     console.error("Get admin dashboard overview error:", error);
@@ -1786,7 +1847,7 @@ export const createCourseTest = async (req, res) => {
     }, { transaction });
     
     await transaction.commit();
-    return sendSuccess(res, "Test created successfully", test);
+    return sendSuccess(res, 200, "Test created successfully", test);
   } catch (error) {
     await transaction.rollback();
     console.error("Error creating course test:", error);
@@ -1820,7 +1881,7 @@ export const getCourseTests = async (req, res) => {
       return testData;
     });
     
-    return sendSuccess(res, "Tests fetched successfully", testsWithParsedQuestions);
+    return sendSuccess(res, 200, "Tests fetched successfully", testsWithParsedQuestions);
   } catch (error) {
     console.error("Error fetching course tests:", error);
     return sendServerError(res, "Failed to fetch tests");
@@ -1874,7 +1935,7 @@ export const updateCourseTest = async (req, res) => {
       testData.questions = [];
     }
     
-    return sendSuccess(res, "Test updated successfully", testData);
+    return sendSuccess(res, 200, "Test updated successfully", testData);
   } catch (error) {
     await transaction.rollback();
     console.error("Error updating course test:", error);
@@ -1980,7 +2041,7 @@ export const deleteCourseTest = async (req, res) => {
     }
     
     await test.destroy();
-    return sendSuccess(res, "Test deleted successfully");
+    return sendSuccess(res, 200, "Test deleted successfully");
   } catch (error) {
     console.error("Error deleting course test:", error);
     return sendServerError(res, "Failed to delete test");
@@ -2036,7 +2097,7 @@ export const createCourseCertificate = async (req, res) => {
     }, { transaction });
     
     await transaction.commit();
-    return sendSuccess(res, "Certificate created successfully", certificate);
+    return sendSuccess(res, 200, "Certificate created successfully", certificate);
   } catch (error) {
     await transaction.rollback();
     console.error("Error creating course certificate:", error);
@@ -2059,7 +2120,7 @@ export const getCourseCertificates = async (req, res) => {
       order: [['createdAt', 'DESC']]
     });
     
-    return sendSuccess(res, "Certificates fetched successfully", certificates);
+    return sendSuccess(res, 200, "Certificates fetched successfully", certificates);
   } catch (error) {
     console.error("Error fetching course certificates:", error);
     return sendServerError(res, "Failed to fetch certificates");
@@ -2107,7 +2168,7 @@ export const updateCourseCertificate = async (req, res) => {
     await certificate.update(updateData, { transaction });
     await transaction.commit();
     
-    return sendSuccess(res, "Certificate updated successfully", await CourseCertificate.findByPk(certificateId));
+    return sendSuccess(res, 200, "Certificate updated successfully", await CourseCertificate.findByPk(certificateId));
   } catch (error) {
     await transaction.rollback();
     console.error("Error updating course certificate:", error);
@@ -2129,7 +2190,7 @@ export const deleteCourseCertificate = async (req, res) => {
     }
     
     await certificate.destroy();
-    return sendSuccess(res, "Certificate deleted successfully");
+    return sendSuccess(res, 200, "Certificate deleted successfully");
   } catch (error) {
     console.error("Error deleting course certificate:", error);
     return sendServerError(res, "Failed to delete certificate");
@@ -2183,7 +2244,7 @@ export const getCoursePurchases = async (req, res) => {
       }
     }));
     
-    return sendSuccess(res, "Course purchases fetched successfully", formattedPurchases);
+    return sendSuccess(res, 200, "Course purchases fetched successfully", formattedPurchases);
   } catch (error) {
     console.error("Error fetching course purchases:", error);
     return sendServerError(res, "Failed to fetch course purchases");
@@ -2241,7 +2302,7 @@ export const getPurchaseDetails = async (req, res) => {
       course: purchase.course
     };
     
-    return sendSuccess(res, "Purchase details fetched successfully", formattedPurchase);
+    return sendSuccess(res, 200, "Purchase details fetched successfully", formattedPurchase);
   } catch (error) {
     console.error("Error fetching purchase details:", error);
     return sendServerError(res, "Failed to fetch purchase details");
@@ -2281,7 +2342,7 @@ export const deleteCourseAdmin = async (req, res) => {
     // Delete the course
     await course.destroy({ transaction });
     await transaction.commit();
-    return sendSuccess(res, "Course deleted successfully", { courseId });
+    return sendSuccess(res, 200, "Course deleted successfully", { courseId });
   } catch (error) {
     await transaction.rollback();
     console.error("Error deleting course:", error);
@@ -2320,7 +2381,7 @@ export const deleteRating = async (req, res) => {
     
     await transaction.commit();
     
-    return sendSuccess(res, "Rating deleted successfully", { ratingId });
+    return sendSuccess(res, 200, "Rating deleted successfully", { ratingId });
   } catch (error) {
     await transaction.rollback();
     console.error("Error deleting rating:", error);
@@ -2370,7 +2431,7 @@ export const replyToRating = async (req, res) => {
     
     await transaction.commit();
     
-    return sendSuccess(res, "Reply added successfully", {
+    return sendSuccess(res, 200, "Reply added successfully", {
       ratingId,
       reply: reply.trim(),
       repliedAt: new Date()

@@ -27,32 +27,46 @@ import {
 
 // Create or update course rating
 export const rateCourse = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
   try {
     const { courseId } = req.params;
     const { rating, review } = req.body;
     const userId = req.user?.userId;
 
-    // Validation
+    // Authentication validation
     if (!userId) {
+      await transaction.rollback();
       return sendError(res, 401, "Authentication required");
     }
 
+    // Rating validation
     if (!rating || rating < 1 || rating > 5) {
+      await transaction.rollback();
       return sendValidationError(res, "Rating must be between 1 and 5");
     }
 
     // Check if course exists
-    const course = await Course.findByPk(courseId);
+    const course = await Course.findByPk(courseId, { transaction });
     if (!course) {
+      await transaction.rollback();
       return sendNotFound(res, "Course not found");
     }
 
-    // Check if user is enrolled (for verified rating)
+    // Check if user is enrolled (STRICT requirement for rating)
     const enrollment = await Enrollment.findOne({
-      where: { userId, courseId },
+      where: { 
+        userId, 
+        courseId,
+        paymentStatus: 'completed'
+      },
+      transaction
     });
 
-    const isVerified = !!enrollment;
+    if (!enrollment) {
+      await transaction.rollback();
+      return sendForbidden(res, "You must purchase this course before you can rate it");
+    }
 
     // Create or update rating
     const [courseRating, created] = await CourseRating.upsert(
@@ -61,16 +75,19 @@ export const rateCourse = async (req, res) => {
         userId,
         rating: parseFloat(rating),
         review: review?.trim() || null,
-        isVerified,
+        isVerified: true, // Always true since we've verified enrollment
         moderationStatus: review ? "pending" : "approved", // Auto-approve ratings without reviews
       },
       {
         returning: true,
+        transaction
       },
     );
 
     // Recalculate course average rating
-    await updateCourseAverageRating(courseId);
+    await updateCourseAverageRating(courseId, transaction);
+
+    await transaction.commit();
 
     return sendSuccess(res, created ? 201 : 200, created
         ? "Rating submitted successfully"
@@ -83,6 +100,7 @@ export const rateCourse = async (req, res) => {
       createdAt: courseRating.createdAt,
     });
   } catch (error) {
+    await transaction.rollback();
     console.error("Rate course error:", error);
     return sendServerError(res, error.message || "Internal server error");
   }
@@ -215,6 +233,8 @@ export const getCourseRatings = async (req, res) => {
 
 // Rate instructor
 export const rateInstructor = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
   try {
     const { instructorId } = req.params;
     const { rating, review, courseId, criteria } = req.body;
@@ -222,35 +242,59 @@ export const rateInstructor = async (req, res) => {
 
     // Validation
     if (!userId) {
+      await transaction.rollback();
       return sendError(res, 401, "Authentication required");
     }
 
     if (!rating || rating < 1 || rating > 5) {
+      await transaction.rollback();
       return sendValidationError(res, "Rating must be between 1 and 5");
     }
 
     // Check if instructor exists and is actually a teacher
     const instructor = await User.findOne({
       where: { userId: instructorId, role: "teacher" },
+      transaction
     });
 
     if (!instructor) {
+      await transaction.rollback();
       return sendNotFound(res, "Instructor not found");
     }
 
-    // Check verification status
-    let isVerified = false;
-    if (courseId) {
-      const enrollment = await Enrollment.findOne({
-        where: { userId, courseId },
-        include: [
-          {
-            model: Course,
-            where: { createdBy: instructorId },
-          },
-        ],
-      });
-      isVerified = !!enrollment;
+    // Check enrollment and verification status - REQUIRED
+    if (!courseId) {
+      await transaction.rollback();
+      return sendValidationError(res, "You must specify a course to rate this instructor");
+    }
+    
+    // Check if the course is taught by this instructor
+    const course = await Course.findOne({
+      where: { 
+        courseId,
+        createdBy: instructorId
+      },
+      transaction
+    });
+    
+    if (!course) {
+      await transaction.rollback();
+      return sendValidationError(res, "This instructor is not teaching the specified course");
+    }
+    
+    // Verify that the user has purchased the course
+    const enrollment = await Enrollment.findOne({
+      where: { 
+        userId, 
+        courseId,
+        paymentStatus: 'completed'
+      },
+      transaction
+    });
+    
+    if (!enrollment) {
+      await transaction.rollback();
+      return sendForbidden(res, "You must purchase and enroll in a course by this instructor before rating them");
     }
 
     // Create or update rating
@@ -258,20 +302,23 @@ export const rateInstructor = async (req, res) => {
       {
         instructorId,
         userId,
-        courseId: courseId || null,
+        courseId,
         rating: parseFloat(rating),
         review: review?.trim() || null,
         criteria: criteria || null,
-        isVerified,
+        isVerified: true, // Always true since we've verified enrollment
         moderationStatus: review ? "pending" : "approved",
       },
       {
         returning: true,
+        transaction
       },
     );
 
     // Update instructor average rating
-    await updateInstructorAverageRating(instructorId);
+    await updateInstructorAverageRating(instructorId, transaction);
+
+    await transaction.commit();
 
     return sendSuccess(res, created ? 201 : 200, created
         ? "Instructor rating submitted successfully"
@@ -966,7 +1013,7 @@ export const getReviewAnalytics = async (req, res) => {
 };
 
 // Helper function to update course average rating
-async function updateCourseAverageRating(courseId) {
+async function updateCourseAverageRating(courseId, transaction = null) {
   try {
     const avgData = await CourseRating.findOne({
       where: { courseId, moderationStatus: "approved" },
@@ -974,6 +1021,7 @@ async function updateCourseAverageRating(courseId) {
         [sequelize.fn("AVG", sequelize.col("rating")), "avgRating"],
         [sequelize.fn("COUNT", sequelize.col("rating")), "totalRatings"],
       ],
+      transaction
     });
 
     const avgRating = parseFloat(avgData?.dataValues?.avgRating || 0);
@@ -987,15 +1035,17 @@ async function updateCourseAverageRating(courseId) {
       },
       {
         where: { courseId },
+        transaction
       },
     );
   } catch (error) {
     console.error("Update course average rating error:", error);
+    throw error; // Rethrow to be caught by the calling function
   }
 }
 
 // Helper function to update instructor average rating
-async function updateInstructorAverageRating(instructorId) {
+async function updateInstructorAverageRating(instructorId, transaction = null) {
   try {
     const avgData = await InstructorRating.findOne({
       where: { instructorId, moderationStatus: "approved" },
@@ -1003,24 +1053,29 @@ async function updateInstructorAverageRating(instructorId) {
         [sequelize.fn("AVG", sequelize.col("rating")), "avgRating"],
         [sequelize.fn("COUNT", sequelize.col("rating")), "totalRatings"],
       ],
+      transaction
     });
 
+    // We would need to add these fields to the User model for instructors
+    // For now, we'll just log the calculated ratings
     const avgRating = parseFloat(avgData?.dataValues?.avgRating || 0);
     const totalRatings = parseInt(avgData?.dataValues?.totalRatings || 0);
 
-    // Update user profile with calculated rating
-    await User.update(
-      {
-        averageRating: avgRating,
-        totalRatings: totalRatings,
-      },
-      {
-        where: { userId: instructorId, role: "teacher" },
-      },
-    );
+    console.log(`Instructor ${instructorId} ratings updated: ${avgRating} (${totalRatings} total)`);
+
+    // TODO: Update instructor profile with rating data when field is added to User model
+    // await User.update(
+    //  {
+    //    instructorRating: avgRating,
+    //    instructorTotalRatings: totalRatings,
+    //  },
+    //  {
+    //    where: { userId: instructorId },
+    //    transaction
+    //  },
+    // );
   } catch (error) {
     console.error("Update instructor average rating error:", error);
+    throw error; // Rethrow to be caught by the calling function
   }
 }
-
-// All functions are exported individually above using 'export const'

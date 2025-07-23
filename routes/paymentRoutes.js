@@ -6,8 +6,6 @@ import {
   handleWebhook,
   getPaymentStatus,
   getUserOrders,
-  createCourseOrder,
-  verifyPaymentAndEnroll,
   getUserPurchases
 } from '../controller/paymentController.js';
 
@@ -28,9 +26,7 @@ router.get('/status/:paymentId', authenticateToken, getPaymentStatus);
 // Get user orders
 router.get('/orders', authenticateToken, getUserOrders);
 
-// Course-specific payment routes
-router.post('/course/create-order', authenticateToken, createCourseOrder);
-router.post('/course/verify', authenticateToken, verifyPaymentAndEnroll);
-router.get('/course/purchases', authenticateToken, getUserPurchases);
+// Get user purchases
+router.get('/purchases', authenticateToken, getUserPurchases);
 
 export default router;

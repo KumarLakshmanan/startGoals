@@ -27,6 +27,7 @@ app.use(
     origin: [
       "https://startgoals.netlify.app/",
       "http://localhost:3030",
+      "http://localhost:3031",
       "http://localhost:5173",
       "https://psychometrics.onrender.com",
       "http://startgoals.in",

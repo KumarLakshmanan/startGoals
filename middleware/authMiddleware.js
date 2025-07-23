@@ -32,7 +32,7 @@ export const authenticateToken = async (req, res, next) => {
 export const verifyToken = authenticateToken;
 
 // General role check middleware factory
-const checkRole = (allowedRoles) => {
+export const checkRole = (allowedRoles) => {
   return (req, res, next) => {
     authenticateToken(req, res, () => {
       // Ensure user is authenticated first

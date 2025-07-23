@@ -8,7 +8,7 @@ import {
   getAllRatingsForModeration,
   moderateProjectRating,
 } from "../controller/projectRatingController.js";
-import { isAdmin, verifyToken } from "../middleware/authMiddleware.js";
+import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
 import { validateInput } from "../middleware/validationMiddleware.js";
 import { body, param, query } from "express-validator";
 
@@ -18,12 +18,12 @@ const router = express.Router();
 
 // Add project rating (Purchased users only)
 router.post(
-  "/",
-  verifyToken, // Add authentication
+  "/projects/:projectId/rating",
+  authenticateToken,
   [
-    body("projectId").isInt().withMessage("Valid project ID is required"),
+    param("projectId").isUUID().withMessage("Valid project ID is required"),
     body("rating")
-      .isInt({ min: 1, max: 5 })
+      .isFloat({ min: 1, max: 5 })
       .withMessage("Rating must be between 1 and 5"),
     body("review")
       .optional()
@@ -36,9 +36,9 @@ router.post(
 
 // Get project ratings with pagination
 router.get(
-  "/project/:projectId",
+  "/projects/:projectId/ratings",
   [
-    param("projectId").isInt().withMessage("Valid project ID is required"),
+    param("projectId").isUUID().withMessage("Valid project ID is required"),
     query("page")
       .optional()
       .isInt({ min: 1 })
@@ -49,11 +49,11 @@ router.get(
       .withMessage("Limit must be between 1 and 50"),
     query("rating")
       .optional()
-      .isInt({ min: 1, max: 5 })
+      .isFloat({ min: 1, max: 5 })
       .withMessage("Rating filter must be between 1 and 5"),
     query("sortBy")
       .optional()
-      .isIn(["createdAt", "rating"])
+      .isIn(["createdAt", "rating", "helpful"])
       .withMessage("Invalid sort field"),
     query("sortOrder")
       .optional()
@@ -66,13 +66,13 @@ router.get(
 
 // Update project rating (User can update their own rating)
 router.put(
-  "/:ratingId",
-  verifyToken, // Add authentication
+  "/ratings/:ratingId",
+  authenticateToken,
   [
-    param("ratingId").isInt().withMessage("Valid rating ID is required"),
+    param("ratingId").isUUID().withMessage("Valid rating ID is required"),
     body("rating")
       .optional()
-      .isInt({ min: 1, max: 5 })
+      .isFloat({ min: 1, max: 5 })
       .withMessage("Rating must be between 1 and 5"),
     body("review")
       .optional()
@@ -85,17 +85,17 @@ router.put(
 
 // Delete project rating (User can delete their own rating, Admin can delete any)
 router.delete(
-  "/:ratingId",
-  verifyToken, // Add authentication
-  [param("ratingId").isInt().withMessage("Valid rating ID is required")],
+  "/ratings/:ratingId",
+  authenticateToken,
+  [param("ratingId").isUUID().withMessage("Valid rating ID is required")],
   validateInput,
   deleteProjectRating,
 );
 
 // Get user's project ratings
 router.get(
-  "/my",
-  verifyToken, // Add authentication
+  "/my/ratings/projects",
+  authenticateToken,
   [
     query("page")
       .optional()
@@ -114,7 +114,8 @@ router.get(
 
 // Get all ratings for moderation (Admin only)
 router.get(
-  "/admin/moderation",
+  "/admin/ratings/projects",
+  authenticateToken,
   isAdmin,
   [
     query("page")
@@ -131,7 +132,7 @@ router.get(
       .withMessage("Invalid status"),
     query("projectId")
       .optional()
-      .isInt()
+      .isUUID()
       .withMessage("Valid project ID is required"),
     query("sortBy")
       .optional()
@@ -148,13 +149,14 @@ router.get(
 
 // Moderate project rating (Admin only)
 router.put(
-  "/admin/moderate/:ratingId",
+  "/admin/ratings/projects/:ratingId/moderate",
+  authenticateToken,
   isAdmin,
   [
-    param("ratingId").isInt().withMessage("Valid rating ID is required"),
+    param("ratingId").isUUID().withMessage("Valid rating ID is required"),
     body("status")
-      .isIn(["approved", "rejected", "pending"])
-      .withMessage("Status must be 'approved', 'rejected', or 'pending'"),
+      .isIn(["approved", "rejected", "pending", "hidden"])
+      .withMessage("Status must be 'approved', 'rejected', 'pending', or 'hidden'"),
     body("moderationNotes")
       .optional()
       .isLength({ max: 500 })

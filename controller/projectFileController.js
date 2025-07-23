@@ -144,7 +144,7 @@ export const uploadProjectFiles = async (req, res) => {
   }
 };
 
-// Get project files (Admin/Creator for all, Users for preview only)
+// Get project files (Admin/Creator for all, Users for preview only, Purchased users for all)
 export const getProjectFiles = async (req, res) => {
   try {
     const { projectId } = req.params;
@@ -157,16 +157,10 @@ export const getProjectFiles = async (req, res) => {
       return sendNotFound(res, "Project not found");
     }
 
-    // Build where conditions
-    const whereConditions = { projectId: parseInt(projectId) };
-
-    if (fileType) {
-      whereConditions.fileType = fileType;
-    }
-
     // Check user permissions
     const isCreatorOrAdmin =
       userId && (project.createdBy === userId || req.user?.role === "admin");
+    
     const hasPurchased = userId
       ? await ProjectPurchase.findOne({
           where: {
@@ -176,6 +170,13 @@ export const getProjectFiles = async (req, res) => {
           },
         })
       : null;
+
+    // Build where conditions
+    const whereConditions = { projectId: parseInt(projectId) };
+
+    if (fileType) {
+      whereConditions.fileType = fileType;
+    }
 
     // If user is not creator/admin and hasn't purchased, only show preview files
     if (!isCreatorOrAdmin && !hasPurchased) {
@@ -196,7 +197,7 @@ export const getProjectFiles = async (req, res) => {
       order: [["createdAt", "ASC"]],
     });
 
-    // Format file data (hide file path for security)
+    // Format file data and hide sensitive information
     const formattedFiles = files.map((file) => {
       const fileData = file.toJSON();
 
@@ -208,17 +209,23 @@ export const getProjectFiles = async (req, res) => {
       return fileData;
     });
 
-    res.json({
-      success: true,
-      data: formattedFiles,
-      meta: {
-        userCanAccessAllFiles: isCreatorOrAdmin || !!hasPurchased,
-        totalFiles: formattedFiles.length,
-      },
-    });
+    return sendSuccess(
+      res, 
+      200, 
+      "Project files retrieved successfully", 
+      {
+        files: formattedFiles,
+        meta: {
+          userCanAccessAllFiles: isCreatorOrAdmin || !!hasPurchased,
+          totalFiles: formattedFiles.length,
+          isPurchased: !!hasPurchased,
+          isCreatorOrAdmin: isCreatorOrAdmin
+        }
+      }
+    );
   } catch (error) {
     console.error("Get project files error:", error);
-    sendServerError(res, "Failed to fetch project files", error.message);
+    return sendServerError(res, "Failed to fetch project files", error.message);
   }
 };
 
@@ -228,13 +235,18 @@ export const downloadProjectFile = async (req, res) => {
     const { fileId } = req.params;
     const userId = req.user?.id;
 
+    // Authentication check
+    if (!userId) {
+      return sendUnauthorized(res, "You must be logged in to download files");
+    }
+
     // Find file with project information
     const projectFile = await ProjectFile.findByPk(fileId, {
       include: [
         {
           model: Project,
           as: "project",
-          attributes: ["id", "title", "createdBy", "status"],
+          attributes: ["id", "projectId", "title", "createdBy", "status"],
         },
       ],
     });
@@ -249,26 +261,26 @@ export const downloadProjectFile = async (req, res) => {
       projectFile.project.createdBy !== userId &&
       req.user?.role !== "admin"
     ) {
-      return sendError(res, 403, "Project not available for download");
+      return sendForbidden(res, "Project not available for download");
     }
 
     const isCreatorOrAdmin =
       userId &&
       (projectFile.project.createdBy === userId || req.user?.role === "admin");
 
-    // Check download permissions
+    // Check if the file is a preview or if special permissions apply
     if (!projectFile.isPreview && !isCreatorOrAdmin) {
       // Check if user has purchased the project
       const purchase = await ProjectPurchase.findOne({
         where: {
           userId,
-          projectId: projectFile.projectId,
+          projectId: projectFile.project.projectId,
           paymentStatus: "completed",
         },
       });
 
       if (!purchase) {
-        return sendError(res, 403, "You need to purchase this project to download this file");
+        return sendForbidden(res, "You need to purchase this project to download this file");
       }
 
       // Check download limits if any (for purchased users)
@@ -276,11 +288,16 @@ export const downloadProjectFile = async (req, res) => {
         purchase.downloadLimit &&
         purchase.downloadCount >= purchase.downloadLimit
       ) {
-        return sendError(res, 403, "Download limit exceeded for this purchase");
+        return sendForbidden(res, "Download limit exceeded for this purchase");
       }
 
       // Increment purchase download count
       await purchase.increment("downloadCount");
+      
+      // Update the lastDownloadAt timestamp
+      await purchase.update({
+        lastDownloadAt: new Date()
+      });
     }
 
     // Check if file exists on disk

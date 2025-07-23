@@ -22,85 +22,128 @@ export const addProjectRating = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { projectId, rating, review } = req.body;
-    const userId = req.user.id;
+    const { projectId } = req.params;
+    const { rating, review, criteria, isRecommended } = req.body;
+    const userId = req.user.userId;
 
     // Validate rating value
-    if (rating < 1 || rating > 5) {
+    if (!rating || rating < 1 || rating > 5) {
       await transaction.rollback();
       return sendValidationError(res, "Rating must be between 1 and 5");
     }
 
     // Check if project exists
-    const project = await Project.findByPk(projectId);
+    const project = await Project.findByPk(projectId, { transaction });
     if (!project) {
       await transaction.rollback();
       return sendNotFound(res, "Project not found");
     }
 
-    // Check if user has purchased the project
+    // Check if user has purchased the project - REQUIRED
     const purchase = await ProjectPurchase.findOne({
       where: {
         userId,
         projectId,
         paymentStatus: "completed",
       },
+      transaction
     });
 
     if (!purchase) {
       await transaction.rollback();
-      return sendError(res, "You can only rate projects you have purchased", 403);
+      return sendForbidden(res, "You can only rate projects you have purchased");
     }
 
     // Check if user has already rated this project
     const existingRating = await ProjectRating.findOne({
       where: { userId, projectId },
+      transaction
     });
 
+    // Create or update rating
     if (existingRating) {
-      await transaction.rollback();
-      return sendConflict(res, "You have already rated this project");
+      await existingRating.update({
+        rating: parseFloat(rating),
+        review: review?.trim() || null,
+        criteria: criteria || null,
+        isRecommended: isRecommended || null,
+        updatedAt: new Date()
+      }, { transaction });
+      
+      // Update project's average rating and rating count
+      await updateProjectRatingStats(projectId, transaction);
+      
+      await transaction.commit();
+      
+      return sendSuccess(res, 200, "Rating updated successfully", existingRating);
+    } else {
+      // Create new rating
+      const projectRating = await ProjectRating.create(
+        {
+          userId,
+          projectId,
+          purchaseId: purchase.purchaseId,
+          rating: parseFloat(rating),
+          review: review?.trim() || null,
+          criteria: criteria || null,
+          isRecommended: isRecommended || null,
+          moderationStatus: "approved", // Auto-approve for purchased users
+        },
+        { transaction },
+      );
+
+      // Update project's average rating and rating count
+      await updateProjectRatingStats(projectId, transaction);
+
+      await transaction.commit();
+
+      return sendSuccess(res, 201, "Rating added successfully", projectRating);
     }
-
-    // Create rating
-    const projectRating = await ProjectRating.create(
-      {
-        userId,
-        projectId,
-        purchaseId: purchase.id,
-        rating: parseInt(rating),
-        review: review || null,
-        status: "approved", // Auto-approve for now, can add moderation later
-      },
-      { transaction },
-    );
-
-    // Update project's average rating and rating count
-    await updateProjectRatingStats(projectId, transaction);
-
-    await transaction.commit();
-
-    // Fetch complete rating with associations
-    const completeRating = await ProjectRating.findByPk(projectRating.id, {
-      include: [
-        {
-          model: User,
-          as: "user",
-          attributes: ["id", "firstName", "lastName", "profilePicture"],
-        },
-        {
-          model: Project,
-          as: "project",
-          attributes: ["id", "title"],
-        },
-      ],
-    });
-
-    sendSuccess(res, "Rating added successfully", completeRating);
   } catch (error) {
     await transaction.rollback();
     console.error("Add project rating error:", error);
-    sendServerError(res, "Failed to add rating", error.message);
+    return sendServerError(res, "Failed to add rating", error.message);
+  }
+};
+
+// Helper function to update project rating statistics
+const updateProjectRatingStats = async (projectId, transaction) => {
+  try {
+    // Calculate average rating
+    const avgRating = await ProjectRating.findOne({
+      where: {
+        projectId,
+        moderationStatus: "approved"
+      },
+      attributes: [
+        [sequelize.fn("AVG", sequelize.col("rating")), "avgRating"],
+      ],
+      transaction
+    });
+
+    // Count total ratings
+    const totalRatings = await ProjectRating.count({
+      where: {
+        projectId,
+        moderationStatus: "approved"
+      },
+      transaction
+    });
+
+    // Update project stats
+    await Project.update(
+      {
+        averageRating: avgRating.dataValues.avgRating || 0,
+        totalRatings: totalRatings || 0,
+      },
+      {
+        where: { projectId },
+        transaction
+      }
+    );
+  } catch (error) {
+    console.error("Update project rating stats error:", error);
+    throw error; // Rethrow to be caught by the calling function
   }
 };
 
@@ -479,45 +522,6 @@ export const moderateProjectRating = async (req, res) => {
     await transaction.rollback();
     console.error("Moderate project rating error:", error);
     sendServerError(res, "Failed to moderate rating", error.message);
-  }
-};
-
-// ===================== HELPER FUNCTIONS =====================
-
-// Update project rating statistics
-const updateProjectRatingStats = async (projectId, transaction) => {
-  try {
-    // Calculate average rating and count
-    const ratingStats = await ProjectRating.findAll({
-      attributes: [
-        [sequelize.fn("AVG", sequelize.col("rating")), "avgRating"],
-        [sequelize.fn("COUNT", sequelize.col("rating")), "ratingCount"],
-      ],
-      where: {
-        projectId,
-        status: "approved",
-      },
-      raw: true,
-    });
-
-    const stats = ratingStats[0] || {};
-    const averageRating = parseFloat(stats.avgRating) || 0;
-    const totalRatings = parseInt(stats.ratingCount) || 0;
-
-    // Update project
-    await Project.update(
-      {
-        averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal place
-        totalRatings,
-      },
-      {
-        where: { id: projectId },
-        transaction,
-      },
-    );
-  } catch (error) {
-    console.error("Update project rating stats error:", error);
-    throw error;
   }
 };
 
