@@ -728,12 +728,14 @@ Wishlist.belongsTo(User, {
 
 Wishlist.belongsTo(Course, {
   foreignKey: "itemId",
+  targetKey: "courseId",
   constraints: false,
   as: "course",
 });
 
 Wishlist.belongsTo(Project, {
   foreignKey: "itemId",
+  targetKey: "projectId",
   constraints: false,
   as: "project",
 });
@@ -752,12 +754,14 @@ Cart.belongsTo(User, {
 
 Cart.belongsTo(Course, {
   foreignKey: "itemId",
+  targetKey: "courseId",
   constraints: false,
   as: "course",
 });
 
 Cart.belongsTo(Project, {
   foreignKey: "itemId",
+  targetKey: "projectId",
   constraints: false,
   as: "project",
 });

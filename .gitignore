@@ -3,3 +3,4 @@
 .docs/
 docs/
 scripts/node_modules/
+__tests__/

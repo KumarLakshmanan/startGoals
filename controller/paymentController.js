@@ -1,5 +1,6 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
+import { Op } from 'sequelize';
 import { Order, Cart, Wishlist, User, Course, Project, ProjectPurchase } from '../model/assosiation.js';
 import DiscountCode from '../model/discountCode.js';
 import Enrollment from '../model/enrollment.js';
@@ -433,10 +434,10 @@ export const handleWebhook = async (req, res) => {
         transaction
       });
 
-      if (order && order.status !== 'completed') {
+      if (order && order.status !== 'paid') {
         await order.update({
           paymentId: payment.id,
-          status: 'completed',
+          status: 'paid',
           paidAt: new Date()
         }, { transaction });
 
@@ -882,7 +883,8 @@ export const getUserPurchases = async (req, res) => {
       return sendError(res, 401, "Authentication required");
     }
 
-    // Validate page and limit parameters    const pageNum = parseInt(page);
+    // Validate page and limit parameters
+    const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
     
     if (isNaN(pageNum) || pageNum < 1) {
@@ -974,5 +976,171 @@ export const getUserPurchases = async (req, res) => {
   } catch (error) {
     console.error('Get user orders error:', error);
     return sendResponse(res, 500, false, 'Failed to get orders', error.message);
+  }
+};
+
+export const createSimpleOrder = async (req, res) => {
+  try {
+    const { userId } = req.user;
+    const { discountCode } = req.body;
+    
+    console.log('Creating simple order for user:', userId);
+    
+    // Get cart items for the user
+    const cartItems = await Cart.findAll({
+      where: { userId },
+      include: [
+        {
+          model: Course,
+          as: 'course',
+          required: false,
+        },
+        {
+          model: Project,
+          as: 'project',
+          required: false,
+        }
+      ]
+    });
+
+    console.log('Found cart items:', cartItems.length);
+
+    if (!cartItems || cartItems.length === 0) {
+      return sendResponse(res, 400, false, 'Cart is empty', null);
+    }
+
+    // Calculate total amount
+    let totalAmount = 0;
+    const orderItems = [];
+    
+    for (const item of cartItems) {
+      const itemPrice = parseFloat(item.price || 0);
+      const itemDiscount = parseFloat(item.discountAmount || 0);
+      const finalPrice = itemPrice - itemDiscount;
+      
+      totalAmount += finalPrice;
+      
+      orderItems.push({
+        itemType: item.itemType,
+        itemId: item.itemId,
+        price: itemPrice,
+        discount: itemDiscount,
+        finalPrice: finalPrice,
+        title: item.course?.title || item.project?.title || 'Unknown Item'
+      });
+    }
+
+    console.log('Total amount:', totalAmount);
+    console.log('Order items:', orderItems);
+
+    // Apply discount if provided
+    let discountAmount = 0;
+    if (discountCode) {
+      try {
+        const discount = await DiscountCode.findOne({
+          where: {
+            code: discountCode.toUpperCase(),
+            isActive: true,
+            validFrom: { [Op.lte]: new Date() },
+            validUntil: { [Op.gte]: new Date() },
+          }
+        });
+
+        if (discount) {
+          console.log('Found valid discount:', discount.code, discount.discountType, discount.discountValue);
+          
+          if (discount.discountType === 'percentage') {
+            discountAmount = (totalAmount * discount.discountValue) / 100;
+            
+            // Apply maximum discount limit if set
+            if (discount.maxDiscountAmount && discountAmount > discount.maxDiscountAmount) {
+              discountAmount = discount.maxDiscountAmount;
+            }
+          } else if (discount.discountType === 'fixed') {
+            discountAmount = Math.min(parseFloat(discount.discountValue), totalAmount);
+          }
+          
+          // Check minimum purchase requirement
+          if (discount.minimumPurchaseAmount && totalAmount < discount.minimumPurchaseAmount) {
+            console.log('Minimum purchase amount not met:', discount.minimumPurchaseAmount);
+            discountAmount = 0;
+          }
+          
+          console.log('Discount amount calculated:', discountAmount);
+        } else {
+          console.log('No valid discount found for code:', discountCode);
+        }
+      } catch (discountError) {
+        console.log('Discount error (ignored):', discountError.message);
+      }
+    }
+
+    const finalAmount = Math.max(1, totalAmount - discountAmount); // Minimum 1 rupee for Razorpay
+
+    console.log('Final amount after discount:', finalAmount);
+
+    // Create real Razorpay order
+    const razorpayOrderOptions = {
+      amount: Math.round(finalAmount * 100), // Amount in paise
+      currency: 'INR',
+      receipt: `order_${Date.now()}_${userId.substring(0, 8)}`,
+      notes: {
+        userId: userId,
+        itemCount: orderItems.length.toString(),
+        discountCode: discountCode || '',
+        totalAmount: totalAmount.toString(),
+        discountAmount: discountAmount.toString()
+      }
+    };
+
+    console.log('Creating Razorpay order with options:', razorpayOrderOptions);
+
+    let razorpayOrder;
+    try {
+      razorpayOrder = await razorpay.orders.create(razorpayOrderOptions);
+      console.log('Razorpay order created successfully:', razorpayOrder.id);
+    } catch (razorpayError) {
+      console.error('Razorpay order creation failed:', razorpayError);
+      return sendResponse(res, 500, false, 'Failed to create Razorpay order', razorpayError.message);
+    }
+
+    // Create order in database
+    const order = await Order.create({
+      userId: userId,
+      razorpayOrderId: razorpayOrder.id,
+      totalAmount: totalAmount,
+      discountAmount: discountAmount,
+      finalAmount: finalAmount,
+      status: 'pending',
+      paymentMethod: 'razorpay',
+      orderItems: JSON.stringify(orderItems),
+      discountCode: discountCode || null,
+      currency: 'INR',
+      receipt: razorpayOrder.receipt
+    });
+
+    console.log('Order created in database:', order.orderId);
+
+    // Prepare response
+    const response = {
+      orderId: order.orderId,
+      razorpayOrderId: razorpayOrder.id,
+      amount: finalAmount,
+      currency: 'INR',
+      totalAmount: totalAmount,
+      discountAmount: discountAmount,
+      finalAmount: finalAmount,
+      items: orderItems,
+      razorpayKeyId: process.env.RAZORPAY_KEY_ID,
+      paymentUrl: `https://checkout.razorpay.com/v1/checkout.js`,
+      webhookUrl: `${req.protocol}://${req.get('host')}/api/payments/webhook`,
+      message: "Real Razorpay order created successfully. Ready for payment."
+    };
+
+    return sendResponse(res, 201, true, 'Order created successfully', response);
+
+  } catch (error) {
+    console.error('Simple order creation error:', error);
+    return sendResponse(res, 500, false, 'Failed to create order', error.message);
   }
 };

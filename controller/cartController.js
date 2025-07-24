@@ -39,7 +39,7 @@ export const addToCart = async (req, res) => {
     });
 
     if (existingCartItem) {
-      return sendResponse(res, 400, false, 'Item already in cart', null);
+      return sendResponse(res, 409, false, 'Item already in cart', null);
     }
 
     // Add to cart
@@ -55,6 +55,12 @@ export const addToCart = async (req, res) => {
 
   } catch (error) {
     console.error('Add to cart error:', error);
+    
+    // Handle unique constraint violation
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return sendResponse(res, 409, false, 'Item already in cart', null);
+    }
+    
     return sendResponse(res, 500, false, 'Failed to add item to cart', error.message);
   }
 };
@@ -101,13 +107,13 @@ export const getCart = async (req, res) => {
           model: Course,
           as: 'course',
           required: false,
-          attributes: ['id', 'title', 'description', 'price', 'thumbnail', 'duration']
+          attributes: ['courseId', 'title', 'description', 'price', 'thumbnailUrl', 'durationMinutes']
         },
         {
           model: Project,
           as: 'project',
           required: false,
-          attributes: ['id', 'title', 'description', 'price', 'thumbnail', 'difficultyLevel']
+          attributes: ['projectId', 'title', 'description', 'price', 'coverImage']
         }
       ]
     });

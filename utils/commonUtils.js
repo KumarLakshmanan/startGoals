@@ -18,6 +18,10 @@ export const isValidSkill = (skill) => {
 };
 
 export const generateOtp = (digits = 6) => {
+  // For development/testing purposes, return a fixed OTP
+  if (process.env.SERVER_TYPE === 'development') {
+    return "123456";
+  }
   return Math.floor(Math.random() * Math.pow(10, digits))
     .toString()
     .padStart(digits, "0");

@@ -53,6 +53,12 @@ export const addToWishlist = async (req, res) => {
 
   } catch (error) {
     console.error('Add to wishlist error:', error);
+    
+    // Handle unique constraint violation
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return sendResponse(res, 409, false, 'Item already in wishlist', null);
+    }
+    
     return sendResponse(res, 500, false, 'Failed to add item to wishlist', error.message);
   }
 };
@@ -99,13 +105,13 @@ export const getWishlist = async (req, res) => {
           model: Course,
           as: 'course',
           required: false,
-          attributes: ['id', 'title', 'description', 'price', 'thumbnail', 'duration', 'rating']
+          attributes: ['courseId', 'title', 'description', 'price', 'thumbnailUrl', 'durationMinutes', 'averageRating']
         },
         {
           model: Project,
           as: 'project',
           required: false,
-          attributes: ['id', 'title', 'description', 'price', 'thumbnail', 'difficultyLevel', 'rating']
+          attributes: ['projectId', 'title', 'description', 'price', 'coverImage', 'averageRating']
         }
       ]
     });

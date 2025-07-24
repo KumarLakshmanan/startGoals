@@ -2,6 +2,7 @@ import express from 'express';
 import { authenticateToken } from '../middleware/authMiddleware.js';
 import {
   createOrder,
+  createSimpleOrder,
   verifyPayment,
   handleWebhook,
   getPaymentStatus,
@@ -12,7 +13,10 @@ import {
 const router = express.Router();
 
 // Create order for checkout
-router.post('/create-order', authenticateToken, createOrder);
+router.post('/create-order', authenticateToken, createSimpleOrder);
+
+// Create simple order for testing
+router.post('/create-simple-order', authenticateToken, createSimpleOrder);
 
 // Verify payment
 router.post('/verify', authenticateToken, verifyPayment);
