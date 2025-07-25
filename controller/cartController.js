@@ -7,7 +7,7 @@ import { sendResponse } from '../utils/responseHelper.js';
 export const addToCart = async (req, res) => {
   try {
     const { userId } = req.user;
-    const { itemType, itemId, price, discount = 0 } = req.body;
+    const { itemType, itemId, price } = req.body;
 
     // Validate itemType
     if (!['course', 'project'].includes(itemType)) {
@@ -47,8 +47,7 @@ export const addToCart = async (req, res) => {
       userId,
       itemType,
       itemId,
-      price: price || item.price || 0,
-      discount
+      price: price || item.price || 0
     });
 
     return sendResponse(res, 201, true, 'Item added to cart successfully', cartItem);
@@ -120,20 +119,14 @@ export const getCart = async (req, res) => {
 
     // Calculate total
     let totalAmount = 0;
-    let totalDiscount = 0;
 
     const cartWithDetails = cartItems.map(item => {
-      const discountedPrice = item.price - (item.discount || 0);
-      totalAmount += discountedPrice;
-      totalDiscount += (item.discount || 0);
-
+      totalAmount += item.price;
       return {
         id: item.id,
         itemType: item.itemType,
         itemId: item.itemId,
         price: item.price,
-        discount: item.discount,
-        finalPrice: discountedPrice,
         item: item.course || item.project,
         createdAt: item.createdAt
       };
@@ -144,7 +137,6 @@ export const getCart = async (req, res) => {
       summary: {
         itemCount: cartItems.length,
         totalAmount,
-        totalDiscount,
         finalAmount: totalAmount
       }
     });
@@ -180,7 +172,7 @@ export const clearCart = async (req, res) => {
 export const updateCartItem = async (req, res) => {
   try {
     const { userId } = req.user;
-    const { itemType, itemId, price, discount } = req.body;
+    const { itemType, itemId, price } = req.body;
 
     const cartItem = await Cart.findOne({
       where: {
@@ -195,8 +187,7 @@ export const updateCartItem = async (req, res) => {
     }
 
     await cartItem.update({
-      price: price !== undefined ? price : cartItem.price,
-      discount: discount !== undefined ? discount : cartItem.discount
+      price: price !== undefined ? price : cartItem.price
     });
 
     return sendResponse(res, 200, true, 'Cart item updated successfully', cartItem);

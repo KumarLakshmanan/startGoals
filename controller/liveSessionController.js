@@ -171,7 +171,7 @@ export const createLiveSession = async (req, res) => {
         startTime,
         endTime,
         durationMinutes: duration,
-        createdBy: req.user?.id || null,
+        createdBy: req.user?.userId || null,
         platform,
         platformSessionId:
           platform.toLowerCase() === "agora"
@@ -1088,7 +1088,7 @@ export const leaveLiveSession = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { sessionId } = req.params;
-    const userId = req.user?.id; // Get userId from authenticated user
+    const userId = req.user?.userId; // Get userId from authenticated user
 
     if (!sessionId) {
       return sendValidationError(res, "Session ID is required");

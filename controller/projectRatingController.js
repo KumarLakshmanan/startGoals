@@ -233,7 +233,7 @@ export const updateProjectRating = async (req, res) => {
   try {
     const { ratingId } = req.params;
     const { rating, review } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     // Find rating
     const projectRating = await ProjectRating.findByPk(ratingId);
@@ -301,7 +301,7 @@ export const deleteProjectRating = async (req, res) => {
 
   try {
     const { ratingId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const userRole = req.user.role;
 
     // Find rating
@@ -341,7 +341,7 @@ export const deleteProjectRating = async (req, res) => {
 // Get user's project ratings
 export const getUserProjectRatings = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { page = 1, limit = 10 } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -461,7 +461,7 @@ export const moderateProjectRating = async (req, res) => {
   try {
     const { ratingId } = req.params;
     const { status, moderationNotes } = req.body;
-    const moderatorId = req.user.id;
+    const moderatorId = req.user.userId;
 
     // Validate status
     if (!["approved", "rejected", "pending"].includes(status)) {

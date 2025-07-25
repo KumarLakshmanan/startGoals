@@ -16,6 +16,7 @@ import {
   sendServerError,
   sendConflict,
 } from "../utils/responseHelper.js";
+import Cart from "../model/cart.js";
 
 // ===================== ADMIN DISCOUNT CODE MANAGEMENT =====================
 
@@ -35,11 +36,10 @@ export const createDiscountCode = async (req, res) => {
       maxUsesPerUser,
       validFrom,
       validUntil,
-      applicableCategories,
       isActive = true,
     } = req.body;
 
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     // Validate required fields
     if (
@@ -123,18 +123,6 @@ export const createDiscountCode = async (req, res) => {
       },
       { transaction }
     );
-
-    // Add applicable categories if provided
-    if (
-      applicableCategories &&
-      Array.isArray(applicableCategories) &&
-      applicableCategories.length > 0
-    ) {
-      const categories = await CourseCategory.findAll({
-        where: { id: { [Op.in]: applicableCategories } },
-      });
-      await discountCode.setApplicableCategories(categories, { transaction });
-    }
 
     await transaction.commit();
 
@@ -425,21 +413,6 @@ export const updateDiscountCode = async (req, res) => {
     // Update discount code
     await discountCode.update(updateData, { transaction });
 
-    // Update applicable categories if provided
-    if (updateData.applicableCategories !== undefined) {
-      if (
-        Array.isArray(updateData.applicableCategories) &&
-        updateData.applicableCategories.length > 0
-      ) {
-        const categories = await CourseCategory.findAll({
-          where: { id: { [Op.in]: updateData.applicableCategories } },
-        });
-        await discountCode.setApplicableCategories(categories, { transaction });
-      } else {
-        await discountCode.setApplicableCategories([], { transaction });
-      }
-    }
-
     await transaction.commit();
 
     // Fetch updated discount code with associations
@@ -512,28 +485,19 @@ export const deleteDiscountCode = async (req, res) => {
 
 // ===================== DISCOUNT CODE VALIDATION =====================
 
-// Validate discount code for course/project purchase
+// Validate discount code for all cart items of the user
 export const validateDiscountCode = async (req, res) => {
   try {
-    const { code, courseId, projectId, amount } = req.body;
-    const userId = req.user.id;
+    const { code } = req.body;
 
-    if (!code || !amount) {
-      return sendValidationError(res, "Discount code and amount are required", {
-        code: !code ? "Required" : undefined,
-        amount: !amount ? "Required" : undefined,
-      });
+    // Validate userId
+    if (!req.user || !req.user.userId) {
+      return sendError(res, 401, "User not authenticated");
     }
+    const userId = req.user.userId;
 
-    if (!courseId && !projectId) {
-      return sendValidationError(
-        res,
-        "Either course ID or project ID is required",
-        {
-          courseId: "Required if projectId not provided",
-          projectId: "Required if courseId not provided",
-        }
-      );
+    if (!code) {
+      return sendValidationError(res, "Discount code is required", { code: "Required" });
     }
 
     // Find discount code
@@ -544,14 +508,6 @@ export const validateDiscountCode = async (req, res) => {
         validFrom: { [Op.lte]: new Date() },
         validUntil: { [Op.gte]: new Date() },
       },
-      include: [
-        {
-          model: CourseCategory,
-          as: "applicableCategories",
-          attributes: ["id"],
-          through: { attributes: [] },
-        },
-      ],
     });
 
     if (!discountCode) {
@@ -570,106 +526,75 @@ export const validateDiscountCode = async (req, res) => {
       const userUsages = await DiscountUsage.count({
         where: { userId, discountId: discountCode.id },
       });
-
       if (userUsages >= discountCode.maxUsesPerUser) {
-        return sendError(
-          res,
-          400,
-          "You have reached the usage limit for this discount code"
-        );
+        return sendError(res, 400, "You have reached the usage limit for this discount code");
       }
     }
 
-    // Check minimum purchase amount
-    if (
-      discountCode.minPurchaseAmount &&
-      amount < discountCode.minPurchaseAmount
-    ) {
-      return sendError(
-        res,
-        400,
-        `Minimum purchase amount of $${discountCode.minPurchaseAmount} required`
-      );
+    // Get user's cart items
+    const cartItems = await Cart.findAll({
+      where: { userId },
+      include: [
+        {
+          model: Course,
+          as: "course",
+          required: false,
+          attributes: ["courseId", "title", "price", "categoryId"],
+        },
+        {
+          model: Project,
+          as: "project",
+          required: false,
+          attributes: ["projectId", "title", "price", "categoryId"],
+        },
+      ],
+    });
+
+    if (!cartItems.length) {
+      return sendError(res, 400, "No items in cart to apply discount");
     }
 
-    // Check applicable type and category
-    let itemCategoryId = null;
-
-    if (courseId) {
-      if (
-        discountCode.applicableType !== "course" &&
-        discountCode.applicableType !== "both"
-      ) {
-        return sendError(
-          res,
-          400,
-          "This discount code is not applicable to courses"
-        );
-      }
-
-      const course = await Course.findByPk(courseId, {
-        attributes: ["categoryId"],
-      });
-
-      if (!course) {
-        return sendNotFound(res, "Course not found");
-      }
-
-      itemCategoryId = course.categoryId;
-    }
-
-    if (projectId) {
-      if (
-        discountCode.applicableType !== "project" &&
-        discountCode.applicableType !== "both"
-      ) {
-        return sendError(
-          res,
-          400,
-          "This discount code is not applicable to projects"
-        );
-      }
-
-      const project = await Project.findByPk(projectId, {
-        attributes: ["categoryId"],
-      });
-
-      if (!project) {
-        return sendNotFound(res, "Project not found");
-      }
-
-      itemCategoryId = project.categoryId;
-    }
-
-    // Check category restrictions
-    if (
-      discountCode.applicableCategories &&
-      discountCode.applicableCategories.length > 0
-    ) {
-      const applicableCategoryIds = discountCode.applicableCategories.map(
-        (cat) => cat.id
-      );
-      if (!applicableCategoryIds.includes(itemCategoryId)) {
-        return sendError(
-          res,
-          400,
-          "This discount code is not applicable to this category"
-        );
-      }
-    }
-
-    // Calculate discount amount
-    let discountAmount = 0;
+    // Calculate total original amount
+    let totalOriginalAmount = cartItems.reduce((sum, item) => sum + parseFloat(item.price), 0);
+    totalOriginalAmount = Number(totalOriginalAmount.toFixed(2));
+    console.log("Total original amount: ", totalOriginalAmount);
+    // Apply discount to total amount
+    let totalDiscountAmount = 0;
     if (discountCode.discountType === "percentage") {
-      discountAmount = (amount * discountCode.discountValue) / 100;
+      totalDiscountAmount = (totalOriginalAmount * discountCode.discountValue) / 100;
+
+      // Apply maximum discount limit if set
+      if (discountCode.maxDiscountAmount && totalDiscountAmount > discountCode.maxDiscountAmount) {
+        totalDiscountAmount = discountCode.maxDiscountAmount;
+      }
     } else {
-      discountAmount = discountCode.discountValue;
+      totalDiscountAmount = discountCode.discountValue;
     }
+    totalDiscountAmount = Math.min(totalDiscountAmount, totalOriginalAmount);
 
-    discountAmount = Math.min(discountAmount, amount); // Don't exceed original price
-    const finalAmount = amount - discountAmount;
+    let totalFinalAmount = totalOriginalAmount - totalDiscountAmount;
 
-    return sendSuccess(res, 200, "Discount code is valid", {
+    // Prepare cart items (no per-item discount)
+    const discountedCart = cartItems.map(item => {
+      let itemType = item.itemType;
+      let itemData = item.course || item.project;
+      let price = item.price;
+      let categoryId = itemData?.categoryId;
+
+      return {
+        id: item.id,
+        itemType,
+        itemId: item.itemId,
+        title: itemData?.title,
+        price,
+        discountApplied: false,
+        discountAmount: 0,
+        finalAmount: price,
+        categoryId,
+      };
+    });
+
+    return sendSuccess(res, 200, "Discount code applied to cart total", {
       discountCode: {
         id: discountCode.id,
         code: discountCode.code,
@@ -677,10 +602,14 @@ export const validateDiscountCode = async (req, res) => {
         discountType: discountCode.discountType,
         discountValue: discountCode.discountValue,
       },
-      originalAmount: amount,
-      discountAmount: discountAmount,
-      finalAmount: finalAmount,
-      savings: discountAmount,
+      cart: discountedCart,
+      summary: {
+        itemCount: discountedCart.length,
+        totalOriginalAmount,
+        totalDiscountAmount,
+        totalFinalAmount,
+        savings: totalDiscountAmount,
+      },
     });
   } catch (error) {
     console.error("Validate discount code error:", error);
@@ -826,65 +755,6 @@ export const getDiscountUsageStatistics = async (req, res) => {
   }
 };
 
-// Get user's discount usage history
-export const getUserDiscountHistory = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { page = 1, limit = 10 } = req.query;
-
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    const { count, rows: discountUsages } = await DiscountUsage.findAndCountAll(
-      {
-        where: { userId },
-        include: [
-          {
-            model: DiscountCode,
-            as: "discountCode",
-            attributes: [
-              "id",
-              "code",
-              "description",
-              "discountType",
-              "discountValue",
-            ],
-          },
-          {
-            model: Course,
-            as: "course",
-            attributes: ["id", "title", "thumbnailImage"],
-            required: false,
-          },
-          {
-            model: Project,
-            as: "project",
-            attributes: ["id", "title", "previewImages"],
-            required: false,
-          },
-        ],
-        limit: parseInt(limit),
-        offset: offset,
-        order: [["createdAt", "DESC"]],
-      }
-    );
-
-    const totalPages = Math.ceil(count / parseInt(limit));
-
-    return sendSuccess(res, 200, "Discount usage history fetched", {
-      discountUsages,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages,
-        totalItems: count,
-        itemsPerPage: parseInt(limit),
-      },
-    });
-  } catch (error) {
-    console.error("Get user discount history error:", error);
-    return sendServerError(res, error);
-  }
-};
-
 // ===================== COMPREHENSIVE ADMIN DISCOUNT MANAGEMENT =====================
 
 /**
@@ -897,7 +767,6 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
       limit = 20,
       status,
       discountType,
-      applicableTypes,
       campaignName,
       search,
       sortBy = "createdAt",
@@ -1017,23 +886,23 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
         const effectiveness = {
           usageRate: discount.maxUses
             ? (
-                ((usageStats[0]?.totalUsages || 0) / discount.maxUses) *
-                100
-              ).toFixed(2)
+              ((usageStats[0]?.totalUsages || 0) / discount.maxUses) *
+              100
+            ).toFixed(2)
             : null,
           avgDiscountPerUse:
             usageStats[0]?.totalUsages > 0
               ? (
-                  usageStats[0]?.totalDiscountGiven /
-                  usageStats[0]?.totalUsages
-                ).toFixed(2)
+                usageStats[0]?.totalDiscountGiven /
+                usageStats[0]?.totalUsages
+              ).toFixed(2)
               : 0,
           daysActive: Math.ceil(
             (new Date() - new Date(discount.validFrom)) / (1000 * 60 * 60 * 24)
           ),
           daysRemaining: Math.ceil(
             (new Date(discount.validUntil) - new Date()) /
-              (1000 * 60 * 60 * 24)
+            (1000 * 60 * 60 * 24)
           ),
         };
 
@@ -1233,173 +1102,6 @@ export const getDiscountAnalytics = async (req, res) => {
 };
 
 /**
- * Bulk update discount codes (Admin)
- */
-export const bulkUpdateDiscountCodes = async (req, res) => {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const { discountIds, updateData } = req.body;
-
-    if (!Array.isArray(discountIds) || discountIds.length === 0) {
-      await transaction.rollback();
-      return sendValidationError(res, "Discount IDs array is required", {
-        discountIds: "Required and must be a non-empty array",
-      });
-    }
-
-    if (!updateData || Object.keys(updateData).length === 0) {
-      await transaction.rollback();
-      return sendValidationError(res, "Update data is required", {
-        updateData: "Required and must not be empty",
-      });
-    }
-
-    // Validate that we're not updating sensitive fields
-    const allowedFields = [
-      "isActive",
-      "validUntil",
-      "maxUses",
-      "maxUsesPerUser",
-      "description",
-    ];
-    const updateFields = Object.keys(updateData);
-    const invalidFields = updateFields.filter(
-      (field) => !allowedFields.includes(field)
-    );
-
-    if (invalidFields.length > 0) {
-      await transaction.rollback();
-      return sendValidationError(
-        res,
-        `Invalid fields for bulk update: ${invalidFields.join(", ")}`,
-        { invalidFields }
-      );
-    }
-
-    // Perform bulk update
-    const [updatedCount] = await DiscountCode.update(updateData, {
-      where: { id: { [Op.in]: discountIds } },
-      transaction,
-    });
-
-    await transaction.commit();
-
-    return sendSuccess(res, 200, `Successfully updated ${updatedCount} discount codes`, {
-      updatedCount,
-      updateData,
-    });
-  } catch (error) {
-    await transaction.rollback();
-    console.error("Bulk update discount codes error:", error);
-    return sendServerError(res, error);
-  }
-};
-
-/**
- * Export discount code data (Admin)
- */
-export const exportDiscountData = async (req, res) => {
-  try {
-    const {
-      format = "json",
-      includeUsage = true,
-      dateFrom,
-      dateTo,
-    } = req.query;
-
-    // Build where conditions
-    const whereConditions = {};
-    if (dateFrom && dateTo) {
-      whereConditions.createdAt = {
-        [Op.between]: [new Date(dateFrom), new Date(dateTo)],
-      };
-    }
-
-    // Get discount codes
-    const discountCodes = await DiscountCode.findAll({
-      where: whereConditions,
-      include: [
-        {
-          model: User,
-          as: "creator",
-          attributes: ["firstName", "lastName", "email"],
-        },
-      ],
-      order: [["createdAt", "DESC"]],
-    });
-
-    let exportData = {
-      exportDate: new Date(),
-      totalRecords: discountCodes.length,
-      discountCodes: discountCodes.map((code) => ({
-        id: code.id,
-        code: code.code,
-        description: code.description,
-        discountType: code.discountType,
-        discountValue: code.discountValue,
-        applicableType: code.applicableType,
-        isActive: code.isActive,
-        validFrom: code.validFrom,
-        validUntil: code.validUntil,
-        maxUses: code.maxUses,
-        currentUses: code.currentUses,
-        creator: code.creator
-          ? `${code.creator.firstName} ${code.creator.lastName}`
-          : null,
-        createdAt: code.createdAt,
-      })),
-    };
-
-    // Include usage data if requested
-    if (includeUsage) {
-      const usageData = await DiscountUsage.findAll({
-        include: [
-          {
-            model: DiscountCode,
-            where: whereConditions,
-            attributes: ["code"],
-          },
-          {
-            model: User,
-            attributes: ["firstName", "lastName", "email"],
-          },
-        ],
-      });
-
-      exportData.usageData = usageData.map((usage) => ({
-        discountCode: usage.DiscountCode.code,
-        user: `${usage.User.firstName} ${usage.User.lastName}`,
-        discountAmount: usage.discountAmount,
-        usedAt: usage.createdAt,
-      }));
-    }
-
-    // Format response based on requested format
-    if (format === "csv") {
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader(
-        "Content-Disposition",
-        'attachment; filename="discount_codes.csv"'
-      );
-    } else {
-      res.setHeader("Content-Type", "application/json");
-      res.setHeader(
-        "Content-Disposition",
-        'attachment; filename="discount_codes.json"'
-      );
-    }
-
-    return sendSuccess(res, 200, "Discount data exported successfully", exportData);
-  } catch (error) {
-    console.error("Export discount data error:", error);
-    return sendServerError(res, error);
-  }
-};
-
-// ===================== HELPER FUNCTIONS =====================
-
-/**
  * Helper function to determine discount status
  */
 const getDiscountStatus = (discount) => {
@@ -1434,9 +1136,6 @@ export default {
   deleteDiscountCode,
   validateDiscountCode,
   getDiscountUsageStatistics,
-  getUserDiscountHistory,
   getAllDiscountCodesAdmin,
-  getDiscountAnalytics,
-  bulkUpdateDiscountCodes,
-  exportDiscountData,
+  getDiscountAnalytics
 };

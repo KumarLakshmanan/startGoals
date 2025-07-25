@@ -39,17 +39,6 @@ const Cart = sequelize.define(
       allowNull: false,
       comment: "Price at the time of adding to cart",
     },
-    discountCode: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      comment: "Applied discount code",
-    },
-    discountAmount: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
-      defaultValue: 0,
-      comment: "Discount amount applied",
-    },
     addedDate: {
       type: DataTypes.DATE,
       allowNull: false,

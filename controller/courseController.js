@@ -2549,7 +2549,7 @@ export const exportCourseData = async (req, res) => {
     const exportData = {
       course: course.toJSON(),
       exportedAt: new Date().toISOString(),
-      exportedBy: req.user.id
+      exportedBy: req.user.userId
     };
 
     if (format === 'csv') {

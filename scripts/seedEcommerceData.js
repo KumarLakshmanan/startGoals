@@ -386,8 +386,6 @@ async function createDiscountCodes(admin, categories) {
       usageLimit: discount.limit,
       usageLimitPerUser: 1,
       currentUsage: 0,
-      applicableTypes: JSON.stringify(discount.applicableType),
-      applicableCategories: discount.categories ? JSON.stringify(discount.categories) : null,
       isActive: true,
       createdBy: admin.userId,
       campaignName: discount.campaign

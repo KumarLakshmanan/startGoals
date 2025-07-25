@@ -22,279 +22,6 @@ const razorpay = new Razorpay({
 });
 
 /**
- * Create Razorpay order for checkout
- * Supports both cart-based checkout and direct purchase of courses or projects
- */
-export const createOrder = async (req, res) => {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const { userId } = req.user;
-    const { courseId, projectId, discountCode } = req.body;
-    
-    let orderItems = [];
-    let totalAmount = 0;
-    let discountApplied = null;
-    
-    // Option 1: Direct course/project purchase
-    if (courseId || projectId) {
-      // For direct course purchase
-      if (courseId) {
-        // Check if course exists and is published
-        const course = await Course.findOne({
-          where: {
-            courseId: courseId,
-            isPublished: true,
-            status: "active",
-          },
-        });
-
-        if (!course) {
-          await transaction.rollback();
-          return sendNotFound(res, "Course not found or not available for purchase");
-        }
-
-        // Check if user already enrolled
-        const existingEnrollment = await Enrollment.findOne({
-          where: {
-            userId: userId,
-            courseId: courseId,
-          },
-        });
-
-        if (existingEnrollment) {
-          await transaction.rollback();
-          return sendConflict(res, "course", courseId);
-        }
-
-        // Calculate price (use salePrice if available, otherwise regular price)
-        let finalPrice = course.salePrice || course.price;
-
-        // Add to order items
-        orderItems.push({
-          itemType: 'course',
-          itemId: courseId,
-          price: course.price,
-          salePrice: course.salePrice,
-          finalPrice,
-          title: course.title,
-          type: course.type
-        });
-
-        totalAmount += finalPrice;
-      } 
-      // For direct project purchase
-      else if (projectId) {
-        // Check if project exists and is published
-        const project = await Project.findOne({
-          where: {
-            projectId: projectId,
-            status: "published",
-          },
-        });
-
-        if (!project) {
-          await transaction.rollback();
-          return sendNotFound(res, "Project not found or not available for purchase");
-        }
-
-        // Check if user already purchased
-        const existingPurchase = await ProjectPurchase.findOne({
-          where: {
-            userId: userId,
-            projectId: projectId,
-          },
-        });
-
-        if (existingPurchase) {
-          await transaction.rollback();
-          return sendConflict(res, "project", projectId);
-        }
-
-        // Add to order items
-        orderItems.push({
-          itemType: 'project',
-          itemId: projectId,
-          price: project.price,
-          finalPrice: project.price,
-          title: project.title,
-        });
-
-        totalAmount += project.price;
-      }
-    } 
-    // Option 2: Cart checkout
-    else {
-      // Get cart items for the user
-      const cartItems = await Cart.findAll({
-        where: { userId },
-        include: [
-          {
-            model: Course,
-            as: 'course',
-            required: false,
-          },
-          {
-            model: Project,
-            as: 'project',
-            required: false,
-          }
-        ],
-        transaction
-      });
-
-      if (!cartItems || cartItems.length === 0) {
-        await transaction.rollback();
-        return sendResponse(res, 400, false, 'Cart is empty', null);
-      }
-
-      // Calculate total amount and prepare order items
-      for (const item of cartItems) {
-        const discountedPrice = item.price - (item.discount || 0);
-        totalAmount += discountedPrice;
-        
-        orderItems.push({
-          itemType: item.itemType,
-          itemId: item.itemId,
-          price: item.price,
-          discount: item.discount || 0,
-          finalPrice: discountedPrice,
-          title: item.itemType === 'course' ? item.course?.title : item.project?.title,
-          type: item.itemType === 'course' ? item.course?.type : null
-        });
-      }
-    }
-
-    // Apply discount code if provided
-    if (discountCode) {
-      // Find valid discount code
-      const discount = await DiscountCode.findOne({
-        where: {
-          code: discountCode.toUpperCase(),
-          isActive: true,
-          validFrom: { [Op.lte]: new Date() },
-          validUntil: { [Op.gte]: new Date() },
-          [Op.or]: [
-            { usageLimit: null },
-            { currentUsage: { [Op.lt]: sequelize.col('usageLimit') } },
-          ],
-        },
-        transaction
-      });
-
-      if (!discount) {
-        await transaction.rollback();
-        return sendValidationError(res, "Invalid or expired discount code");
-      }
-
-      // Check if user has already used this code
-      if (discount.usageLimitPerUser > 0) {
-        // Implement user-specific discount usage check
-        // This would require a discount usage tracking table
-      }
-
-      // Check applicable types
-      const applicableTypes = discount.applicableTypes ? JSON.parse(discount.applicableTypes) : ['all'];
-      if (!applicableTypes.includes('all')) {
-        const itemTypes = orderItems.map(item => item.itemType);
-        const isApplicable = itemTypes.some(type => applicableTypes.includes(type));
-        
-        if (!isApplicable) {
-          await transaction.rollback();
-          return sendValidationError(res, `Discount code not applicable for ${itemTypes.join(', ')}`);
-        }
-      }
-
-      // Calculate discount amount
-      let discountAmount = 0;
-
-      if (discount.discountType === 'percentage') {
-        discountAmount = totalAmount * (discount.discountValue / 100);
-        
-        // Apply max discount cap if set
-        if (discount.maxDiscountAmount && discountAmount > discount.maxDiscountAmount) {
-          discountAmount = discount.maxDiscountAmount;
-        }
-      } else { // fixed amount
-        discountAmount = Math.min(discount.discountValue, totalAmount);
-      }
-
-      // Check minimum purchase requirement
-      if (discount.minimumPurchaseAmount && totalAmount < discount.minimumPurchaseAmount) {
-        await transaction.rollback();
-        return sendValidationError(res, `Minimum purchase amount of ₹${discount.minimumPurchaseAmount} required for this discount code`);
-      }
-
-      // Apply discount
-      totalAmount -= discountAmount;
-      discountApplied = {
-        code: discount.code,
-        discountType: discount.discountType,
-        discountValue: discount.discountValue,
-        discountAmount,
-      };
-    }
-
-    // Minimum amount check
-    if (totalAmount <= 0) {
-      await transaction.rollback();
-      return sendValidationError(res, "Order total must be greater than zero");
-    }
-
-    // Create Razorpay order
-    const razorpayOrder = await razorpay.orders.create({
-      amount: Math.round(totalAmount * 100), // Amount in paise, rounded to ensure integer
-      currency: 'INR',
-      receipt: `order_${userId}_${Date.now()}`,
-      notes: {
-        userId: userId.toString(),
-        itemCount: orderItems.length.toString(),
-        orderType: courseId ? 'direct_course' : projectId ? 'direct_project' : 'cart',
-        discountCode: discountCode || ''
-      }
-    });
-
-    // Save order in database
-    const order = await Order.create({
-      userId,
-      razorpayOrderId: razorpayOrder.id,
-      amount: totalAmount,
-      currency: 'INR',
-      status: 'created',
-      orderItems: JSON.stringify(orderItems),
-      discountCode: discountCode || null,
-      discountAmount: discountApplied ? discountApplied.discountAmount : null,
-      originalAmount: discountApplied ? totalAmount + discountApplied.discountAmount : totalAmount
-    }, { transaction });
-
-    // If discount was applied, update usage count
-    if (discountApplied && discountCode) {
-      await DiscountCode.increment('currentUsage', { 
-        where: { code: discountCode.toUpperCase() },
-        transaction 
-      });
-    }
-
-    await transaction.commit();
-
-    return sendResponse(res, 200, true, 'Order created successfully', {
-      orderId: order.id,
-      razorpayOrderId: razorpayOrder.id,
-      amount: totalAmount,
-      currency: 'INR',
-      key: process.env.RAZORPAY_KEY_ID,
-      orderItems,
-      discount: discountApplied
-    });
-
-  } catch (error) {
-    await transaction.rollback();
-    console.error('Create order error:', error);
-    return sendResponse(res, 500, false, 'Failed to create order', error.message);
-  }
-};
-
-/**
  * Verify payment and update order status
  */
 export const verifyPayment = async (req, res) => {
@@ -339,7 +66,7 @@ export const verifyPayment = async (req, res) => {
 
     // Grant access to purchased items
     const orderItems = JSON.parse(order.orderItems);
-    
+
     for (const item of orderItems) {
       if (item.itemType === 'course') {
         await Enrollment.findOrCreate({
@@ -406,7 +133,7 @@ export const verifyPayment = async (req, res) => {
  */
 export const handleWebhook = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const webhookSignature = req.headers['x-razorpay-signature'];
     const webhookBody = JSON.stringify(req.body);
@@ -443,7 +170,7 @@ export const handleWebhook = async (req, res) => {
 
         // Grant access to purchased items (same logic as verifyPayment)
         const orderItems = JSON.parse(order.orderItems);
-        
+
         for (const item of orderItems) {
           if (item.itemType === 'course') {
             await Enrollment.findOrCreate({
@@ -886,7 +613,7 @@ export const getUserPurchases = async (req, res) => {
     // Validate page and limit parameters
     const pageNum = parseInt(page);
     const limitNum = parseInt(limit);
-    
+
     if (isNaN(pageNum) || pageNum < 1) {
       return sendValidationError(res, "Page must be a positive integer", {
         page: "Must be a positive integer",
@@ -902,10 +629,10 @@ export const getUserPurchases = async (req, res) => {
     }
 
     const offset = (pageNum - 1) * limitNum;
-    
+
     // Build where conditions
     const whereConditions = { userId };
-    
+
     if (status) {
       whereConditions.status = status;
     }
@@ -917,18 +644,18 @@ export const getUserPurchases = async (req, res) => {
       offset,
       order: [['createdAt', 'DESC']]
     });
-    
+
     // Format order items
     const formattedOrders = await Promise.all(orders.map(async (order) => {
       const orderItems = JSON.parse(order.orderItems);
-      
+
       // Fetch item details
       const itemsWithDetails = await Promise.all(orderItems.map(async (item) => {
         if (item.itemType === 'course') {
           const course = await Course.findByPk(item.itemId, {
             attributes: ['courseId', 'title', 'thumbnailUrl', 'type']
           });
-          
+
           return {
             ...item,
             details: course || { title: 'Course not found' }
@@ -937,16 +664,16 @@ export const getUserPurchases = async (req, res) => {
           const project = await Project.findByPk(item.itemId, {
             attributes: ['projectId', 'title', 'coverImage']
           });
-          
+
           return {
             ...item,
             details: project || { title: 'Project not found' }
           };
         }
-        
+
         return item;
       }));
-      
+
       return {
         orderId: order.id,
         razorpayOrderId: order.razorpayOrderId,
@@ -960,7 +687,7 @@ export const getUserPurchases = async (req, res) => {
         originalAmount: order.originalAmount
       };
     }));
-    
+
     const totalPages = Math.ceil(count / limitNum);
 
     return sendResponse(res, 200, true, 'Orders retrieved successfully', {
@@ -983,9 +710,9 @@ export const createSimpleOrder = async (req, res) => {
   try {
     const { userId } = req.user;
     const { discountCode } = req.body;
-    
+
     console.log('Creating simple order for user:', userId);
-    
+
     // Get cart items for the user
     const cartItems = await Cart.findAll({
       where: { userId },
@@ -1012,14 +739,14 @@ export const createSimpleOrder = async (req, res) => {
     // Calculate total amount
     let totalAmount = 0;
     const orderItems = [];
-    
+
     for (const item of cartItems) {
       const itemPrice = parseFloat(item.price || 0);
       const itemDiscount = parseFloat(item.discountAmount || 0);
       const finalPrice = itemPrice - itemDiscount;
-      
+
       totalAmount += finalPrice;
-      
+
       orderItems.push({
         itemType: item.itemType,
         itemId: item.itemId,
@@ -1047,11 +774,27 @@ export const createSimpleOrder = async (req, res) => {
         });
 
         if (discount) {
+          if (
+            discount.maxUses &&
+            discount.currentUses >= discount.maxUses
+          ) {
+            return sendError(res, 400, "Discount code usage limit exceeded");
+          }
+
+          if (discount.maxUsesPerUser) {
+            const userUsages = await DiscountUsage.count({
+              where: { userId, discountId: discount.id },
+            });
+            if (userUsages >= discount.maxUsesPerUser) {
+              return sendError(res, 400, "You have reached the usage limit for this discount code");
+            }
+          }
+
           console.log('Found valid discount:', discount.code, discount.discountType, discount.discountValue);
-          
+
           if (discount.discountType === 'percentage') {
             discountAmount = (totalAmount * discount.discountValue) / 100;
-            
+
             // Apply maximum discount limit if set
             if (discount.maxDiscountAmount && discountAmount > discount.maxDiscountAmount) {
               discountAmount = discount.maxDiscountAmount;
@@ -1059,13 +802,13 @@ export const createSimpleOrder = async (req, res) => {
           } else if (discount.discountType === 'fixed') {
             discountAmount = Math.min(parseFloat(discount.discountValue), totalAmount);
           }
-          
+
           // Check minimum purchase requirement
           if (discount.minimumPurchaseAmount && totalAmount < discount.minimumPurchaseAmount) {
             console.log('Minimum purchase amount not met:', discount.minimumPurchaseAmount);
             discountAmount = 0;
           }
-          
+
           console.log('Discount amount calculated:', discountAmount);
         } else {
           console.log('No valid discount found for code:', discountCode);

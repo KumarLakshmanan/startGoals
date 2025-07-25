@@ -73,26 +73,6 @@ const DiscountCode = sequelize.define(
       defaultValue: 0,
       comment: "Current total usage count",
     },
-    applicableTypes: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      comment: "Array of applicable types: ['courses', 'projects', 'all']",
-    },
-    applicableCategories: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      comment: "Array of category IDs (null = all categories)",
-    },
-    applicableSkillLevels: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      comment: "Array of skill levels (null = all levels)",
-    },
-    excludedItems: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      comment: "Array of excluded course/project IDs",
-    },
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,

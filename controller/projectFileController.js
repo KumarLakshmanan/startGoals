@@ -30,7 +30,7 @@ export const uploadProjectFiles = async (req, res) => {
   try {
     const { projectId } = req.params;
     const { fileDescriptions, isPreview } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     // Validate project exists and user has permission
     const project = await Project.findByPk(projectId);
@@ -149,7 +149,7 @@ export const getProjectFiles = async (req, res) => {
   try {
     const { projectId } = req.params;
     const { fileType, isPreview } = req.query;
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     // Validate project exists
     const project = await Project.findByPk(projectId);
@@ -233,7 +233,7 @@ export const getProjectFiles = async (req, res) => {
 export const downloadProjectFile = async (req, res) => {
   try {
     const { fileId } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     // Authentication check
     if (!userId) {
@@ -343,7 +343,7 @@ export const updateProjectFile = async (req, res) => {
   try {
     const { fileId } = req.params;
     const { description, isPreview, fileType } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     // Find file with project information
     const projectFile = await ProjectFile.findByPk(fileId, {
@@ -401,7 +401,7 @@ export const deleteProjectFile = async (req, res) => {
 
   try {
     const { fileId } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     // Find file with project information
     const projectFile = await ProjectFile.findByPk(fileId, {

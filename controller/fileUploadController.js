@@ -95,7 +95,7 @@ export const uploadFiles = async (req, res) => {
           url: file.location,
           category: category,
           uploadedAt: new Date().toISOString(),
-          uploadedBy: req.user?.id || req.userId || null, // Get user ID from auth middleware
+          uploadedBy: req.user?.userId || req.userId || null, // Get user ID from auth middleware
         };
 
         uploadedFiles.push(fileData);
@@ -283,7 +283,7 @@ export const uploadFieldFiles = async (req, res) => {
             url: file.location,
             category: category,
             uploadedAt: new Date().toISOString(),
-            uploadedBy: req.user?.id || req.userId || null,
+            uploadedBy: req.user?.userId || req.userId || null,
           };
 
           uploadedFiles.push(fileData);

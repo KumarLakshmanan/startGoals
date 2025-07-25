@@ -466,7 +466,7 @@ export const getAllProjects = async (req, res) => {
 export const getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.id; // Optional - for checking if user purchased
+    const userId = req.user?.userId; // Optional - for checking if user purchased
 
     const project = await Project.findByPk(id, {
       include: [
@@ -568,7 +568,7 @@ export const updateProject = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const updateData = req.body;
 
     const project = await Project.findByPk(id);
@@ -632,7 +632,7 @@ export const deleteProject = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     const project = await Project.findByPk(id);
     if (!project) {
@@ -674,7 +674,7 @@ export const initiateProjectPurchase = async (req, res) => {
 
   try {
     const { projectId, discountCode } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.userId;
 
     // Validate project
     const project = await Project.findByPk(projectId);
@@ -863,7 +863,7 @@ export const completeProjectPurchase = async (req, res) => {
 // Get user's purchased projects
 export const getUserPurchases = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user.userId;
     const { page = 1, limit = 10, status = "completed" } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -1406,7 +1406,7 @@ export const updateReviewStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const adminId = req.user.id;
+    const adminId = req.user.userId;
 
     // Validate status
     const validStatuses = ["pending", "approved", "rejected", "hidden"];
@@ -1467,7 +1467,7 @@ export const bulkUpdateReviewStatus = async (req, res) => {
 
   try {
     const { reviewIds, status } = req.body;
-    const adminId = req.user.id;
+    const adminId = req.user.userId;
 
     // Validate input
     if (!reviewIds || !Array.isArray(reviewIds) || reviewIds.length === 0) {

@@ -28,9 +28,6 @@ export const authenticateToken = async (req, res, next) => {
   }
 };
 
-// Alias for consistency with other parts of the application
-export const verifyToken = authenticateToken;
-
 // General role check middleware factory
 export const checkRole = (allowedRoles) => {
   return (req, res, next) => {
@@ -68,7 +65,7 @@ export const isSessionInstructor = async (req, res, next) => {
   authenticateToken(req, res, async () => {
     // Ensure user is authenticated first
     const { sessionId } = req.params;
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
 
     if (!userId) {
       // This case should ideally be caught by authenticateToken already

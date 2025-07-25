@@ -27,7 +27,7 @@ import {
   updateProjectSettings,
   getProjectDetailsAdmin,
 } from "../controller/projectController.js";
-import { isAdmin, verifyToken } from "../middleware/authMiddleware.js";
+import { isAdmin, authenticateToken } from "../middleware/authMiddleware.js";
 import { validateInput } from "../middleware/validationMiddleware.js";
 import { body, param, query } from "express-validator";
 
@@ -347,7 +347,7 @@ router.delete(
 // Initiate project purchase (Authenticated users only)
 router.post(
   "/purchase",
-  verifyToken, // Add authentication for purchase
+  authenticateToken, // Add authentication for purchase
   [
     body("projectId").isUUID().withMessage("Valid project ID is required"),
     body("discountCode")
@@ -376,7 +376,7 @@ router.post(
 // Get user's purchased projects (Authenticated users only)
 router.get(
   "/purchases/my",
-  verifyToken, // Add authentication for user purchases
+  authenticateToken, // Add authentication for user purchases
   [
     query("page")
       .optional()

@@ -172,7 +172,7 @@ export const searchCoursesAndProjects = async (req, res) => {
       limit = 12,
     } = req.query;
 
-    const userId = req.user?.id;
+    const userId = req.user?.userId;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     let results = { courses: [], projects: [], total: 0 };
