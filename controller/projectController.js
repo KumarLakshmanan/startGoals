@@ -343,6 +343,8 @@ export const getAllProjects = async (req, res) => {
       programmingLanguages,
     } = req.query;
 
+    const userId = req.user?.userId; // Get user ID from auth token if available
+
     // Build where conditions
     const whereConditions = {};
     if (typeof status !== "undefined") {
@@ -445,10 +447,30 @@ export const getAllProjects = async (req, res) => {
       return projectData;
     });
 
+    // Get purchase status for each project if user is authenticated
+    let userPurchases = [];
+    if (userId) {
+      const userProjectPurchases = await ProjectPurchase.findAll({
+        where: { 
+          userId,
+          paymentStatus: 'completed', // Use correct field name
+          projectId: { [Op.in]: formattedProjects.map(project => project.projectId) }
+        }
+      });
+      
+      userPurchases = userProjectPurchases.map(purchase => purchase.projectId);
+    }
+
+    // Add purchase status to each project
+    const projectsWithPurchaseStatus = formattedProjects.map(project => ({
+      ...project,
+      purchaseStatus: userId ? userPurchases.includes(project.projectId) : false
+    }));
+
     const totalPages = Math.ceil(count / parseInt(limit));
 
     return sendSuccess(res, 200, "Projects fetched successfully", {
-      projects: formattedProjects,
+      projects: projectsWithPurchaseStatus,
       pagination: {
         currentPage: parseInt(page),
         totalPages,
@@ -532,24 +554,50 @@ export const getProjectById = async (req, res) => {
         projectData.ratings.reduce((sum, r) => sum + r.rating, 0) /
         projectData.ratings.length;
       projectData.averageRating = Math.round(avgRating * 10) / 10;
-      projectData.totalRatings = 0;
+      projectData.totalRatings = projectData.ratings.length;
     } else {
       projectData.averageRating = 0;
       projectData.totalRatings = 0;
     }
 
     // Check if user has purchased this project
-    projectData.hasPurchased = false;
     if (userId) {
       const purchase = await ProjectPurchase.findOne({
         where: {
           userId,
           projectId: id,
-          paymentStatus: "completed",
+          paymentStatus: "completed", // Use correct field name
         },
       });
-      projectData.hasPurchased = !!purchase;
+      projectData.purchaseStatus = !!purchase;
+    } else {
+      projectData.purchaseStatus = false;
     }
+
+    // Add recommended projects by same category
+    const recommendedProjects = await Project.findAll({
+      where: {
+        categoryId: project.categoryId,
+        projectId: { [Op.ne]: id }, // Exclude current project
+        status: 'published'
+      },
+      include: [
+        {
+          model: CourseCategory,
+          as: "category",
+          attributes: ["categoryId", "categoryName"],
+        },
+        {
+          model: User,
+          as: "creator",
+          attributes: ["userId", "username", "profileImage"],
+        }
+      ],
+      limit: 5,
+      order: [['createdAt', 'DESC']]
+    });
+
+    projectData.recommendedProjects = recommendedProjects;
 
     // Increment view count
     await project.increment("views");

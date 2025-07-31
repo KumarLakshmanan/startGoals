@@ -8,9 +8,15 @@ import express from "express";
 import {
   rateCourse,
   getCourseRatings,
+  editCourseReview,
   rateInstructor,
   getInstructorRatings,
   markReviewHelpful,
+  // Project rating methods
+  getProjectRatingsStats,
+  getProjectReviews,
+  createProjectReview,
+  editProjectReview,
   // Admin management functions
   getAllReviews,
   moderateReview,
@@ -23,6 +29,13 @@ const router = express.Router();
 // Course rating endpoints
 router.post("/courses/:courseId", authenticateToken, rateCourse); // Rate a course
 router.get("/courses/:courseId", getCourseRatings); // Get course ratings (public)
+router.put("/courses/reviews/:ratingId", authenticateToken, editCourseReview); // Edit course review
+
+// Project rating endpoints
+router.get("/projects/:projectId/stats", getProjectRatingsStats); // Get project rating statistics
+router.get("/projects/:projectId/reviews", getProjectReviews); // Get project reviews with pagination
+router.post("/projects/:projectId/reviews", authenticateToken, createProjectReview); // Create project review
+router.put("/projects/reviews/:ratingId", authenticateToken, editProjectReview); // Edit project review
 
 // Instructor rating endpoints
 router.post("/instructors/:instructorId", authenticateToken, rateInstructor); // Rate an instructor

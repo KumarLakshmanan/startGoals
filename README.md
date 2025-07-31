@@ -297,3 +297,6 @@ A flexible, robust discount system for all course/project types, with full admin
 - Only the course/project purchased users can review & rate the course/project.
 - use the courseRating, projectRating, instructorRating models to store the ratings and reviews.
 - and create the necessary APIs to handle the ratings and reviews.
+
+
+

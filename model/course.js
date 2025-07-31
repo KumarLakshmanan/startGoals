@@ -24,6 +24,7 @@ const CourseEnhanced = sequelize.define(
       validate: {
         notEmpty: { msg: "Course description is required" },
       },
+      comment: "HTML formatted course description",
     },
     shortDescription: {
       type: DataTypes.STRING(500),
@@ -68,7 +69,6 @@ const CourseEnhanced = sequelize.define(
       defaultValue: true,
       comment: "Whether discount codes can be applied",
     },
-    // For live courses - monthly payment
     isMonthlyPayment: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
@@ -123,15 +123,13 @@ const CourseEnhanced = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    certificateTemplateUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
     techStack: {
       type: DataTypes.JSON,
       allowNull: true,
       comment: "Technologies taught in the course (JSON array)",
     },
+    // languageId removed - column doesn't exist in database
+    // Course language info is stored in programmingLanguages JSON field
     programmingLanguages: {
       type: DataTypes.JSON,
       allowNull: true,
@@ -140,17 +138,17 @@ const CourseEnhanced = sequelize.define(
     features: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Rich text of course features",
+      comment: "HTML formatted course features",
     },
     prerequisites: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Rich text of prerequisites or requirements",
+      comment: "HTML formatted prerequisites or requirements",
     },
     whatYouGet: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Rich text of resources included in the course",
+      comment: "HTML formatted resources included in the course",
     },
     status: {
       type: DataTypes.ENUM("active", "draft", "archived", "rejected", "hidden"),
@@ -190,21 +188,6 @@ const CourseEnhanced = sequelize.define(
       type: DataTypes.DECIMAL(12, 2),
       defaultValue: 0.0,
       comment: "Total revenue generated",
-    },
-    supportIncluded: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      comment: "Whether instructor support is included",
-    },
-    supportDuration: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      comment: "Support duration in days",
-    },
-    supportEmail: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      comment: "Email for course support inquiries",
     },
     averageRating: {
       type: DataTypes.DECIMAL(3, 2),

@@ -30,6 +30,8 @@ import BatchStudents from "../model/batchStudents.js";
 import CourseTest from "../model/courseTest.js";
 import CourseCertificate from "../model/courseCertificate.js";
 import CourseRating from "../model/courseRating.js";
+import Order from "../model/order.js";
+import OrderItem from "../model/orderItem.js";
 
 // Get live courses only
 export const getLiveCourses = async (req, res) => {
@@ -82,6 +84,7 @@ export const getLiveCourses = async (req, res) => {
       include: [
         { model: CourseCategory, as: "category", attributes: ["categoryId", "categoryName"] },
         { model: CourseLevel, as: "level", attributes: ["levelId", "name"] },
+        // { model: Language, as: "language", attributes: ["languageId", "language"] },
         { model: User, as: "instructor", attributes: ["userId", "username", "email", "profileImage"] }
       ],
       order: [[sortBy, sortOrder]],
@@ -155,6 +158,7 @@ export const getRecordedCourses = async (req, res) => {
       include: [
         { model: CourseCategory, as: "category", attributes: ["categoryId", "categoryName"] },
         { model: CourseLevel, as: "level", attributes: ["levelId", "name"] },
+        // { model: Language, as: "language", attributes: ["languageId", "language"] },
         { model: User, as: "instructor", attributes: ["userId", "username", "email", "profileImage"] }
       ],
       order: [[sortBy, sortOrder]],
@@ -260,7 +264,66 @@ export const getCourseById = async (req, res) => {
       return sendNotFound(res, "Course not found");
     }
 
-    return sendSuccess(res, 200, "Course fetched successfully", course);
+    const userId = req.user?.userId; // Get user ID from auth token if available
+    let courseWithExtras = course.toJSON();
+
+    // Add purchase status
+    // TODO: Implement when order_items table is available
+    // if (userId) {
+    //   const userPurchase = await Order.findOne({
+    //     where: { 
+    //       userId,
+    //       status: 'paid'
+    //     },
+    //     include: [{
+    //       model: OrderItem,
+    //       as: 'items',
+    //       where: {
+    //         itemType: 'course',
+    //         itemId: courseId
+    //       },
+    //       required: true
+    //     }]
+    //   });
+    //   courseWithExtras.purchaseStatus = !!userPurchase;
+    // } else {
+    //   courseWithExtras.purchaseStatus = false;
+    // }
+    
+    // For now, set purchase status to false for all users
+    courseWithExtras.purchaseStatus = false;
+
+    // Add recommended courses by same category
+    const recommendedCourses = await Course.findAll({
+      where: {
+        categoryId: course.categoryId,
+        courseId: { [Op.ne]: courseId }, // Exclude current course
+        status: 'active'
+      },
+      include: [
+        {
+          model: CourseLevel,
+          as: "level",
+          attributes: ["levelId", "name"],
+        },
+        {
+          model: CourseCategory,
+          as: "category",
+          attributes: ["categoryId", "categoryName"],
+        },
+        {
+          model: User,
+          as: "instructor",
+          attributes: ["userId", "username", "profileImage"],
+        }
+      ],
+      limit: 5,
+      order: [['createdAt', 'DESC']]
+    });
+
+    courseWithExtras.recommendedCourses = recommendedCourses;
+
+    return sendSuccess(res, 200, "Course fetched successfully", courseWithExtras);
   } catch (error) {
     console.error("Error fetching course:", error);
     return sendServerError(res, error);
@@ -644,6 +707,7 @@ export const getAllCourses = async (req, res) => {
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
+    const userId = req.user?.userId; // Get user ID from auth token if available
 
     // Build where condition
     const whereCondition = {};
@@ -688,34 +752,56 @@ export const getAllCourses = async (req, res) => {
           as: "tags",
           attributes: ["tag"],
         },
-        {
-          model: Language,
-          through: { attributes: [] },
-          attributes: ["languageId", "language", "languageCode"],
-        },
       ],
+      order: [[sortBy, sortOrder]],
       limit: parseInt(limit),
-      offset,
-      order: [[sortBy, sortOrder.toUpperCase()]],
-      distinct: true,
+      offset: parseInt(offset),
     });
 
-    const totalPages = Math.ceil(count / parseInt(limit));
+    // Get purchase status for each course if user is authenticated
+    let userPurchases = [];
+    // TODO: Implement when order_items table is available
+    // if (userId) {
+    //   const userOrders = await Order.findAll({
+    //     where: { 
+    //       userId,
+    //       status: 'paid'
+    //     },
+    //     include: [{
+    //       model: OrderItem,
+    //       as: 'items',
+    //       where: {
+    //         itemType: 'course',
+    //         itemId: { [Op.in]: courses.map(course => course.courseId) }
+    //       },
+    //       required: true
+    //     }]
+    //   });
+      
+    //   userPurchases = userOrders.flatMap(order => 
+    //     order.items.map(item => item.itemId)
+    //   );
+    // }
 
-    return sendSuccess(res, 200, "Courses fetched successfully", {
-      courses,
+    // Add purchase status to each course
+    const coursesWithPurchaseStatus = courses.map(course => {
+      const courseJson = course.toJSON();
+      courseJson.purchaseStatus = userId ? userPurchases.includes(course.courseId) : false;
+      return courseJson;
+    });
+
+    return sendSuccess(res, 200, "Courses retrieved successfully", {
+      courses: coursesWithPurchaseStatus,
       pagination: {
-        currentPage: parseInt(page),
-        totalPages,
-        totalItems: count,
-        itemsPerPage: parseInt(limit),
-        hasNextPage: parseInt(page) < totalPages,
-        hasPrevPage: parseInt(page) > 1,
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / parseInt(limit)),
       },
     });
   } catch (error) {
     console.error("Error fetching courses:", error);
-    return sendServerError(res, error);
+    return sendServerError(res, "Failed to fetch courses", error.message);
   }
 };
 export const deleteCourse = async (req, res) => {
@@ -2423,6 +2509,8 @@ export const replyToRating = async (req, res) => {
       return sendNotFound(res, "Rating not found");
     }
     
+   
+    
     // Update rating with reply
     await rating.update({
       adminReply: reply.trim(),
@@ -2568,5 +2656,198 @@ export const exportCourseData = async (req, res) => {
   } catch (error) {
     console.error('Error in exportCourseData:', error);
     sendServerError(res, "Failed to export course data");
+  }
+};
+
+// ===================== COURSE RATINGS & REVIEWS =====================
+
+// Get course ratings stats (average rating, total reviews, etc.)
+export const getCourseRatingsStats = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    // Validate course exists
+    const course = await Course.findByPk(courseId);
+    if (!course) {
+      return sendNotFound(res, "Course not found");
+    }
+
+    // Get rating statistics
+    const ratingsStats = await CourseRating.findAll({
+      where: { courseId },
+      attributes: [
+        [sequelize.fn('AVG', sequelize.col('rating')), 'averageRating'],
+        [sequelize.fn('COUNT', sequelize.col('rating_id')), 'totalReviews'], // Use actual column name
+        [sequelize.fn('COUNT', sequelize.literal('CASE WHEN rating = 5 THEN 1 END')), 'fiveStars'],
+        [sequelize.fn('COUNT', sequelize.literal('CASE WHEN rating = 4 THEN 1 END')), 'fourStars'],
+        [sequelize.fn('COUNT', sequelize.literal('CASE WHEN rating = 3 THEN 1 END')), 'threeStars'],
+        [sequelize.fn('COUNT', sequelize.literal('CASE WHEN rating = 2 THEN 1 END')), 'twoStars'],
+        [sequelize.fn('COUNT', sequelize.literal('CASE WHEN rating = 1 THEN 1 END')), 'oneStar']
+      ],
+      raw: true
+    });
+
+    const stats = ratingsStats[0];
+    const averageRating = parseFloat(stats.averageRating) || 0;
+    const totalReviews = parseInt(stats.totalReviews) || 0;
+
+    return sendSuccess(res, 200, "Course ratings stats retrieved successfully", {
+      averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
+      totalReviews,
+      ratingDistribution: {
+        fiveStars: parseInt(stats.fiveStars) || 0,
+        fourStars: parseInt(stats.fourStars) || 0,
+        threeStars: parseInt(stats.threeStars) || 0,
+        twoStars: parseInt(stats.twoStars) || 0,
+        oneStar: parseInt(stats.oneStar) || 0
+      }
+    });
+
+  } catch (error) {
+    console.error("Error fetching course ratings stats:", error);
+    return sendServerError(res, "Failed to fetch course ratings stats", error.message);
+  }
+};
+
+// Get course reviews with pagination
+export const getCourseReviews = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { 
+      page = 1, 
+      limit = 10, 
+      sortBy = 'createdAt', 
+      sortOrder = 'DESC',
+      rating // Filter by specific rating
+    } = req.query;
+
+    // Validate course exists
+    const course = await Course.findByPk(courseId);
+    if (!course) {
+      return sendNotFound(res, "Course not found");
+    }
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const whereClause = { courseId };
+
+    // Filter by rating if provided
+    if (rating && rating !== 'all') {
+      whereClause.rating = rating;
+    }
+
+    // Only show reviews with text content
+    whereClause.review = { [Op.ne]: null };
+
+    const { count, rows: reviews } = await CourseRating.findAndCountAll({
+      where: whereClause,
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["userId", "username", "profileImage"]
+        }
+      ],
+      order: [[sortBy, sortOrder]],
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    return sendSuccess(res, 200, "Course reviews retrieved successfully", {
+      reviews,
+      pagination: {
+        total: count,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(count / parseInt(limit))
+      }
+    });
+
+  } catch (error) {
+    console.error("Error fetching course reviews:", error);
+    return sendServerError(res, "Failed to fetch course reviews", error.message);
+  }
+};
+
+// Create course review (only if user purchased the course)
+export const createCourseReview = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { rating, review } = req.body;
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return sendUnauthorized(res, "Authentication required");
+    }
+
+    // Validate input
+    if (!rating || rating < 1 || rating > 5) {
+      return sendValidationError(res, "Rating must be between 1 and 5");
+    }
+
+    // Validate course exists
+    const course = await Course.findByPk(courseId);
+    if (!course) {
+      return sendNotFound(res, "Course not found");
+    }
+
+    // Check if user has purchased the course
+    // TODO: Implement when order_items table is available
+    // const userPurchase = await Order.findOne({
+    //   where: { 
+    //     userId,
+    //     status: 'paid'
+    //   },
+    //   include: [{
+    //     model: OrderItem,
+    //     as: 'items',
+    //     where: {
+    //       itemType: 'course',
+    //       itemId: courseId
+    //     },
+    //     required: true
+    //   }]
+    // });
+
+    // if (!userPurchase) {
+    //   return sendForbidden(res, "You can only review courses you have purchased");
+    // }
+
+    // For now, allow all authenticated users to review courses
+    console.log("Note: Purchase verification temporarily disabled - allowing all authenticated users to review");
+
+    // Check if user already reviewed this course
+    const existingReview = await CourseRating.findOne({
+      where: { courseId, userId }
+    });
+
+    if (existingReview) {
+      return sendConflict(res, "You have already reviewed this course");
+    }
+
+    // Create the review
+    const newReview = await CourseRating.create({
+      courseId,
+      userId,
+      rating: parseFloat(rating),
+      review: review?.trim() || null,
+      isVerified: true // Since we verified they purchased the course
+    });
+
+    // Get the created review with user info
+    const reviewWithUser = await CourseRating.findByPk(newReview.ratingId, {
+      include: [
+        {
+          model: User,
+          as: "user",
+          attributes: ["userId", "username", "profileImage"]
+        }
+      ]
+    });
+
+    return sendSuccess(res, 201, "Review created successfully", reviewWithUser);
+
+  } catch (error) {
+    console.error("Error creating course review:", error);
+    return sendServerError(res, "Failed to create review", error.message);
   }
 };

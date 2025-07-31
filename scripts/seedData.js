@@ -18,6 +18,10 @@ import Batch from '../model/batch.js';
 import Section from '../model/section.js';
 import Lesson from '../model/lesson.js';
 import Resource from '../model/resource.js';
+import CourseRating from '../model/courseRating.js';
+import ProjectRating from '../model/projectRating.js';
+import Enrollment from '../model/enrollment.js';
+import ProjectPurchase from '../model/projectPurchase.js';
 import { faker } from '@faker-js/faker';
 import bcrypt from 'bcrypt';
 import fs from 'fs';
@@ -267,7 +271,7 @@ async function createLiveCourses(teachers, levels, categories) {
           'Course materials',
           'Project templates',
           'Support from instructors',
-        ],
+        ].join('\n• '),  // Convert array to string with bullet points
         hasCertificate: true,
         certificateTemplateUrl: `https://storage.example.com/certificates/template_${i + 1}.pdf`,
         supportIncluded: faker.datatype.boolean(),
@@ -390,7 +394,7 @@ async function createRecordedCourses(teachers, levels, categories) {
           'Downloadable resources',
           'Projects and exercises',
           'Certificate of completion',
-        ],
+        ].join('\n• '),  // Convert array to string with bullet points
         hasCertificate: faker.datatype.boolean(),
         certificateTemplateUrl: faker.datatype.boolean() ? `https://storage.example.com/certificates/template_${i + 100}.pdf` : null,
         supportIncluded: faker.datatype.boolean(),
@@ -787,6 +791,151 @@ async function createExams(levels) {
 }
 
 /**
+ * Create ratings for courses and projects (after purchases and enrollments exist)
+ */
+async function createRatings(enrollments, purchases) {
+  console.log('Creating ratings for courses and projects...');
+
+  const courseRatings = [];
+  const projectRatings = [];
+
+  // Create course ratings from enrollments
+  for (const enrollment of enrollments) {
+    try {
+      // Only create rating for some enrollments (not all)
+      if (faker.datatype.boolean()) {
+        const rating = await CourseRating.create({
+          ratingId: uuidv4(),
+          courseId: enrollment.courseId,
+          userId: enrollment.userId,
+          enrollmentId: enrollment.enrollmentId,
+          rating: faker.number.int({ min: 3, max: 5 }),
+          review: faker.datatype.boolean() ? faker.lorem.sentence() : null,
+          createdAt: faker.date.recent({ days: 30 }),
+        });
+        courseRatings.push(rating);
+      }
+    } catch (error) {
+      console.error(`Error creating course rating:`, error.message);
+    }
+  }
+
+  // Create project ratings from purchases
+  for (const purchase of purchases) {
+    try {
+      // Only create rating for some purchases (not all)
+      if (faker.datatype.boolean()) {
+        const rating = await ProjectRating.create({
+          ratingId: uuidv4(),
+          projectId: purchase.projectId,
+          userId: purchase.userId,
+          purchaseId: purchase.purchaseId,
+          rating: faker.number.int({ min: 3, max: 5 }),
+          review: faker.datatype.boolean() ? faker.lorem.sentence() : null,
+          createdAt: faker.date.recent({ days: 30 }),
+        });
+        projectRatings.push(rating);
+      }
+    } catch (error) {
+      console.error(`Error creating project rating:`, error.message);
+    }
+  }
+
+  console.log(`Created ${courseRatings.length} course ratings`);
+  console.log(`Created ${projectRatings.length} project ratings`);
+  return { courseRatings, projectRatings };
+}
+
+/**
+ * Create enrollments and purchases first, then ratings
+ */
+async function createEnrollmentsAndPurchases(students, courses, projects) {
+  console.log('Creating enrollments and purchases...');
+
+  const enrollments = [];
+  const purchases = [];
+
+  // Create course enrollments
+  for (const course of courses) {
+    const numEnrollments = faker.number.int({ min: 5, max: 20 });
+    
+    for (let i = 0; i < numEnrollments; i++) {
+      try {
+        const student = students[Math.floor(Math.random() * students.length)];
+        
+        // Check if this student is already enrolled
+        const existingEnrollment = await Enrollment.findOne({
+          where: { 
+            courseId: course.courseId,
+            userId: student.userId 
+          }
+        });
+
+        if (!existingEnrollment) {
+          const enrollment = await Enrollment.create({
+            enrollmentId: uuidv4(),
+            courseId: course.courseId,
+            userId: student.userId,
+            enrollmentDate: faker.date.recent({ days: 30 }),
+            completionStatus: faker.helpers.arrayElement(['not_started', 'in_progress', 'completed']),
+            paymentStatus: course.isPaid ? 'completed' : 'pending',
+            amountPaid: course.isPaid ? course.price : 0,
+            progressPercentage: faker.number.int({ min: 0, max: 100 }),
+          });
+          enrollments.push(enrollment);
+        }
+      } catch (error) {
+        console.error(`Error creating enrollment:`, error.message);
+      }
+    }
+  }
+
+  // Create project purchases
+  for (const project of projects) {
+    const numPurchases = faker.number.int({ min: 3, max: 15 });
+    
+    for (let i = 0; i < numPurchases; i++) {
+      try {
+        const student = students[Math.floor(Math.random() * students.length)];
+        
+        // Check if this student already purchased this project
+        const existingPurchase = await ProjectPurchase.findOne({
+          where: { 
+            projectId: project.projectId,
+            userId: student.userId 
+          }
+        });
+
+        if (!existingPurchase) {
+          const purchase = await ProjectPurchase.create({
+            purchaseId: uuidv4(),
+            projectId: project.projectId,
+            userId: student.userId,
+            orderId: `ORDER-${faker.string.alphanumeric(10).toUpperCase()}`,
+            originalPrice: project.price,
+            finalPrice: project.price,
+            purchaseDate: faker.date.recent({ days: 60 }),
+            paymentStatus: 'completed',
+            paymentMethod: faker.helpers.arrayElement(['card', 'upi', 'netbanking', 'wallet']),
+            paymentId: faker.string.alphanumeric(20),
+            downloadCount: faker.number.int({ min: 0, max: project.downloadLimit || 5 }),
+            supportExpiryDate: project.supportDuration ? 
+              new Date(Date.now() + (project.supportDuration * 24 * 60 * 60 * 1000)) : null,
+          });
+          purchases.push(purchase);
+        }
+      } catch (error) {
+        console.error(`Error creating project purchase:`, error.message);
+      }
+    }
+  }
+
+  console.log(`Created ${enrollments.length} course enrollments`);
+  console.log(`Created ${purchases.length} project purchases`);
+  return { enrollments, purchases };
+}
+
+/**
  * Main function to seed the database
  */
 async function seedDatabase() {
@@ -825,6 +974,14 @@ async function seedDatabase() {
     console.log('Step 8: Creating exams...');
     const exams = await createExams(levels);
 
+    // Create enrollments and purchases
+    console.log('Step 9: Creating enrollments and purchases...');
+    const { enrollments, purchases } = await createEnrollmentsAndPurchases(students, [...liveCourses, ...recordedCourses], projects);
+
+    // Create ratings (after purchases and enrollments exist)
+    console.log('Step 10: Creating ratings...');
+    const { courseRatings, projectRatings } = await createRatings(enrollments, purchases);
+
     console.log('Database seeding completed successfully!');
     console.log(`Created ${liveCourses.length} live courses`);
     console.log(`Created ${recordedCourses.length} recorded courses`);
@@ -833,6 +990,10 @@ async function seedDatabase() {
     console.log(`Created ${goals.length} goals`);
     console.log(`Created ${skills.length} skills`);
     console.log(`Created ${exams.length} exams`);
+    console.log(`Created ${courseRatings.length} course ratings`);
+    console.log(`Created ${projectRatings.length} project ratings`);
+    console.log(`Created ${enrollments.length} course enrollments`);
+    console.log(`Created ${purchases.length} project purchases`);
 
     // Default credentials
     console.log('\nDefault credentials:');

@@ -77,7 +77,6 @@ const sortModelsByDependencies = (modelsArray) => {
     'userGoals',       // Depends on User, Goal (lowercase!)
     'userSkills',      // Depends on User, Skill (lowercase!)
     'userLanguages',   // Depends on User, Language (lowercase!)
-    'courseLanguage', // Depends on Course, Language (lowercase!)
     
     // Models that depend on sections/batches
     'lesson',         // Depends on Section (lowercase!)

@@ -45,7 +45,11 @@ import {
   getCourseRatings,
   replyToRating,
   deleteRating,
-  batchUpdateRatingStatus
+  batchUpdateRatingStatus,
+  // New rating and review APIs
+  getCourseRatingsStats,
+  getCourseReviews,
+  createCourseReview
 } from "../controller/courseController.js";
 import upload from "../middleware/fileUploadMiddleware.js";
 
@@ -95,6 +99,13 @@ router.patch("/:courseId/status", isTeacher, toggleCourseStatus); // Toggle cour
 
 // Statistics and Analytics
 router.get("/admin/stats", isTeacher, getCoursesStats);
+
+// ===================== COURSE RATINGS & REVIEWS =====================
+
+// Rating and Review Routes
+router.get("/:courseId/ratings/stats", getCourseRatingsStats); // Get rating statistics
+router.get("/:courseId/reviews", getCourseReviews); // Get course reviews with pagination
+router.post("/:courseId/reviews", authenticateToken, createCourseReview); // Create review (authenticated users only)
 
 // Legacy routes (for backward compatibility)
 router.post("/uploadCourse", isTeacher, createCourse);

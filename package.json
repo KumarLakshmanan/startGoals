@@ -8,8 +8,13 @@
     "dev": "nodemon index.js",
     "start": "nodemon index.js",
     "production": "node index.js",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "migrate": "node runMigration.js"
+    "test": "mocha __tests__/test_project_ratings.js --timeout 30000 --exit",
+    "test:all": "mocha __tests__/*.js --timeout 30000 --exit",
+    "migrate": "node runMigration.js",
+    "seed": "node scripts/index.js",
+    "seed:comprehensive": "node scripts/seedData.js",
+    "seed:validate": "node scripts/validateComprehensiveSeeding.js",
+    "seed:truncate": "node scripts/truncateAllTables.js"
   },
   "keywords": [],
   "author": "",
@@ -48,6 +53,10 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "@faker-js/faker": "^9.9.0",
+    "chai": "^5.2.1",
+    "mocha": "^11.7.1",
+    "nodemon": "^3.1.9",
+    "supertest": "^7.1.4"
   }
 }

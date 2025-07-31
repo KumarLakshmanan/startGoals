@@ -24,7 +24,7 @@ const Lesson = sequelize.define(
       allowNull: false,
     },
     type: {
-      type: DataTypes.ENUM("video", "article", "quiz"),
+      type: DataTypes.ENUM("video", "live", "quiz", "assignment", "document"),
       allowNull: false,
     },
     content: {

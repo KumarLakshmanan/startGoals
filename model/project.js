@@ -24,6 +24,7 @@ const Project = sequelize.define(
       validate: {
         notEmpty: { msg: "Project description is required" },
       },
+      comment: "HTML formatted project description",
     },
     shortDescription: {
       type: DataTypes.STRING(500),
@@ -60,15 +61,6 @@ const Project = sequelize.define(
         key: "language_id",
       },
       comment: "Language used English, Spanish, etc.",
-    },
-    linkedTeacherId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      references: {
-        model: "users",
-        key: "user_id",
-      },
-      comment: "Teacher who owns/created the project",
     },
     price: {
       type: DataTypes.DECIMAL(10, 2),
@@ -115,17 +107,17 @@ const Project = sequelize.define(
     features: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Rich text of project features",
+      comment: "HTML formatted project features",
     },
     requirements: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Rich text of system requirements or prerequisites",
+      comment: "HTML formatted system requirements or prerequisites",
     },
     whatYouGet: {
       type: DataTypes.TEXT,
       allowNull: true,
-      comment: "Rich text of files/resources included",
+      comment: "HTML formatted files/resources included",
     },
     licenseType: {
       type: DataTypes.ENUM("personal", "commercial", "one_time", "unlimited"),
@@ -263,10 +255,6 @@ const Project = sequelize.define(
       },
       {
         fields: ["published_at"],
-        type: "BTREE",
-      },
-      {
-        fields: ["linked_teacher_id"],
         type: "BTREE",
       },
       {

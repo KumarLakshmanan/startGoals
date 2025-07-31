@@ -34,7 +34,6 @@ import ProjectRating from "./projectRating.js";
 import DiscountCode from "./discountCode.js";
 import DiscountUsage from "./discountUsage.js";
 import UserLanguages from "./userLanguages.js";
-import CourseLanguage from "./courseLanguage.js";
 import Exam from "./exam.js";
 import UserExams from "./userExams.js";
 import CourseTeacher from "./courseTeacher.js";
@@ -45,6 +44,7 @@ import CourseCertificate from "./courseCertificate.js";
 import Wishlist from "./wishlist.js";
 import Cart from "./cart.js";
 import Order from "./order.js";
+import OrderItem from "./orderItem.js";
 import CourseFile from "./courseFile.js";
 
 // All models must be defined before we associate them
@@ -61,7 +61,6 @@ const models = {
   UserGoals,
   UserSkills,
   UserLanguages,
-  CourseLanguage,
   CourseGoal,
   CourseLevel,
   Section,
@@ -124,21 +123,6 @@ Language.belongsToMany(User, {
   through: UserLanguages,
   foreignKey: "language_id",
   otherKey: "user_id",
-  onDelete: "CASCADE",
-});
-
-//course to language
-Course.belongsToMany(Language, {
-  through: CourseLanguage,
-  foreignKey: "course_id",
-  otherKey: "language_id",
-  onDelete: "CASCADE",
-});
-
-Language.belongsToMany(Course, {
-  through: CourseLanguage,
-  foreignKey: "language_id",
-  otherKey: "course_id",
   onDelete: "CASCADE",
 });
 
@@ -287,6 +271,9 @@ Course.belongsTo(CourseLevel, {
   as: "level",
 });
 
+// Removed Course-Language association - no languageId column exists in courses table
+// Courses use programmingLanguages JSON field instead
+
 // Batch belongs to Course
 Batch.belongsTo(Course, {
   foreignKey: "courseId", // foreignKey in the Batch model
@@ -404,8 +391,13 @@ User.hasMany(SearchAnalytics, {
 // Rating system associations - removed duplicate, see end of file
 
 CourseRating.belongsTo(User, {
-  foreignKey: "user_id",
+  foreignKey: "userId",
   as: "user",
+});
+
+User.hasMany(CourseRating, {
+  foreignKey: "userId",
+  as: "courseRatings",
 });
 
 // Moderation associations for course ratings
@@ -778,6 +770,18 @@ Order.belongsTo(User, {
   as: "user",
 });
 
+// Order-OrderItem associations
+Order.hasMany(OrderItem, {
+  foreignKey: "orderId",
+  as: "items", // Changed from "orderItems" to avoid naming collision
+  onDelete: "CASCADE",
+});
+
+OrderItem.belongsTo(Order, {
+  foreignKey: "orderId",
+  as: "order",
+});
+
 // Export all models + sequelize
 export { 
   sequelize,
@@ -788,6 +792,7 @@ export {
   Cart,
   Wishlist,
   Order,
+  OrderItem,
   ProjectPurchase
  };
 

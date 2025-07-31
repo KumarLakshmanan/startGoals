@@ -1,58 +1,21 @@
 {
 	"info": {
-		"_postman_id": "a02420b1-7499-4cad-a181-2ac38f91e340",
+		"_postman_id": "67803d68-1694-4638-b156-bd134f0f622d",
 		"name": "StartGoals API Collection",
-		"description": "StartGoals Learning Management System APIs organized by user flow - Registration → Onboarding → Browse → E-commerce → Learning → Admin",
+		"description": "Complete API documentation for StartGoals Learning Management System with all available endpoints.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "28291685",
-		"_collection_link": "https://cloudy-flare-612032.postman.co/workspace/8ad732d1-aa0a-4ff4-92bc-9bbe3fd9a1bf/collection/28291685-a02420b1-7499-4cad-a181-2ac38f91e340?action=share&source=collection_link&creator=28291685"
+		"_collection_link": "https://cloudy-flare-612032.postman.co/workspace/My-Workspace~ab7d1040-7765-465a-8438-8b2664bfc80d/collection/28291685-67803d68-1694-4638-b156-bd134f0f622d?action=share&source=collection_link&creator=28291685"
 	},
 	"item": [
 		{
-			"name": "Live Courses API",
+			"name": "Courses API",
 			"item": [
 				{
-					"name": "Create Live Course",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{JWT_TOKEN_ADMIN}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"title\": \"Advanced Web Development with React & Node.js\",\n  \"description\": \"A comprehensive live course on building modern web applications with React and Node.js. Learn from industry experts through interactive sessions.\",\n  \"shortDescription\": \"Master full-stack development with React and Node.js\",\n  \"levelId\": \"{{course_level_id}}\",\n  \"categoryId\": \"{{course_category_id}}\",\n  \"teacherIds\": [\"{{teacher_user_id}}\"],\n  \"durationDays\": 60,\n  \"isPaid\": true,\n  \"price\": 1499.99,\n  \"discountEnabled\": true,\n  \"thumbnailUrl\": \"https://example.com/thumbnails/react-nodejs.jpg\",\n  \"coverImage\": \"https://example.com/covers/react-nodejs-banner.jpg\",\n  \"introVideoUrl\": \"https://youtube.com/watch?v=abc123\",\n  \"demoUrl\": \"https://demo.example.com/react-nodejs\",\n  \"screenshots\": [\n    \"https://example.com/screenshots/react-nodejs-1.jpg\",\n    \"https://example.com/screenshots/react-nodejs-2.jpg\"\n  ],\n  \"techStack\": [\"React\", \"Node.js\", \"Express\", \"MongoDB\"],\n  \"programmingLanguages\": [\"JavaScript\", \"TypeScript\"],\n  \"features\": \"Weekly live sessions with experts\\nInteractive Q&A sessions\\nReal-world project development\\nPersonalized code reviews\",\n  \"prerequisites\": \"Basic knowledge of HTML, CSS, and JavaScript\\nFamiliarity with web development concepts\",\n  \"whatYouGet\": \"Access to all live sessions\\nCourse materials and resources\\nCertificate of completion\\nLifetime access to recordings\",\n  \"hasCertificate\": true,\n  \"certificateTemplateUrl\": \"https://example.com/certificates/template.pdf\",\n  \"supportIncluded\": true,\n  \"supportDuration\": 90,\n  \"supportEmail\": \"support@example.com\",\n  \"whatYouLearn\": [\n    \"Build full-stack applications with React and Node.js\",\n    \"Implement authentication and authorization\",\n    \"Create RESTful APIs and integrate with frontend\",\n    \"Deploy applications to production environments\"\n  ],\n  \"requirements\": [\n    \"Computer with minimum 8GB RAM\",\n    \"Modern web browser\",\n    \"Stable internet connection for live sessions\"\n  ]\n}"
-						},
-						"url": {
-							"raw": "{{host}}/course/create/live",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"course",
-								"create",
-								"live"
-							]
-						},
-						"description": "Create a new live course with instructor, schedule, and learning materials. Admin access required."
-					},
-					"response": []
-				},
-				{
 					"name": "Get All Live Courses",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -66,23 +29,35 @@
 						},
 						"method": "GET",
 						"header": [],
+						"body": {
+							"mode": "formdata",
+							"formdata": []
+						},
 						"url": {
-							"raw": "{{host}}/course/live?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
+							"raw": "{{host}}/course/getAllCourses?limit=1&categoryId=&type=live&status=active&sortBy=createdAt&sortOrder=DESC&search=&page=1&isPaid&levelId",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"course",
-								"live"
+								"getAllCourses"
 							],
 							"query": [
 								{
-									"key": "page",
+									"key": "limit",
 									"value": "1"
 								},
 								{
-									"key": "limit",
-									"value": "10"
+									"key": "categoryId",
+									"value": ""
+								},
+								{
+									"key": "type",
+									"value": "live"
+								},
+								{
+									"key": "status",
+									"value": "active"
 								},
 								{
 									"key": "sortBy",
@@ -90,7 +65,24 @@
 								},
 								{
 									"key": "sortOrder",
-									"value": "desc"
+									"value": "DESC"
+								},
+								{
+									"key": "search",
+									"value": ""
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "isPaid",
+									"value": null,
+									"description": "true/false"
+								},
+								{
+									"key": "levelId",
+									"value": null
 								}
 							]
 						},
@@ -99,7 +91,10 @@
 					"response": []
 				},
 				{
-					"name": "Create Course Batch",
+					"name": "Get Single Live Course By ID",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
 					"request": {
 						"auth": {
 							"type": "bearer",
@@ -111,29 +106,23 @@
 								}
 							]
 						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
+						"method": "GET",
+						"header": [],
 						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"title\": \"July 2025 Batch\",\n  \"startDate\": \"2025-07-15T00:00:00Z\",\n  \"endDate\": \"2025-09-15T00:00:00Z\",\n  \"enrollmentCapacity\": 30,\n  \"teacherIds\": [\"{{teacher_user_id}}\"],\n  \"description\": \"Morning batch for working professionals\",\n  \"meetingLink\": \"https://zoom.us/j/123456789\",\n  \"meetingPassword\": \"batch123\",\n  \"platform\": \"zoom\",\n  \"schedule\": [\n    {\n      \"dayOfWeek\": \"Monday\",\n      \"startTime\": \"18:00:00\",\n      \"endTime\": \"20:00:00\",\n      \"topicTitle\": \"Introduction to React\"\n    },\n    {\n      \"dayOfWeek\": \"Wednesday\",\n      \"startTime\": \"18:00:00\",\n      \"endTime\": \"20:00:00\",\n      \"topicTitle\": \"Advanced React Concepts\"\n    },\n    {\n      \"dayOfWeek\": \"Friday\",\n      \"startTime\": \"18:00:00\",\n      \"endTime\": \"20:00:00\",\n      \"topicTitle\": \"Node.js & Express\"\n    }\n  ],\n  \"hasChatEnabled\": true\n}"
+							"mode": "formdata",
+							"formdata": []
 						},
 						"url": {
-							"raw": "{{host}}/batch/createBatch",
+							"raw": "{{host}}/course/063a2741-c8fd-4fea-b10c-80013e1a373b",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"batch",
-								"createBatch"
+								"course",
+								"063a2741-c8fd-4fea-b10c-80013e1a373b"
 							]
 						},
-						"description": "Create a new batch for a live course with schedule, teacher assignments, and enrollment capacity. Admin access required."
+						"description": "Retrieve all live courses with pagination, sorting, and filtering options. Admin access required."
 					},
 					"response": []
 				},
@@ -153,21 +142,19 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/batch?page=1&limit=10",
+							"raw": "{{host}}/live-courses/{{course_id}}/batches?status=ongoing",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"batch"
+								"live-courses",
+								"{{course_id}}",
+								"batches"
 							],
 							"query": [
 								{
-									"key": "page",
-									"value": "1"
-								},
-								{
-									"key": "limit",
-									"value": "10"
+									"key": "status",
+									"value": "ongoing"
 								}
 							]
 						},
@@ -177,99 +164,6 @@
 				}
 			],
 			"description": "API endpoints for managing live courses, batches, and sessions"
-		},
-		{
-			"name": "Recorded Courses API",
-			"item": [
-				{
-					"name": "Create Recorded Course",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{JWT_TOKEN_ADMIN}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"title\": \"Complete Python Programming Masterclass\",\n  \"description\": \"Master Python programming from the basics to advanced concepts including data structures, algorithms, and practical applications.\",\n  \"shortDescription\": \"Learn Python programming from scratch to advanced level\",\n  \"levelId\": \"{{course_level_id}}\",\n  \"categoryId\": \"{{course_category_id}}\",\n  \"teacherIds\": [\"{{teacher_user_id}}\"],\n  \"isPaid\": true,\n  \"price\": 999.99,\n  \"discountEnabled\": true,\n  \"thumbnailUrl\": \"https://example.com/thumbnails/python-masterclass.jpg\",\n  \"coverImage\": \"https://example.com/covers/python-banner.jpg\",\n  \"introVideoUrl\": \"https://youtube.com/watch?v=xyz789\",\n  \"demoUrl\": \"https://demo.example.com/python-masterclass\",\n  \"screenshots\": [\n    \"https://example.com/screenshots/python-1.jpg\",\n    \"https://example.com/screenshots/python-2.jpg\"\n  ],\n  \"techStack\": [\"Python\", \"Django\", \"Flask\", \"SQLite\"],\n  \"programmingLanguages\": [\"Python\"],\n  \"features\": \"50+ hours of video content\\nCoding exercises and quizzes\\nReal-world projects\\nDownloadable resources\",\n  \"prerequisites\": \"No prior programming experience required\\nBasic computer skills\",\n  \"whatYouGet\": \"Lifetime access to all videos\\nDownloadable code examples\\nCertificate of completion\\nAccess to Q&A forums\",\n  \"hasCertificate\": true,\n  \"certificateTemplateUrl\": \"https://example.com/certificates/python-template.pdf\",\n  \"supportIncluded\": true,\n  \"supportDuration\": 180,\n  \"supportEmail\": \"python-support@example.com\",\n  \"whatYouLearn\": [\n    \"Python fundamentals and syntax\",\n    \"Object-oriented programming in Python\",\n    \"Data structures and algorithms\",\n    \"Building web applications with Django\"\n  ],\n  \"requirements\": [\n    \"Any computer with Windows, Mac, or Linux\",\n    \"Internet connection for downloading resources\"\n  ],\n  \"sections\": [\n    {\n      \"title\": \"Getting Started with Python\",\n      \"description\": \"Introduction to Python programming language and setup\",\n      \"order\": 1,\n      \"lessons\": [\n        {\n          \"title\": \"Installing Python and IDE\",\n          \"description\": \"Learn how to install Python and set up your development environment\",\n          \"durationMinutes\": 15,\n          \"videoUrl\": \"https://example.com/videos/python-install.mp4\",\n          \"order\": 1,\n          \"isFree\": true,\n          \"type\": \"video\",\n          \"content\": \"In this lesson, we'll cover how to install Python on different operating systems...\"\n        },\n        {\n          \"title\": \"Python Syntax Basics\",\n          \"description\": \"Learn the fundamental syntax and structure of Python code\",\n          \"durationMinutes\": 25,\n          \"videoUrl\": \"https://example.com/videos/python-syntax.mp4\",\n          \"order\": 2,\n          \"isFree\": false,\n          \"type\": \"video\",\n          \"content\": \"Python uses indentation to define code blocks instead of curly braces...\"\n        }\n      ]\n    },\n    {\n      \"title\": \"Data Types and Variables\",\n      \"description\": \"Understanding Python's data types and variable system\",\n      \"order\": 2,\n      \"lessons\": [\n        {\n          \"title\": \"Numbers and Strings\",\n          \"description\": \"Working with numeric and text data in Python\",\n          \"durationMinutes\": 30,\n          \"videoUrl\": \"https://example.com/videos/python-numbers-strings.mp4\",\n          \"order\": 1,\n          \"isFree\": false,\n          \"type\": \"video\",\n          \"content\": \"Python has several built-in data types including integers, floats, and strings...\"\n        },\n        {\n          \"title\": \"Lists and Dictionaries\",\n          \"description\": \"Working with collection data types in Python\",\n          \"durationMinutes\": 35,\n          \"videoUrl\": \"https://example.com/videos/python-collections.mp4\",\n          \"order\": 2,\n          \"isFree\": false,\n          \"type\": \"video\",\n          \"content\": \"Python's list and dictionary types are powerful data structures...\"\n        }\n      ]\n    }\n  ]\n}"
-						},
-						"url": {
-							"raw": "{{host}}/course/create/recorded",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"course",
-								"create",
-								"recorded"
-							]
-						},
-						"description": "Create a new recorded course with sections, lessons, and related resources. Admin access required."
-					},
-					"response": []
-				},
-				{
-					"name": "Get All Recorded Courses",
-					"request": {
-						"auth": {
-							"type": "bearer",
-							"bearer": [
-								{
-									"key": "token",
-									"value": "{{JWT_TOKEN_ADMIN}}",
-									"type": "string"
-								}
-							]
-						},
-						"method": "GET",
-						"header": [],
-						"url": {
-							"raw": "{{host}}/course/recorded?page=1&limit=10&sortBy=createdAt&sortOrder=desc",
-							"host": [
-								"{{host}}"
-							],
-							"path": [
-								"course",
-								"recorded"
-							],
-							"query": [
-								{
-									"key": "page",
-									"value": "1"
-								},
-								{
-									"key": "limit",
-									"value": "10"
-								},
-								{
-									"key": "sortBy",
-									"value": "createdAt"
-								},
-								{
-									"key": "sortOrder",
-									"value": "desc"
-								}
-							]
-						},
-						"description": "Retrieve all recorded courses with pagination, sorting, and filtering options. Admin access required."
-					},
-					"response": []
-				}
-			],
-			"description": "API endpoints for managing recorded courses, sections, and lessons"
 		},
 		{
 			"name": "Projects API",
@@ -319,12 +213,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/projects?page=1&limit=10&sortBy=createdAt&sortOrder=desc&status=published",
+							"raw": "{{host}}/projects/getAll?page=1&limit=10&sortBy=createdAt&sortOrder=ASC&status=published",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"projects"
+								"projects",
+								"getAll"
 							],
 							"query": [
 								{
@@ -341,7 +236,7 @@
 								},
 								{
 									"key": "sortOrder",
-									"value": "desc"
+									"value": "ASC"
 								},
 								{
 									"key": "status",
@@ -356,16 +251,26 @@
 				{
 					"name": "Get Project By ID",
 					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/projects/{{project_id}}",
+							"raw": "{{host}}/projects/7c435e0c-9504-4a10-b474-0c5f9c989cf5",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
 								"projects",
-								"{{project_id}}"
+								"7c435e0c-9504-4a10-b474-0c5f9c989cf5"
 							]
 						},
 						"description": "Get detailed information about a specific project. Public endpoint."
@@ -559,12 +464,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/exams?page=1&limit=10",
+							"raw": "{{host}}/exam/getAll?page=1&limit=10",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"exams"
+								"exam",
+								"getAll"
 							],
 							"query": [
 								{
@@ -587,13 +493,13 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/exams/{{exam_id}}",
+							"raw": "{{host}}/exam/dd463def-f01c-486e-b683-a15d0ed14cba",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"exams",
-								"{{exam_id}}"
+								"exam",
+								"dd463def-f01c-486e-b683-a15d0ed14cba"
 							]
 						},
 						"description": "Get detailed information about a specific exam. Public endpoint."
@@ -674,14 +580,14 @@
 						"method": "GET",
 						"header": [],
 						"url": {
-							"raw": "{{host}}/exams/getExamsByLevel/{{course_level_id}}",
+							"raw": "{{host}}/exam/getExamsByLevel/6accc647-e68d-4ef6-ac94-ffecb1dc6c9f",
 							"host": [
 								"{{host}}"
 							],
 							"path": [
-								"exams",
+								"exam",
 								"getExamsByLevel",
-								"{{course_level_id}}"
+								"6accc647-e68d-4ef6-ac94-ffecb1dc6c9f"
 							]
 						},
 						"description": "Get all exams for a specific difficulty level. Public endpoint."
@@ -996,6 +902,31 @@
 							"path": [
 								"exam",
 								"getAllExams"
+							]
+						},
+						"description": "Get all available learning goals"
+					},
+					"response": []
+				}
+			],
+			"description": "API endpoints for goal management system"
+		},
+		{
+			"name": "Categories Routes API Collection",
+			"item": [
+				{
+					"name": "Get All Categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/category/getAllCategories",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"category",
+								"getAllCategories"
 							]
 						},
 						"description": "Get all available learning goals"
@@ -1432,7 +1363,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"identifier\": \"lakshmanan.coder@gmail.com\",\n  \"otp\": \"251309\"\n}",
+									"raw": "{\n  \"identifier\": \"lakshmanan.coder@gmail.com\",\n  \"otp\": \"123456\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1720,11 +1651,14 @@
 									}
 								},
 								"url": {
-									"raw": "{{host}}/user/userRegistration",
+									"raw": "http://localhost:8080/api/user/userRegistration",
+									"protocol": "http",
 									"host": [
-										"{{host}}"
+										"localhost"
 									],
+									"port": "8080",
 									"path": [
+										"api",
 										"user",
 										"userRegistration"
 									]
@@ -1745,7 +1679,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n  \"identifier\": \"admin@example.com\",\n  \"password\": \"SecurePassword@123\"\n}",
+									"raw": "{\n  \"identifier\": \"lakshmanan.coder@gmail.com\",\n  \"password\": \"SecurePassword@123\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -1873,12 +1807,1155 @@
 				}
 			],
 			"description": "Comprehensive API endpoints for user authentication and student management with all available fields"
+		},
+		{
+			"name": "Cart Management",
+			"item": [
+				{
+					"name": "Get User Cart",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/cart",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"cart"
+							]
+						},
+						"description": "Get the current user's shopping cart contents."
+					},
+					"response": []
+				},
+				{
+					"name": "Add to Cart",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"itemType\": \"course\",\n  \"itemId\": \"b2996f7b-7e79-48b7-8ae9-ae7bb2b97d3f\"\n}"
+						},
+						"url": {
+							"raw": "{{host}}/cart/add",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"cart",
+								"add"
+							]
+						},
+						"description": "Add an item to the user's shopping cart."
+					},
+					"response": []
+				},
+				{
+					"name": "Remove from Cart",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"itemType\": \"course\",\n  \"itemId\": \"{{course_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{host}}/cart/remove",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"cart",
+								"remove"
+							]
+						},
+						"description": "Remove an item from the user's shopping cart."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Cart Item",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"itemType\": \"course\",\n  \"itemId\": \"b2996f7b-7e79-48b7-8ae9-ae7bb2b97d3f\",\n  \"quantity\": 2\n}"
+						},
+						"url": {
+							"raw": "{{host}}/cart/update",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"cart",
+								"update"
+							]
+						},
+						"description": "Update quantity or other attributes of a cart item."
+					},
+					"response": []
+				},
+				{
+					"name": "Clear Cart",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/cart/clear",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"cart",
+								"clear"
+							]
+						},
+						"description": "Remove all items from the user's shopping cart."
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Discount Code",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"code\": \"SPECIALOFFER_MDIHM82T_5\"\n}"
+						},
+						"url": {
+							"raw": "{{host}}/discounts/validate",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"discounts",
+								"validate"
+							]
+						},
+						"description": "Validate a discount code for application to cart items."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for managing the shopping cart functionality."
+		},
+		{
+			"name": "Wishlist Management",
+			"item": [
+				{
+					"name": "Get User Wishlist",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/wishlist",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"wishlist"
+							]
+						},
+						"description": "Get the current user's wishlist contents."
+					},
+					"response": []
+				},
+				{
+					"name": "Add to Wishlist",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"itemType\": \"course\",\n  \"itemId\": \"0926d8ce-b962-487c-bbf1-2f18d0448c57\"\n}"
+						},
+						"url": {
+							"raw": "{{host}}/wishlist/add",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"wishlist",
+								"add"
+							]
+						},
+						"description": "Add an item to the user's wishlist."
+					},
+					"response": []
+				},
+				{
+					"name": "Remove from Wishlist",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"itemType\": \"course\",\n  \"itemId\": \"{{course_id}}\"\n}"
+						},
+						"url": {
+							"raw": "{{host}}/wishlist/remove",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"wishlist",
+								"remove"
+							]
+						},
+						"description": "Remove an item from the user's wishlist."
+					},
+					"response": []
+				},
+				{
+					"name": "Check Wishlist Status",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": []
+						},
+						"url": {
+							"raw": "{{host}}/wishlist/status/course/0926d8ce-b962-487c-bbf1-2f18d0448c57",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"wishlist",
+								"status",
+								"course",
+								"0926d8ce-b962-487c-bbf1-2f18d0448c57"
+							]
+						},
+						"description": "Check if an item is in the user's wishlist."
+					},
+					"response": []
+				},
+				{
+					"name": "Move to Cart",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"itemType\": \"course\",\n  \"itemId\": \"0926d8ce-b962-487c-bbf1-2f18d0448c57\"\n}"
+						},
+						"url": {
+							"raw": "{{host}}/wishlist/move-to-cart",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"wishlist",
+								"move-to-cart"
+							]
+						},
+						"description": "Move an item from the wishlist to the cart."
+					},
+					"response": []
+				},
+				{
+					"name": "Clear Wishlist",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/wishlist/clear",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"wishlist",
+								"clear"
+							]
+						},
+						"description": "Remove all items from the user's wishlist."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for managing the wishlist functionality."
+		},
+		{
+			"name": "Checkout & Orders",
+			"item": [
+				{
+					"name": "Create Order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"discountCode\": \"SPECIALOFFER_MDIHM82T_5\"\r\n}"
+						},
+						"url": {
+							"raw": "{{host}}/payments/create-order",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"payments",
+								"create-order"
+							]
+						},
+						"description": "Create a new order for checkout from cart items."
+					},
+					"response": []
+				},
+				{
+					"name": "Verify Payment",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"orderId\": \"{{order_id}}\",\n  \"paymentId\": \"{{payment_id}}\",\n  \"signature\": \"{{signature}}\"\n}"
+						},
+						"url": {
+							"raw": "{{host}}/payment/verify",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"payment",
+								"verify"
+							]
+						},
+						"description": "Verify a payment after checkout completion."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Payment Status",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/payments/status/{{RAZORPAY_PAYMENT_ID}}",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"payments",
+								"status",
+								"{{RAZORPAY_PAYMENT_ID}}"
+							]
+						},
+						"description": "Get the status of a payment."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Orders",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/payments/orders",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"payments",
+								"orders"
+							]
+						},
+						"description": "Get all orders for the current user."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Purchases",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{JWT_TOKEN_STUDENT}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/payments/purchases",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"payments",
+								"purchases"
+							]
+						},
+						"description": "Get all course purchases for the current user."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for checkout process and order management."
+		},
+		{
+			"name": "Ratings & Reviews API",
+			"item": [
+				{
+					"name": "Course Ratings",
+					"item": [
+						{
+							"name": "Rate a Course",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"rating\": 4.5,\n  \"review\": \"Excellent course! Very well structured and easy to follow.\",\n  \"isVerified\": true\n}"
+								},
+								"url": {
+									"raw": "{{host}}/ratings/courses/{{COURSE_ID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"courses",
+										"{{COURSE_ID}}"
+									]
+								},
+								"description": "Rate a course with a score from 1.0 to 5.0 and optional review text. Requires authentication."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Course Ratings",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/courses/{{COURSE_ID}}?page=1&limit=10&sortBy=createdAt&sortOrder=DESC",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"courses",
+										"{{COURSE_ID}}"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "sortBy",
+											"value": "createdAt"
+										},
+										{
+											"key": "sortOrder",
+											"value": "DESC"
+										}
+									]
+								},
+								"description": "Get all ratings and reviews for a specific course with pagination. Public endpoint."
+							},
+							"response": []
+						},
+						{
+							"name": "Edit Course Review",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"rating\": 5.0,\n  \"review\": \"Updated review: This course exceeded my expectations!\"\n}"
+								},
+								"url": {
+									"raw": "{{host}}/ratings/courses/reviews/{{RATING_ID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"courses",
+										"reviews",
+										"{{RATING_ID}}"
+									]
+								},
+								"description": "Edit an existing course review. Only the review author can edit their review."
+							},
+							"response": []
+						}
+					],
+					"description": "API endpoints for course rating and review functionality"
+				},
+				{
+					"name": "Project Ratings",
+					"item": [
+						{
+							"name": "Get Project Rating Stats",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/projects/{{PROJECT_ID}}/stats",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"projects",
+										"{{PROJECT_ID}}",
+										"stats"
+									]
+								},
+								"description": "Get aggregated rating statistics for a project including average rating, total reviews, and rating distribution."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Project Reviews",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/projects/{{PROJECT_ID}}/reviews?page=1&limit=10&sortBy=createdAt&sortOrder=DESC",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"projects",
+										"{{PROJECT_ID}}",
+										"reviews"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "sortBy",
+											"value": "createdAt"
+										},
+										{
+											"key": "sortOrder",
+											"value": "DESC"
+										}
+									]
+								},
+								"description": "Get all reviews for a specific project with pagination and sorting options."
+							},
+							"response": []
+						},
+						{
+							"name": "Create Project Review",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"rating\": 4.8,\n  \"review\": \"Amazing project with excellent documentation and code quality!\",\n  \"criteria\": {\n    \"codeQuality\": 5,\n    \"documentation\": 4,\n    \"usability\": 5,\n    \"valueForMoney\": 4\n  }\n}"
+								},
+								"url": {
+									"raw": "{{host}}/ratings/projects/{{PROJECT_ID}}/reviews",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"projects",
+										"{{PROJECT_ID}}",
+										"reviews"
+									]
+								},
+								"description": "Create a review for a purchased project. Must have purchased the project to leave a review."
+							},
+							"response": []
+						},
+						{
+							"name": "Edit Project Review",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"rating\": 5.0,\n  \"review\": \"Updated: Absolutely fantastic project! Highly recommended.\",\n  \"criteria\": {\n    \"codeQuality\": 5,\n    \"documentation\": 5,\n    \"usability\": 5,\n    \"valueForMoney\": 5\n  }\n}"
+								},
+								"url": {
+									"raw": "{{host}}/ratings/projects/reviews/{{RATING_ID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"projects",
+										"reviews",
+										"{{RATING_ID}}"
+									]
+								},
+								"description": "Edit an existing project review. Only the review author can edit their review."
+							},
+							"response": []
+						}
+					],
+					"description": "API endpoints for project rating and review functionality"
+				},
+				{
+					"name": "Instructor Ratings",
+					"item": [
+						{
+							"name": "Rate an Instructor",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"rating\": 4.7,\n  \"review\": \"Excellent instructor with clear explanations and great teaching style!\",\n  \"criteria\": {\n    \"knowledgeLevel\": 5,\n    \"teachingClarity\": 4,\n    \"responsiveness\": 5,\n    \"courseStructure\": 4\n  }\n}"
+								},
+								"url": {
+									"raw": "{{host}}/ratings/instructors/{{TEACHER_UUID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"instructors",
+										"{{TEACHER_UUID}}"
+									]
+								},
+								"description": "Rate an instructor based on course experience. Requires authentication and course enrollment."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Instructor Ratings",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/instructors/{{TEACHER_UUID}}?page=1&limit=10",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"instructors",
+										"{{TEACHER_UUID}}"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										}
+									]
+								},
+								"description": "Get all ratings and reviews for a specific instructor. Public endpoint."
+							},
+							"response": []
+						}
+					],
+					"description": "API endpoints for instructor rating functionality"
+				},
+				{
+					"name": "Review Interactions",
+					"item": [
+						{
+							"name": "Mark Review as Helpful",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"isHelpful\": true\n}"
+								},
+								"url": {
+									"raw": "{{host}}/ratings/helpful/{{RATING_ID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"helpful",
+										"{{RATING_ID}}"
+									]
+								},
+								"description": "Mark a review as helpful or not helpful. Authenticated users only."
+							},
+							"response": []
+						}
+					],
+					"description": "API endpoints for review interaction functionality"
+				},
+				{
+					"name": "Admin Review Management",
+					"item": [
+						{
+							"name": "Get All Reviews (Admin)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_OWNER}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/admin/reviews?page=1&limit=20&type=course&status=pending&sortBy=createdAt&sortOrder=DESC",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"admin",
+										"reviews"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "20"
+										},
+										{
+											"key": "type",
+											"value": "course",
+											"description": "course, project, or instructor"
+										},
+										{
+											"key": "status",
+											"value": "pending",
+											"description": "pending, approved, rejected, or hidden"
+										},
+										{
+											"key": "sortBy",
+											"value": "createdAt"
+										},
+										{
+											"key": "sortOrder",
+											"value": "DESC"
+										}
+									]
+								},
+								"description": "Get all reviews with comprehensive filtering for admin moderation. Admin access required."
+							},
+							"response": []
+						},
+						{
+							"name": "Moderate Review (Admin)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_OWNER}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"action\": \"approve\",\n  \"moderatorNote\": \"Review meets quality standards and is appropriate.\"\n}"
+								},
+								"url": {
+									"raw": "{{host}}/ratings/admin/reviews/{{RATING_ID}}/moderate",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"admin",
+										"reviews",
+										"{{RATING_ID}}",
+										"moderate"
+									]
+								},
+								"description": "Moderate a specific review (approve/reject/hide). Admin access required. Actions: approve, reject, hide."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Review Analytics (Admin)",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_OWNER}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/admin/reviews/analytics?period=month&type=all",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"admin",
+										"reviews",
+										"analytics"
+									],
+									"query": [
+										{
+											"key": "period",
+											"value": "month",
+											"description": "week, month, quarter, year"
+										},
+										{
+											"key": "type",
+											"value": "all",
+											"description": "all, course, project, instructor"
+										}
+									]
+								},
+								"description": "Get comprehensive review analytics and statistics. Admin access required."
+							},
+							"response": []
+						}
+					],
+					"description": "Admin endpoints for review moderation and analytics"
+				}
+			],
+			"description": "Comprehensive API collection for ratings and reviews functionality including course ratings, project reviews, instructor ratings, and admin moderation tools."
 		}
 	],
 	"variable": [
 		{
 			"key": "host",
-			"value": "http://localhost:8080/api",
+			"value": "56.228.37.122:8080/api",
 			"type": "default"
 		},
 		{
@@ -1944,6 +3021,16 @@
 		{
 			"key": "BATCH_ID",
 			"value": "9b57398d-6512-4efa-b37d-b5cd854bbef1",
+			"type": "default"
+		},
+		{
+			"key": "RATING_ID",
+			"value": "",
+			"type": "default"
+		},
+		{
+			"key": "PROJECT_ID",
+			"value": "",
 			"type": "default"
 		}
 	]
