@@ -2415,7 +2415,67 @@
 					"name": "Course Ratings",
 					"item": [
 						{
-							"name": "Rate a Course",
+							"name": "Get Course Rating Stats",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/courses/{{COURSE_ID}}/stats",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"courses",
+										"{{COURSE_ID}}",
+										"stats"
+									]
+								},
+								"description": "Get aggregated rating statistics for a course including average rating, total reviews, and rating distribution."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Course Reviews",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/courses/{{COURSE_ID}}/reviews?page=1&limit=10&sortBy=createdAt&sortOrder=DESC",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"courses",
+										"{{COURSE_ID}}",
+										"reviews"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "sortBy",
+											"value": "createdAt"
+										},
+										{
+											"key": "sortOrder",
+											"value": "DESC"
+										}
+									]
+								},
+								"description": "Get all ratings and reviews for a specific course with pagination. Public endpoint."
+							},
+							"response": []
+						},
+						{
+							"name": "Create Course Review",
 							"request": {
 								"auth": {
 									"type": "bearer",
@@ -2439,55 +2499,18 @@
 									"raw": "{\n  \"rating\": 4.5,\n  \"review\": \"Excellent course! Very well structured and easy to follow.\",\n  \"isVerified\": true\n}"
 								},
 								"url": {
-									"raw": "{{host}}/ratings/courses/{{COURSE_ID}}",
+									"raw": "{{host}}/ratings/courses/{{COURSE_ID}}/reviews",
 									"host": [
 										"{{host}}"
 									],
 									"path": [
 										"ratings",
 										"courses",
-										"{{COURSE_ID}}"
+										"{{COURSE_ID}}",
+										"reviews"
 									]
 								},
 								"description": "Rate a course with a score from 1.0 to 5.0 and optional review text. Requires authentication."
-							},
-							"response": []
-						},
-						{
-							"name": "Get Course Ratings",
-							"request": {
-								"method": "GET",
-								"header": [],
-								"url": {
-									"raw": "{{host}}/ratings/courses/{{COURSE_ID}}?page=1&limit=10&sortBy=createdAt&sortOrder=DESC",
-									"host": [
-										"{{host}}"
-									],
-									"path": [
-										"ratings",
-										"courses",
-										"{{COURSE_ID}}"
-									],
-									"query": [
-										{
-											"key": "page",
-											"value": "1"
-										},
-										{
-											"key": "limit",
-											"value": "10"
-										},
-										{
-											"key": "sortBy",
-											"value": "createdAt"
-										},
-										{
-											"key": "sortOrder",
-											"value": "DESC"
-										}
-									]
-								},
-								"description": "Get all ratings and reviews for a specific course with pagination. Public endpoint."
 							},
 							"response": []
 						},
@@ -2528,6 +2551,37 @@
 									]
 								},
 								"description": "Edit an existing course review. Only the review author can edit their review."
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Course Review",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/courses/reviews/{{RATING_ID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"courses",
+										"reviews",
+										"{{RATING_ID}}"
+									]
+								},
+								"description": "Delete an existing course review. Only the review author can delete their review."
 							},
 							"response": []
 						}
@@ -2676,6 +2730,37 @@
 								"description": "Edit an existing project review. Only the review author can edit their review."
 							},
 							"response": []
+						},
+						{
+							"name": "Delete Project Review",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/projects/reviews/{{RATING_ID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"projects",
+										"reviews",
+										"{{RATING_ID}}"
+									]
+								},
+								"description": "Delete an existing project review. Only the review author can delete their review."
+							},
+							"response": []
 						}
 					],
 					"description": "API endpoints for project rating and review functionality"
@@ -2684,7 +2769,67 @@
 					"name": "Instructor Ratings",
 					"item": [
 						{
-							"name": "Rate an Instructor",
+							"name": "Get Instructor Rating Stats",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/instructors/{{TEACHER_UUID}}/stats",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"instructors",
+										"{{TEACHER_UUID}}",
+										"stats"
+									]
+								},
+								"description": "Get aggregated rating statistics for an instructor including average rating, total reviews, and rating distribution."
+							},
+							"response": []
+						},
+						{
+							"name": "Get Instructor Reviews",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/instructors/{{TEACHER_UUID}}/reviews?page=1&limit=10&sortBy=createdAt&sortOrder=DESC",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"instructors",
+										"{{TEACHER_UUID}}",
+										"reviews"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "sortBy",
+											"value": "createdAt"
+										},
+										{
+											"key": "sortOrder",
+											"value": "DESC"
+										}
+									]
+								},
+								"description": "Get all ratings and reviews for a specific instructor. Public endpoint."
+							},
+							"response": []
+						},
+						{
+							"name": "Create Instructor Review",
 							"request": {
 								"auth": {
 									"type": "bearer",
@@ -2708,14 +2853,15 @@
 									"raw": "{\n  \"rating\": 4.7,\n  \"review\": \"Excellent instructor with clear explanations and great teaching style!\",\n  \"criteria\": {\n    \"knowledgeLevel\": 5,\n    \"teachingClarity\": 4,\n    \"responsiveness\": 5,\n    \"courseStructure\": 4\n  }\n}"
 								},
 								"url": {
-									"raw": "{{host}}/ratings/instructors/{{TEACHER_UUID}}",
+									"raw": "{{host}}/ratings/instructors/{{TEACHER_UUID}}/reviews",
 									"host": [
 										"{{host}}"
 									],
 									"path": [
 										"ratings",
 										"instructors",
-										"{{TEACHER_UUID}}"
+										"{{TEACHER_UUID}}",
+										"reviews"
 									]
 								},
 								"description": "Rate an instructor based on course experience. Requires authentication and course enrollment."
@@ -2723,32 +2869,73 @@
 							"response": []
 						},
 						{
-							"name": "Get Instructor Ratings",
+							"name": "Edit Instructor Review",
 							"request": {
-								"method": "GET",
-								"header": [],
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"rating\": 5.0,\n  \"review\": \"Updated: Outstanding instructor! Truly exceptional teaching skills.\",\n  \"criteria\": {\n    \"knowledgeLevel\": 5,\n    \"teachingClarity\": 5,\n    \"responsiveness\": 5,\n    \"courseStructure\": 5\n  }\n}"
+								},
 								"url": {
-									"raw": "{{host}}/ratings/instructors/{{TEACHER_UUID}}?page=1&limit=10",
+									"raw": "{{host}}/ratings/instructors/reviews/{{RATING_ID}}",
 									"host": [
 										"{{host}}"
 									],
 									"path": [
 										"ratings",
 										"instructors",
-										"{{TEACHER_UUID}}"
-									],
-									"query": [
+										"reviews",
+										"{{RATING_ID}}"
+									]
+								},
+								"description": "Edit an existing instructor review. Only the review author can edit their review."
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Instructor Review",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
 										{
-											"key": "page",
-											"value": "1"
-										},
-										{
-											"key": "limit",
-											"value": "10"
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
 										}
 									]
 								},
-								"description": "Get all ratings and reviews for a specific instructor. Public endpoint."
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/instructors/reviews/{{RATING_ID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"instructors",
+										"reviews",
+										"{{RATING_ID}}"
+									]
+								},
+								"description": "Delete an existing instructor review. Only the review author can delete their review."
 							},
 							"response": []
 						}
@@ -2799,6 +2986,94 @@
 						}
 					],
 					"description": "API endpoints for review interaction functionality"
+				},
+				{
+					"name": "My Ratings",
+					"item": [
+						{
+							"name": "Get My Ratings",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/my-ratings?page=1&limit=10&type=course&sortBy=createdAt&sortOrder=DESC",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"my-ratings"
+									],
+									"query": [
+										{
+											"key": "page",
+											"value": "1"
+										},
+										{
+											"key": "limit",
+											"value": "10"
+										},
+										{
+											"key": "type",
+											"value": "course",
+											"description": "Filter by type: course, project, instructor (optional)"
+										},
+										{
+											"key": "sortBy",
+											"value": "createdAt"
+										},
+										{
+											"key": "sortOrder",
+											"value": "DESC"
+										}
+									]
+								},
+								"description": "Get all ratings created by the authenticated user. Requires authentication."
+							},
+							"response": []
+						},
+						{
+							"name": "Get My Rating by ID",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{JWT_TOKEN_STUDENT}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{host}}/ratings/my-ratings/{{RATING_ID}}",
+									"host": [
+										"{{host}}"
+									],
+									"path": [
+										"ratings",
+										"my-ratings",
+										"{{RATING_ID}}"
+									]
+								},
+								"description": "Get a specific rating created by the authenticated user. Requires authentication and ownership of the rating."
+							},
+							"response": []
+						}
+					],
+					"description": "API endpoints for user's own ratings and reviews"
 				},
 				{
 					"name": "Admin Review Management",

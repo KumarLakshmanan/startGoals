@@ -57,6 +57,16 @@ const InstructorRating = sequelize.define(
       comment:
         "Detailed rating criteria like teaching_quality, communication, etc.",
     },
+    helpfulVotes: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: "Number of users who found this review helpful",
+    },
+    notHelpfulVotes: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: "Number of users who found this review not helpful",
+    },
     isVerified: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,

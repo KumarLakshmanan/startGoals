@@ -12,7 +12,7 @@
  * @returns {Object} Express response
  */
 export const sendSuccess = (res, code = 200, message = "Request successful", data = null) => {
-  return res.status(200).json({
+  return res.status(code).json({
     status: true,
     success: true,
     code,
@@ -30,7 +30,7 @@ export const sendSuccess = (res, code = 200, message = "Request successful", dat
  * @returns {Object} Express response
  */
 export const sendError = (res, code = 400, message = "Request failed", errors = {}) => {
-  return res.status(200).json({
+  return res.status(code).json({
     status: false,
     success: false,
     code,

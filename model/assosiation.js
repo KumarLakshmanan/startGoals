@@ -31,6 +31,7 @@ import Project from "./project.js";
 import ProjectFile from "./projectFile.js";
 import ProjectPurchase from "./projectPurchase.js";
 import ProjectRating from "./projectRating.js";
+import RatingHelpful from "./ratingHelpful.js";
 import DiscountCode from "./discountCode.js";
 import DiscountUsage from "./discountUsage.js";
 import UserLanguages from "./userLanguages.js";
@@ -82,6 +83,7 @@ const models = {
   ProjectFile,
   ProjectPurchase,
   ProjectRating,
+  RatingHelpful,
   DiscountCode,
   DiscountUsage,
   CourseTeacher,
@@ -831,5 +833,22 @@ Lesson.belongsTo(Section, { as: "section", foreignKey: "sectionId" });
 
 Lesson.hasMany(Resource, { as: "resources", foreignKey: "lessonId" });
 Resource.belongsTo(Lesson, { as: "lesson", foreignKey: "lessonId" });
+
+// ===================== RATING HELPFUL ASSOCIATIONS =====================
+
+// RatingHelpful associations for tracking helpful votes
+User.hasMany(RatingHelpful, {
+  foreignKey: "userId",
+  as: "helpfulVotes",
+  onDelete: "CASCADE",
+});
+
+RatingHelpful.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// Generic associations for all rating types (polymorphic relationship)
+// Note: Sequelize doesn't support true polymorphic associations, so we handle this in the application logic
 
 export default models;

@@ -45,10 +45,15 @@ const CourseRating = sequelize.define(
       defaultValue: false,
       comment: "Whether the user has completed/enrolled in the course",
     },
-    isHelpful: {
+    helpfulVotes: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
       comment: "Number of users who found this review helpful",
+    },
+    notHelpfulVotes: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: "Number of users who found this review not helpful",
     },
     isReported: {
       type: DataTypes.BOOLEAN,

@@ -62,6 +62,11 @@ const ProjectRating = sequelize.define(
       defaultValue: 0,
       comment: "Number of users who found review helpful",
     },
+    notHelpfulVotes: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+      comment: "Number of users who found review not helpful",
+    },
     moderationStatus: {
       type: DataTypes.ENUM("pending", "approved", "rejected", "hidden"),
       defaultValue: "approved",
