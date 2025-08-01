@@ -11,11 +11,11 @@
  * @param {Object|Array|null} data - Response data
  * @returns {Object} Express response
  */
-export const sendSuccess = (res, code = 200, message = "Request successful", data = null) => {
-  return res.status(code).json({
+export const sendSuccess = (res, message = "Request successful", data = null) => {
+  return res.status(200).json({
     status: true,
     success: true,
-    code,
+    code: 200,
     message,
     data
   });

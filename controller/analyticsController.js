@@ -87,7 +87,7 @@ export const getPlatformOverview = async (req, res) => {
       }
     };
     
-    return sendSuccess(res, 200, "Platform overview retrieved successfully", overview);
+    return sendSuccess(res, "Platform overview retrieved successfully", overview);
   } catch (error) {
     console.error("Error getting platform overview:", error);
     return sendServerError(res, error);
@@ -162,7 +162,7 @@ export const getUserAnalytics = async (req, res) => {
       })
     };
     
-    return sendSuccess(res, 200, "User analytics retrieved successfully", userData);
+    return sendSuccess(res, "User analytics retrieved successfully", userData);
   } catch (error) {
     console.error("Error getting user analytics:", error);
     return sendServerError(res, error);
@@ -283,7 +283,7 @@ export const getCourseAnalytics = async (req, res) => {
       })
     };
     
-    return sendSuccess(res, 200, "Course analytics retrieved successfully", courseData);
+    return sendSuccess(res, "Course analytics retrieved successfully", courseData);
   } catch (error) {
     console.error("Error getting course analytics:", error);
     return sendServerError(res, error);
@@ -410,7 +410,7 @@ export const getRevenueAnalytics = async (req, res) => {
       }) || 1)
     };
     
-    return sendSuccess(res, 200, "Revenue analytics retrieved successfully", revenueData);
+    return sendSuccess(res, "Revenue analytics retrieved successfully", revenueData);
   } catch (error) {
     console.error("Error getting revenue analytics:", error);
     return sendServerError(res, error);
@@ -492,13 +492,13 @@ export const generateCustomReport = async (req, res) => {
     // If format is CSV, we would convert the data to CSV
     // For now, just indicate this in the response
     if (format === 'csv') {
-      return sendSuccess(res, 200, "Custom report generated successfully (CSV format)", {
+      return sendSuccess(res, "Custom report generated successfully (CSV format)", {
         ...mockReport,
         downloadUrl: '/api/admin/analytics/download/report-123.csv'
       });
     }
     
-    return sendSuccess(res, 200, "Custom report generated successfully", mockReport);
+    return sendSuccess(res, "Custom report generated successfully", mockReport);
   } catch (error) {
     console.error("Error generating custom report:", error);
     return sendServerError(res, error);
@@ -601,7 +601,7 @@ export const getStudentAnalytics = async (req, res) => {
       retentionRate: ((activeStudentCount / totalStudents) * 100).toFixed(2)
     };
 
-    return sendSuccess(res, 200, "Student analytics retrieved successfully", studentData);
+    return sendSuccess(res, "Student analytics retrieved successfully", studentData);
   } catch (error) {
     console.error("Error getting student analytics:", error);
     return sendServerError(res, error);
@@ -728,7 +728,7 @@ export const getTeacherAnalytics = async (req, res) => {
       }))
     };
 
-    return sendSuccess(res, 200, "Teacher analytics retrieved successfully", teacherData);
+    return sendSuccess(res, "Teacher analytics retrieved successfully", teacherData);
   } catch (error) {
     console.error("Error getting teacher analytics:", error);
     return sendServerError(res, error);
@@ -776,7 +776,7 @@ export const getEngagementAnalytics = async (req, res) => {
       ]
     };
 
-    return sendSuccess(res, 200, "Engagement analytics retrieved successfully", engagementData);
+    return sendSuccess(res, "Engagement analytics retrieved successfully", engagementData);
   } catch (error) {
     console.error("Error getting engagement analytics:", error);
     return sendServerError(res, error);

@@ -74,7 +74,7 @@ export const sendOtpApi = async (req, res) => {
     if (deliveryMethod === "email") await sendEmailOtp(identifier, otp);
     else await sendSmsOtp(identifier, otp);
 
-    return sendSuccess(res, 200, `OTP sent via ${method}`);
+    return sendSuccess(res,  `OTP sent via ${method}`);
   } catch (err) {
     console.error("Error sending OTP:", err);
     return sendServerError(res, err);
@@ -95,7 +95,7 @@ export async function resendOtp(req, res) {
     }
 
     await sendOtp(identifier);
-    return sendSuccess(res, 200, `OTP sent to ${identifier}`);
+    return sendSuccess(res,  `OTP sent to ${identifier}`);
   } catch (err) {
     console.error("Error resending OTP:", err);
     return sendServerError(res, err);
@@ -132,7 +132,7 @@ export async function sendResetOtp(req, res) {
     if (method === "email") await sendEmailOtp(identifier, otp);
     else await sendSmsOtp(identifier, otp);
 
-    return sendSuccess(res, 200, `Password reset OTP sent via ${method}`);
+    return sendSuccess(res,  `Password reset OTP sent via ${method}`);
   } catch (err) {
     console.error("Error sending reset OTP:", err);
     return sendServerError(res, err);
@@ -164,7 +164,7 @@ export async function verifyResetOtp(req, res) {
     user.passwordResetVerified = true;
     await user.save();
 
-    return sendSuccess(res, 200, "OTP verified for password reset");
+    return sendSuccess(res,  "OTP verified for password reset");
   } catch (err) {
     console.error("Error verifying reset OTP:", err);
     return sendServerError(res, err);
@@ -196,7 +196,7 @@ export async function resetPassword(req, res) {
     user.passwordResetVerified = false; // Invalidate OTP use
     await user.save();
 
-    return sendSuccess(res, 200, "Password reset successfully");
+    return sendSuccess(res,  "Password reset successfully");
   } catch (err) {
     console.error("Error resetting password:", err);
     return sendServerError(res, err);
@@ -251,8 +251,10 @@ export async function validateOtp(req, res) {
       firstTimeLogin: user.firstLogin,
       token,
     };
-
-    return sendSuccess(res, 200, "OTP verification successful", responseData);
+    if (user.firstLogin) {
+      await user.update({ firstLogin: false });
+    }
+    return sendSuccess(res, "OTP verification successful", responseData);
   } catch (err) {
     console.error("Error validating OTP:", err);
     return sendServerError(res, err);

@@ -75,7 +75,7 @@ export const addProjectRating = async (req, res) => {
       
       await transaction.commit();
       
-      return sendSuccess(res, 200, "Rating updated successfully", existingRating);
+      return sendSuccess(res,  "Rating updated successfully", existingRating);
     } else {
       // Create new rating
       const projectRating = await ProjectRating.create(
@@ -97,7 +97,7 @@ export const addProjectRating = async (req, res) => {
 
       await transaction.commit();
 
-      return sendSuccess(res, 201, "Rating added successfully", projectRating);
+      return sendSuccess(res,  "Rating added successfully", projectRating);
     }
   } catch (error) {
     await transaction.rollback();

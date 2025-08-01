@@ -23,7 +23,7 @@ export const deleteCourseLanguage = async (req, res) => {
     }
 
     await language.destroy(); // Soft delete via `paranoid: true`
-    return sendSuccess(res, 200, "Language deleted (soft)");
+    return sendSuccess(res,  "Language deleted (soft)");
   } catch (error) {
     return sendServerError(res, error);
   }
@@ -142,7 +142,7 @@ export const uploadLanguagesBulk = async (req, res) => {
       response.skipped = skippedLanguages;
     }
 
-    return sendSuccess(res, 200, response);
+    return sendSuccess(res,  response);
   } catch (error) {
     console.error("Bulk upload error:", error);
     return sendServerError(res, error);
@@ -178,7 +178,7 @@ export const getAllLanguages = async (req, res) => {
 
     const { count, rows } = await Language.findAndCountAll(queryOptions);
 
-    return sendSuccess(res, 200, "Languages fetched successfully", rows);
+    return sendSuccess(res,  "Languages fetched successfully", rows);
   } catch (error) {
     console.error("Error fetching languages:", error);
     return sendServerError(res, error);
@@ -210,7 +210,7 @@ export const getLanguagesByType = async (req, res) => {
       order: [["language", "ASC"]],
     });
 
-    return sendSuccess(res, 200, {
+    return sendSuccess(res,  {
       message: "Languages fetched successfully",
       data: languages,
       status: true,
@@ -233,7 +233,7 @@ export const getLanguageStats = async (req, res) => {
 
     const totalCount = await Language.count();
 
-    return sendSuccess(res, 200, {
+    return sendSuccess(res,  {
       message: "Language statistics fetched successfully",
       data: {
         total: totalCount,
@@ -344,7 +344,7 @@ export const saveAllLanguages = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, {
+    return sendSuccess(res,  {
       status: true,
       message: "Languages created successfully",
       data: createdLanguages
@@ -367,7 +367,7 @@ export const getLanguageById = async (req, res) => {
       return sendNotFound(res, "Language not found");
     }
 
-    return sendSuccess(res, 200, "Language fetched successfully", language);
+    return sendSuccess(res,  "Language fetched successfully", language);
   } catch (error) {
     console.error("Error fetching language by ID:", error);
     return sendServerError(res, error);
@@ -414,7 +414,7 @@ export const saveLanguage = async (req, res) => {
       languageType: languageType || "both"
     });
 
-    return sendSuccess(res, 201, "Language created successfully", newLanguage);
+    return sendSuccess(res,  "Language created successfully", newLanguage);
   } catch (error) {
     console.error("Error creating language:", error);
     return sendServerError(res, error);
@@ -467,7 +467,7 @@ export const updateLanguage = async (req, res) => {
       languageType: languageType || language.languageType
     });
 
-    return sendSuccess(res, 200, "Language updated successfully", language);
+    return sendSuccess(res,  "Language updated successfully", language);
   } catch (error) {
     console.error("Error updating language:", error);
     return sendServerError(res, error);

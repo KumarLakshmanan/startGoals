@@ -40,6 +40,33 @@ const DiscountUsage = sequelize.define(
       allowNull: false,
       comment: "Course ID or Project ID",
     },
+    courseId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "courses",
+        key: "course_id",
+      },
+      comment: "Course ID if itemType is course",
+    },
+    projectId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "projects",
+        key: "project_id",
+      },
+      comment: "Project ID if itemType is project",
+    },
+    enrollmentId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "enrollments",
+        key: "enrollment_id",
+      },
+      comment: "Enrollment ID if applicable",
+    },
     originalAmount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,

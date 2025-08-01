@@ -200,7 +200,7 @@ export const getRatingsStats = async (req, res) => {
       distribution
     };
     
-    return sendSuccess(res, 200, "Rating statistics retrieved successfully", stats);
+    return sendSuccess(res,  "Rating statistics retrieved successfully", stats);
     
   } catch (error) {
     console.error("Get ratings stats error:", error);
@@ -306,7 +306,7 @@ export const getReviews = async (req, res) => {
       }
     };
     
-    return sendSuccess(res, 200, "Reviews retrieved successfully", result);
+    return sendSuccess(res,  "Reviews retrieved successfully", result);
     
   } catch (error) {
     console.error("Get reviews error:", error);
@@ -392,7 +392,7 @@ export const createReview = async (req, res) => {
     
     await transaction.commit();
     
-    return sendSuccess(res, created ? 201 : 200, 
+    return sendSuccess(res, 
       created ? "Review created successfully" : "Review updated successfully", {
       ratingId: ratingRecord.ratingId,
       rating: ratingRecord.rating,
@@ -486,7 +486,7 @@ export const getMyRatings = async (req, res) => {
     const totalRatings = allRatings.length;
     const paginatedRatings = allRatings.slice(offset, offset + limitNum);
 
-    return sendSuccess(res, 200, "My ratings retrieved successfully", {
+    return sendSuccess(res,  "My ratings retrieved successfully", {
       ratings: paginatedRatings.map(rating => ({
         ratingId: rating.ratingId,
         entityType: rating.entityType,
@@ -640,7 +640,7 @@ export const markReviewHelpful = async (req, res) => {
     // Get updated rating
     await rating.reload();
     
-    return sendSuccess(res, 200, message, {
+    return sendSuccess(res,  message, {
       ratingId: rating.ratingId,
       helpfulVotes: rating.helpfulVotes,
       notHelpfulVotes: rating.notHelpfulVotes
@@ -724,7 +724,7 @@ export const updateReview = async (req, res) => {
     
     await transaction.commit();
     
-    return sendSuccess(res, 200, "Review updated successfully", {
+    return sendSuccess(res,  "Review updated successfully", {
       ratingId: ratingRecord.ratingId,
       rating: ratingRecord.rating,
       review: ratingRecord.review,
@@ -796,7 +796,7 @@ export const deleteReview = async (req, res) => {
     
     await transaction.commit();
     
-    return sendSuccess(res, 200, "Review deleted successfully");
+    return sendSuccess(res,  "Review deleted successfully");
     
   } catch (error) {
     await transaction.rollback();
@@ -849,7 +849,7 @@ export const getMySpecificRating = async (req, res) => {
       return sendNotFound(res, "Rating not found or you don't have permission to view it");
     }
     
-    return sendSuccess(res, 200, "My rating retrieved successfully", {
+    return sendSuccess(res,  "My rating retrieved successfully", {
       ratingId: rating.ratingId,
       rating: rating.rating,
       review: rating.review,

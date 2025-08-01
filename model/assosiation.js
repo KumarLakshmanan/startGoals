@@ -613,22 +613,22 @@ User.hasMany(DiscountCode, {
   as: "createdDiscountCodes",
 });
 
-// DiscountCode can apply to categories
-DiscountCode.belongsToMany(CourseCategory, {
-  through: "discount_categories",
-  foreignKey: "discount_id", // Corrected to match actual primary key
-  otherKey: "category_id",
-  as: "discountCategories",
-  onDelete: "CASCADE",
-});
+// DiscountCode can apply to categories - TEMPORARILY DISABLED
+// DiscountCode.belongsToMany(CourseCategory, {
+//   through: "discount_categories",
+//   foreignKey: "discount_id", // Corrected to match actual primary key
+//   otherKey: "category_id",
+//   as: "discountCategories",
+//   onDelete: "CASCADE",
+// });
 
-CourseCategory.belongsToMany(DiscountCode, {
-  through: "discount_categories",
-  foreignKey: "category_id",
-  otherKey: "discount_id", // Corrected to match actual primary key
-  as: "discountCodes",
-  onDelete: "CASCADE",
-});
+// CourseCategory.belongsToMany(DiscountCode, {
+//   through: "discount_categories",
+//   foreignKey: "category_id",
+//   otherKey: "discount_id", // Corrected to match actual primary key
+//   as: "discountCodes",
+//   onDelete: "CASCADE",
+// });
 
 // DiscountUsage associations
 DiscountCode.hasMany(DiscountUsage, {

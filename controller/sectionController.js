@@ -109,7 +109,7 @@ export const createSection = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 201, "Section, lessons, and resources created successfully", { sectionId: section.sectionId });
+    return sendSuccess(res,  "Section, lessons, and resources created successfully", { sectionId: section.sectionId });
   } catch (error) {
     console.error("Error creating section with lessons/resources:", error);
     await transaction.rollback();
@@ -157,7 +157,7 @@ export const updateSectionById = async (req, res) => {
     await section.save({ transaction });
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Section updated successfully!", { section });
+    return sendSuccess(res,  "Section updated successfully!", { section });
   } catch (error) {
     console.error("Error updating section:", error);
     await transaction.rollback();
@@ -214,7 +214,7 @@ export const getSectionsByCourseId = async (req, res) => {
       });
     });
 
-    return sendSuccess(res, 200, "Sections fetched successfully", { sections });
+    return sendSuccess(res,  "Sections fetched successfully", { sections });
   } catch (error) {
     console.error("Error fetching sections:", error);
     return sendServerError(res, error);
@@ -256,7 +256,7 @@ export const getSectionById = async (req, res) => {
       }
     });
 
-    return sendSuccess(res, 200, "Section fetched successfully", { section });
+    return sendSuccess(res,  "Section fetched successfully", { section });
   } catch (error) {
     console.error("Error fetching section by ID:", error);
     return sendServerError(res, error);
@@ -393,7 +393,7 @@ export const createSectionAdmin = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 201, "Section created successfully with lessons", {
+    return sendSuccess(res,  "Section created successfully with lessons", {
       section: section.toJSON(),
       lessons: createdLessons,
       totalLessons: createdLessons.length,
@@ -449,7 +449,7 @@ export const updateSectionAdmin = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Section updated successfully", {
+    return sendSuccess(res,  "Section updated successfully", {
       section: section.toJSON(),
       updatedLessons: updatedLessons.length,
       lessonDetails: updatedLessons.map((l) => l.toJSON()),
@@ -500,7 +500,7 @@ export const deleteSectionAdmin = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Section deleted successfully", {
+    return sendSuccess(res,  "Section deleted successfully", {
       deletedSection: {
         sectionId: section.sectionId,
         title: section.title,
@@ -552,7 +552,7 @@ export const reorderSections = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Sections reordered successfully", {
+    return sendSuccess(res,  "Sections reordered successfully", {
       courseId,
       reorderedSections: updates,
     });
@@ -674,7 +674,7 @@ export const getCourseContentManagement = async (req, res) => {
       })),
     }));
 
-    return sendSuccess(res, 200, "Course content management data fetched successfully", {
+    return sendSuccess(res,  "Course content management data fetched successfully", {
       course: {
         courseId: course.courseId,
         title: course.title,
@@ -755,7 +755,7 @@ export const bulkPublishContent = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, `Content ${action}ed successfully`, results);
+    return sendSuccess(res,  `Content ${action}ed successfully`, results);
   } catch (error) {
     await transaction.rollback();
     console.error("Bulk publish content error:", error);
@@ -783,7 +783,7 @@ export const uploadLessonVideo = async (req, res) => {
     lesson.videoUrl = req.file.location;
     await lesson.save();
 
-    return sendSuccess(res, 200, "Lesson video uploaded successfully", {
+    return sendSuccess(res,  "Lesson video uploaded successfully", {
       lessonId: lesson.lessonId,
       videoUrl: lesson.videoUrl,
     });

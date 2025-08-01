@@ -118,7 +118,7 @@ export const uploadFiles = async (req, res) => {
       },
     };
 
-    return sendSuccess(res, 200, successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully", responseData);
+    return sendSuccess(res,  successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully", responseData);
   } catch (error) {
     console.error("Upload error:", error);
     return sendServerError(res, error);
@@ -162,7 +162,7 @@ export const uploadSingleFile = async (req, res) => {
     };
     
     // Send successful response
-    return sendSuccess(res, 200, "File uploaded successfully", fileData);
+    return sendSuccess(res,  "File uploaded successfully", fileData);
   } catch (error) {
     console.error("Error uploading single file:", error);
     return sendServerError(res, "Failed to upload file", error);
@@ -307,7 +307,7 @@ export const uploadFieldFiles = async (req, res) => {
       },
     };
 
-    return sendSuccess(res, 200, successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully", responseData);
+    return sendSuccess(res,  successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully", responseData);
   } catch (error) {
     console.error("Upload error:", error);
     return sendServerError(res, error);

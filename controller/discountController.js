@@ -127,19 +127,20 @@ export const createDiscountCode = async (req, res) => {
     await transaction.commit();
 
     // Fetch complete discount code with associations
-    const completeDiscountCode = await DiscountCode.findByPk(discountCode.id, {
+    const completeDiscountCode = await DiscountCode.findByPk(discountCode.discountId, { // FIXED: use correct PK
       include: [
         {
           model: User,
           as: "creator",
-          attributes: ["userId", "firstName", "lastName", "email"], // FIXED: use correct PK and attributes
+          attributes: ["userId", "username", "email"], // FIXED: use correct PK and attributes
         },
-        {
-          model: CourseCategory,
-          as: "discountCategories", // FIXED: use correct alias
-          attributes: ["id", "title"],
-          through: { attributes: [] },
-        },
+        // TEMPORARILY DISABLED - discount categories association
+        // {
+        //   model: CourseCategory,
+        //   as: "discountCategories", // FIXED: use correct alias
+        //   attributes: ["id", "title"],
+        //   through: { attributes: [] },
+        // },
       ],
     });
 
@@ -203,14 +204,15 @@ export const getAllDiscountCodes = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["userId", "firstName", "lastName"],
+          attributes: ["userId", "username"],
         },
-        {
-          model: CourseCategory,
-          as: "discountCategories", // FIXED: use correct alias
-          attributes: ["id", "title"],
-          through: { attributes: [] },
-        },
+        // TEMPORARILY DISABLED - discount categories association
+        // {
+        //   model: CourseCategory,
+        //   as: "discountCategories", // FIXED: use correct alias
+        //   attributes: ["id", "title"],
+        //   through: { attributes: [] },
+        // },
       ],
       limit: parseInt(limit),
       offset: offset,
@@ -244,7 +246,7 @@ export const getAllDiscountCodes = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(res, 200, "Discount codes fetched successfully", {
+    return sendSuccess(res,  "Discount codes fetched successfully", {
       discountCodes: formattedDiscountCodes,
       pagination: {
         currentPage: parseInt(page),
@@ -269,19 +271,20 @@ export const getDiscountCodeById = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["userId", "firstName", "lastName", "email"],
+          attributes: ["userId", "username", "email"],
         },
-        {
-          model: CourseCategory,
-          as: "discountCategories", // FIXED: use correct alias
-          attributes: ["id", "title"],
-          through: { attributes: [] },
-        },
+        // TEMPORARILY DISABLED - discount categories association
+        // {
+        //   model: CourseCategory,
+        //   as: "discountCategories", // FIXED: use correct alias
+        //   attributes: ["id", "title"],
+        //   through: { attributes: [] },
+        // },
         {
           model: DiscountUsage,
           as: "usages",
           attributes: [
-            "id",
+            "usageId", // FIXED: use correct primary key
             "userId",
             "discountAmount",
             "originalAmount",
@@ -292,18 +295,18 @@ export const getDiscountCodeById = async (req, res) => {
             {
               model: User,
               as: "user",
-              attributes: ["id", "firstName", "lastName", "email"],
+              attributes: ["userId", "username", "email"], // FIXED: use correct PK
             },
             {
               model: Course,
               as: "course",
-              attributes: ["id", "title"],
+              attributes: ["courseId", "title"], // FIXED: use correct PK
               required: false,
             },
             {
               model: Project,
               as: "project",
-              attributes: ["id", "title"],
+              attributes: ["projectId", "title"], // FIXED: use correct PK
               required: false,
             },
           ],
@@ -345,7 +348,7 @@ export const getDiscountCodeById = async (req, res) => {
     );
     dcData.totalDiscountGiven = totalDiscountGiven;
 
-    return sendSuccess(res, 200, "Discount code fetched successfully", dcData);
+    return sendSuccess(res,  "Discount code fetched successfully", dcData);
   } catch (error) {
     console.error("Get discount code by ID error:", error);
     return sendServerError(res, error);
@@ -421,14 +424,15 @@ export const updateDiscountCode = async (req, res) => {
         {
           model: User,
           as: "creator",
-          attributes: ["userId", "firstName", "lastName", "email"],
+          attributes: ["userId", "username", "email"],
         },
-        {
-          model: CourseCategory,
-          as: "discountCategories", // FIXED: use correct alias
-          attributes: ["id", "title"],
-          through: { attributes: [] },
-        },
+        // TEMPORARILY DISABLED - discount categories association
+        // {
+        //   model: CourseCategory,
+        //   as: "discountCategories", // FIXED: use correct alias
+        //   attributes: ["id", "title"],
+        //   through: { attributes: [] },
+        // },
       ],
     });
 
@@ -475,7 +479,7 @@ export const deleteDiscountCode = async (req, res) => {
     await discountCode.destroy({ transaction });
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Discount code deleted successfully");
+    return sendSuccess(res,  "Discount code deleted successfully");
   } catch (error) {
     await transaction.rollback();
     console.error("Delete discount code error:", error);
@@ -524,7 +528,7 @@ export const validateDiscountCode = async (req, res) => {
 
     if (discountCode.maxUsesPerUser) {
       const userUsages = await DiscountUsage.count({
-        where: { userId, discountId: discountCode.id },
+        where: { userId, discountId: discountCode.discountId }, // FIXED: use correct PK
       });
       if (userUsages >= discountCode.maxUsesPerUser) {
         return sendError(res, 400, "You have reached the usage limit for this discount code");
@@ -594,9 +598,9 @@ export const validateDiscountCode = async (req, res) => {
       };
     });
 
-    return sendSuccess(res, 200, "Discount code applied to cart total", {
+    return sendSuccess(res,  "Discount code applied to cart total", {
       discountCode: {
-        id: discountCode.id,
+        id: discountCode.discountId, // FIXED: use correct PK
         code: discountCode.code,
         description: discountCode.description,
         discountType: discountCode.discountType,
@@ -663,7 +667,7 @@ export const getDiscountUsageStatistics = async (req, res) => {
 
     const totalDiscountResult = await DiscountUsage.findAll({
       attributes: [
-        [sequelize.fn("SUM", sequelize.col("discountAmount")), "totalDiscount"],
+        [sequelize.fn("SUM", sequelize.col("discount_amount")), "totalDiscount"], // FIXED: use snake_case column name
       ],
       where: whereConditions,
       raw: true,
@@ -677,26 +681,26 @@ export const getDiscountUsageStatistics = async (req, res) => {
     const usageByCode = await DiscountUsage.findAll({
       attributes: [
         [
-          sequelize.fn("COUNT", sequelize.col("DiscountUsage.id")),
+          sequelize.fn("COUNT", sequelize.col("DiscountUsage.usage_id")), // FIXED: use correct PK
           "usageCount",
         ],
-        [sequelize.fn("SUM", sequelize.col("discountAmount")), "totalDiscount"],
+        [sequelize.fn("SUM", sequelize.col("discount_amount")), "totalDiscount"], // FIXED: use snake_case
       ],
       include: [
         {
           model: DiscountCode,
           as: "discountCode",
-          attributes: ["id", "code", "description"],
+          attributes: ["discountId", "code", "description"], // FIXED: use correct PK
         },
       ],
       where: whereConditions,
       group: [
-        "discountCode.id",
+        "discountCode.discountId", // FIXED: use correct PK
         "discountCode.code",
         "discountCode.description",
       ],
       order: [
-        [sequelize.fn("COUNT", sequelize.col("DiscountUsage.id")), "DESC"],
+        [sequelize.fn("COUNT", sequelize.col("DiscountUsage.usage_id")), "DESC"], // FIXED: use correct PK with snake_case
       ],
       limit: 10,
     });
@@ -713,7 +717,7 @@ export const getDiscountUsageStatistics = async (req, res) => {
           "type",
         ],
         [sequelize.fn("COUNT", sequelize.col("id")), "count"],
-        [sequelize.fn("SUM", sequelize.col("discountAmount")), "totalDiscount"],
+        [sequelize.fn("SUM", sequelize.col("discount_amount")), "totalDiscount"],
       ],
       where: whereConditions,
       group: [
@@ -731,7 +735,7 @@ export const getDiscountUsageStatistics = async (req, res) => {
       attributes: [
         [sequelize.fn("DATE", sequelize.col("createdAt")), "date"],
         [sequelize.fn("COUNT", sequelize.col("id")), "count"],
-        [sequelize.fn("SUM", sequelize.col("discountAmount")), "totalDiscount"],
+        [sequelize.fn("SUM", sequelize.col("discount_amount")), "totalDiscount"],
       ],
       where: whereConditions,
       group: [sequelize.fn("DATE", sequelize.col("createdAt"))],
@@ -739,7 +743,7 @@ export const getDiscountUsageStatistics = async (req, res) => {
       raw: true,
     });
 
-    return sendSuccess(res, 200, "Discount usage statistics fetched", {
+    return sendSuccess(res,  "Discount usage statistics fetched", {
       overview: {
         totalUsages,
         totalDiscountGiven,
@@ -829,7 +833,7 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
       include: [
         {
           model: User,
-          attributes: ["userId", "firstName", "lastName", "email"],
+          attributes: ["userId", "username", "email"],
           as: "creator",
         },
       ],
@@ -850,7 +854,7 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
           attributes: [
             [sequelize.fn("COUNT", sequelize.col("*")), "totalUsages"],
             [
-              sequelize.fn("SUM", sequelize.col("discountAmount")),
+              sequelize.fn("SUM", sequelize.col("discount_amount")),
               "totalDiscountGiven",
             ],
             [
@@ -875,7 +879,7 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
           include: [
             {
               model: User,
-              attributes: ["firstName", "lastName", "email"],
+              attributes: ["username", "email"],
             },
           ],
           order: [["createdAt", "DESC"]],
@@ -943,7 +947,7 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
       ),
     };
 
-    return sendSuccess(res, 200, "Discount codes retrieved successfully", {
+    return sendSuccess(res,  "Discount codes retrieved successfully", {
       discountCodes: enrichedDiscountCodes,
       pagination: {
         currentPage: parseInt(page),
@@ -1013,7 +1017,7 @@ export const getDiscountAnalytics = async (req, res) => {
       attributes: [
         [sequelize.fn("DATE", sequelize.col("createdAt")), "date"],
         [sequelize.fn("COUNT", sequelize.col("*")), "usageCount"],
-        [sequelize.fn("SUM", sequelize.col("discountAmount")), "totalDiscount"],
+        [sequelize.fn("SUM", sequelize.col("discount_amount")), "totalDiscount"],
       ],
       group: [sequelize.fn("DATE", sequelize.col("createdAt"))],
       order: [[sequelize.fn("DATE", sequelize.col("createdAt")), "ASC"]],
@@ -1046,7 +1050,7 @@ export const getDiscountAnalytics = async (req, res) => {
         [sequelize.col("courseId"), "courseId"],
         [sequelize.col("projectId"), "projectId"],
         [sequelize.fn("COUNT", sequelize.col("*")), "usageCount"],
-        [sequelize.fn("SUM", sequelize.col("discountAmount")), "totalDiscount"],
+        [sequelize.fn("SUM", sequelize.col("discount_amount")), "totalDiscount"],
       ],
       include: [
         {

@@ -34,10 +34,10 @@ export const getSettings = async (req, res) => {
 
     // If specific key requested, return single object
     if (key && settings.length === 1) {
-      return sendSuccess(res, 200, "Setting retrieved successfully", settings[0]);
+      return sendSuccess(res,  "Setting retrieved successfully", settings[0]);
     }
 
-    sendSuccess(res, 200, "Settings retrieved successfully", settings);
+    sendSuccess(res,  "Settings retrieved successfully", settings);
   } catch (error) {
     console.error("Get settings error:", error);
     sendServerError(res, error);
@@ -77,7 +77,6 @@ export const upsertSetting = async (req, res) => {
 
     sendSuccess(
       res,
-      200,
       existingSetting
         ? "Setting updated successfully"
         : "Setting created successfully",
@@ -101,7 +100,7 @@ export const deleteSetting = async (req, res) => {
 
     await setting.update({ isActive: false });
 
-    sendSuccess(res, 200, "Setting deleted successfully");
+    sendSuccess(res,  "Setting deleted successfully");
   } catch (error) {
     console.error("Delete setting error:", error);
     sendServerError(res, error);
@@ -159,7 +158,6 @@ export const initializeDefaultSettings = async (req, res) => {
 
     sendSuccess(
       res,
-      200,
       `Initialized ${createdSettings.length} default settings`,
       createdSettings
     );
@@ -277,7 +275,7 @@ export const getNotificationTemplates = async (req, res) => {
       totalUsage: filteredTemplates.reduce((sum, t) => sum + t.usageCount, 0),
     };
 
-    sendSuccess(res, 200, "Notification templates retrieved successfully", {
+    sendSuccess(res,  "Notification templates retrieved successfully", {
       templates: paginatedTemplates,
       pagination: {
         currentPage: parseInt(page),
@@ -355,7 +353,7 @@ export const createNotificationTemplate = async (req, res) => {
       usageCount: 0,
     };
 
-    sendSuccess(res, 200, "Notification template created successfully", newTemplate);
+    sendSuccess(res,  "Notification template created successfully", newTemplate);
   } catch (error) {
     console.error("Create notification template error:", error);
     sendServerError(res, error);
@@ -449,7 +447,7 @@ export const getLegalPages = async (req, res) => {
       totalViews: filteredPages.reduce((sum, p) => sum + p.viewCount, 0),
     };
 
-    sendSuccess(res, 200, "Legal pages retrieved successfully", {
+    sendSuccess(res,  "Legal pages retrieved successfully", {
       pages: paginatedPages,
       pagination: {
         currentPage: parseInt(page),
@@ -519,7 +517,7 @@ export const getSystemConfig = async (req, res) => {
       ? { [category]: mockConfig[category] }
       : mockConfig;
 
-    sendSuccess(res, 200, "System configuration retrieved successfully", responseData);
+    sendSuccess(res,  "System configuration retrieved successfully", responseData);
   } catch (error) {
     console.error("Get system config error:", error);
     sendServerError(res, error);
@@ -546,7 +544,7 @@ export const updateSystemConfig = async (req, res) => {
       updatedBy,
     };
 
-    sendSuccess(res, 200, "System configuration updated successfully", updatedConfig);
+    sendSuccess(res,  "System configuration updated successfully", updatedConfig);
   } catch (error) {
     console.error("Update system config error:", error);
     sendServerError(res, error);

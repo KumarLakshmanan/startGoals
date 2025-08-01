@@ -38,6 +38,12 @@ const DiscountCode = sequelize.define(
       },
       comment: "Percentage (e.g., 10.00) or fixed amount (e.g., 100.00)",
     },
+    applicableType: {
+      type: DataTypes.ENUM("course", "project", "both"),
+      allowNull: false,
+      defaultValue: "both",
+      comment: "What this discount can be applied to",
+    },
     maxDiscountAmount: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,

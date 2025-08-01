@@ -67,7 +67,7 @@ export const generateCertificate = async (req, res) => {
     });
     
     if (existingCertificate) {
-      return sendSuccess(res, 200, "Certificate already exists", existingCertificate);
+      return sendSuccess(res, "Certificate already exists", existingCertificate);
     }
     
     // Generate a unique certificate ID/number
@@ -98,7 +98,7 @@ export const generateCertificate = async (req, res) => {
       completionDate: new Date()
     };
     
-    return sendSuccess(res, 201, "Certificate generated successfully", mockCertificate);
+    return sendSuccess(res, "Certificate generated successfully", mockCertificate);
   } catch (error) {
     console.error("Error generating certificate:", error);
     return sendServerError(res, error);
@@ -155,7 +155,7 @@ export const getUserCertificates = async (req, res) => {
     ];
     const count = 1;
     
-    return sendSuccess(res, 200, "Certificates retrieved successfully", {
+    return sendSuccess(res, "Certificates retrieved successfully", {
       certificates: mockCertificates,
       pagination: {
         totalItems: count,
@@ -228,7 +228,7 @@ export const getCertificateById = async (req, res) => {
       }
     };
     
-    return sendSuccess(res, 200, "Certificate retrieved successfully", mockCertificate);
+    return sendSuccess(res, "Certificate retrieved successfully", mockCertificate);
   } catch (error) {
     console.error("Error fetching certificate:", error);
     return sendServerError(res, error);
@@ -282,7 +282,7 @@ export const verifyCertificate = async (req, res) => {
       isValid: true
     };
     
-    return sendSuccess(res, 200, "Certificate is valid", mockCertificate);
+    return sendSuccess(res, "Certificate is valid", mockCertificate);
   } catch (error) {
     console.error("Error verifying certificate:", error);
     return sendServerError(res, error);
@@ -336,7 +336,7 @@ export const downloadCertificate = async (req, res) => {
     */
     
     // For now, return a success message
-    return sendSuccess(res, 200, "Certificate download initiated", {
+    return sendSuccess(res, "Certificate download initiated", {
       certificateId,
       downloadUrl: `/api/certificates/${certificateId}/download-link`
     });
@@ -437,7 +437,7 @@ export const getAllCertificates = async (req, res) => {
     ];
     const count = 1;
     
-    return sendSuccess(res, 200, "Certificates retrieved successfully", {
+    return sendSuccess(res, "Certificates retrieved successfully", {
       certificates: mockCertificates,
       pagination: {
         totalItems: count,

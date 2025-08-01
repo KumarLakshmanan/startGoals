@@ -71,7 +71,7 @@ app.get('/sync-db', syncDbMiddleware, (req, res) => {
 app.get('/db-models', syncDbMiddleware, async (req, res) => {
   try {
     const models = await getModels();
-    return sendSuccess(res, 200, "Fetched database models successfully", models);
+    return sendSuccess(res,  "Fetched database models successfully", models);
   } catch (error) {
     console.error("Failed to fetch database models:", error);
     return sendServerError(res, error);

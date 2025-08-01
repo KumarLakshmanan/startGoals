@@ -47,7 +47,7 @@ export const getAllBanners = async (req, res) => {
     });
 
 
-    return sendSuccess(res, 200, "Banners fetched successfully",
+    return sendSuccess(res, "Banners fetched successfully",
       banners,
     );
   } catch (error) {
@@ -83,7 +83,7 @@ export const getBannerById = async (req, res) => {
       return sendNotFound(res, "Banner not found", { id: "Banner not found" });
     }
 
-    return sendSuccess(res, 200, "Banner fetched successfully", banner);
+    return sendSuccess(res, "Banner fetched successfully", banner);
   } catch (error) {
     console.error("Get banner by ID error:", error);
     return sendServerError(res, error);
@@ -186,7 +186,7 @@ export const createBanner = async (req, res) => {
     };
     await Banner.create(bannerData);
 
-    return sendSuccess(res, 200, "Banner created successfully", bannerData);
+    return sendSuccess(res, "Banner created successfully", bannerData);
   } catch (error) {
     console.error("Create banner error:", error);
     // Ensure we send a response even if there's an error
@@ -309,7 +309,7 @@ export const updateBanner = async (req, res) => {
 
     await banner.update(updateData);
 
-    return sendSuccess(res, 200, "Banner updated successfully", banner);
+    return sendSuccess(res, "Banner updated successfully", banner);
   } catch (error) {
     console.error("Update banner error:", error);
     return sendServerError(res, error);
@@ -338,7 +338,7 @@ export const deleteBanner = async (req, res) => {
     // Soft delete (if paranoid is enabled) or hard delete
     await banner.destroy();
 
-    return sendSuccess(res, 200, "Banner deleted successfully");
+    return sendSuccess(res, "Banner deleted successfully");
   } catch (error) {
     console.error("Delete banner error:", error);
     return sendServerError(res, error);
@@ -413,7 +413,7 @@ export const bulkCreateBanners = async (req, res) => {
       returning: true,
     });
 
-    return sendSuccess(res, 201, `${createdBanners.length} banners created successfully`, createdBanners);
+    return sendSuccess(res, `${createdBanners.length} banners created successfully`, createdBanners);
   } catch (error) {
     console.error("Bulk create banners error:", error);
     return sendServerError(res, error);
@@ -435,7 +435,7 @@ export const getActiveBanners = async (req, res) => {
       ],
     });
 
-    return sendSuccess(res, 200, "Active banners fetched successfully", banners);
+    return sendSuccess(res, "Active banners fetched successfully", banners);
   } catch (error) {
     console.error("Get active banners error:", error);
     return sendServerError(res, error);
@@ -481,7 +481,7 @@ export const bulkDeleteBanners = async (req, res) => {
       },
     });
 
-    return sendSuccess(res, 200, `${deletedCount} banners deleted successfully`, { deletedCount });
+    return sendSuccess(res, `${deletedCount} banners deleted successfully`, { deletedCount });
   } catch (error) {
     console.error("Bulk delete banners error:", error);
     return sendServerError(res, error);

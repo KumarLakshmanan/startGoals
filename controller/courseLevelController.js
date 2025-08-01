@@ -67,7 +67,7 @@ export const bulkUploadCourseLevels = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Course levels uploaded successfully!", newLevels);
+    return sendSuccess(res,  "Course levels uploaded successfully!", newLevels);
   } catch (error) {
     await transaction.rollback();
     console.error("Error during course levels upload:", error);
@@ -105,7 +105,7 @@ export const getAllCourseLevels = async (req, res) => {
       order: [[sortField, order]],
     });
 
-    return sendSuccess(res, 200, "Course levels retrieved successfully", courseLevels);
+    return sendSuccess(res,  "Course levels retrieved successfully", courseLevels);
   } catch (error) {
     console.error("Error fetching course levels:", error);
     return sendServerError(res, error);
@@ -124,7 +124,7 @@ export const getCourseLevelById = async (req, res) => {
       return sendNotFound(res, `Course level with ID ${levelId} not found`);
     }
 
-    return sendSuccess(res, 200, "Course level retrieved successfully", courseLevel);
+    return sendSuccess(res,  "Course level retrieved successfully", courseLevel);
   } catch (error) {
     console.error("Error fetching course level by ID:", error);
     return sendServerError(res, error);
@@ -158,7 +158,7 @@ export const updateCourseLevel = async (req, res) => {
     courseLevel.order = order;
     await courseLevel.save();
 
-    return sendSuccess(res, 200, "Course level updated successfully", courseLevel);
+    return sendSuccess(res,  "Course level updated successfully", courseLevel);
   } catch (error) {
     console.error("Error updating course level:", error);
     return sendServerError(res, error);
@@ -175,7 +175,7 @@ export const deleteCourseLevel = async (req, res) => {
     }
 
     await courseLevel.destroy();
-    return sendSuccess(res, 200, "Course level deleted successfully");
+    return sendSuccess(res,  "Course level deleted successfully");
   } catch (error) {
     console.error("Error deleting course level:", error);
     return sendServerError(res, error);
@@ -202,7 +202,7 @@ export const createCourseLevel = async (req, res) => {
       order: order || 0,
     });
 
-    return sendSuccess(res, 200, "Course level created successfully", newLevel);
+    return sendSuccess(res,  "Course level created successfully", newLevel);
   } catch (error) {
     console.error("Error creating course level:", error);
     return sendServerError(res, error);
@@ -241,7 +241,7 @@ export const reorderCourseLevels = async (req, res) => {
     }
 
     await transaction.commit();
-    return sendSuccess(res, 200, "Course levels reordered successfully");
+    return sendSuccess(res,  "Course levels reordered successfully");
   } catch (error) {
     await transaction.rollback();
     console.error("Error reordering course levels:", error);

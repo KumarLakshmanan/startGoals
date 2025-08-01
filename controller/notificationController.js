@@ -45,7 +45,7 @@ export const getUserNotifications = async (req, res) => {
       order: [['createdAt', 'DESC']],
     });
     
-    return sendSuccess(res, 200, "Notifications retrieved successfully", {
+    return sendSuccess(res,  "Notifications retrieved successfully", {
       notifications,
       pagination: {
         totalItems: count,
@@ -82,7 +82,7 @@ export const getNotificationById = async (req, res) => {
       return sendNotFound(res, "Notification not found");
     }
     
-    return sendSuccess(res, 200, "Notification retrieved successfully", notification);
+    return sendSuccess(res,  "Notification retrieved successfully", notification);
   } catch (error) {
     console.error("Error fetching notification:", error);
     return sendServerError(res, error);
@@ -114,7 +114,7 @@ export const markNotificationAsRead = async (req, res) => {
     notification.isRead = true;
     await notification.save();
     
-    return sendSuccess(res, 200, "Notification marked as read", { id: notificationId });
+    return sendSuccess(res,  "Notification marked as read", { id: notificationId });
   } catch (error) {
     console.error("Error marking notification as read:", error);
     return sendServerError(res, error);
@@ -136,7 +136,7 @@ export const markAllNotificationsAsRead = async (req, res) => {
       { where: { userId, isRead: false } }
     );
     
-    return sendSuccess(res, 200, "All notifications marked as read");
+    return sendSuccess(res,  "All notifications marked as read");
   } catch (error) {
     console.error("Error marking all notifications as read:", error);
     return sendServerError(res, error);
@@ -167,7 +167,7 @@ export const deleteNotification = async (req, res) => {
     
     await notification.destroy();
     
-    return sendSuccess(res, 200, "Notification deleted successfully");
+    return sendSuccess(res,  "Notification deleted successfully");
   } catch (error) {
     console.error("Error deleting notification:", error);
     return sendServerError(res, error);
@@ -212,7 +212,7 @@ export const createNotification = async (req, res) => {
       notifications.push(notification);
     }
     
-    return sendSuccess(res, 201, "Notifications created successfully", { 
+    return sendSuccess(res,  "Notifications created successfully", { 
       count: notifications.length,
       notifications
     });
@@ -250,7 +250,7 @@ export const getNotificationSettings = async (req, res) => {
       marketingEmails: false
     };
     
-    return sendSuccess(res, 200, "Notification settings retrieved", settings);
+    return sendSuccess(res,  "Notification settings retrieved", settings);
   } catch (error) {
     console.error("Error retrieving notification settings:", error);
     return sendServerError(res, error);
@@ -287,7 +287,7 @@ export const updateNotificationSettings = async (req, res) => {
     
     await user.save();
     
-    return sendSuccess(res, 200, "Notification settings updated", user.notificationSettings);
+    return sendSuccess(res,  "Notification settings updated", user.notificationSettings);
   } catch (error) {
     console.error("Error updating notification settings:", error);
     return sendServerError(res, error);

@@ -34,7 +34,7 @@ export const getSearchSuggestions = async (req, res) => {
 
     // Validate query parameter
     if (!query || query.length < 2) {
-      return sendSuccess(res, 200, "Query too short", {
+      return sendSuccess(res,  "Query too short", {
         suggestions: [],
         recent_searches:
           include_recent === "true"
@@ -243,7 +243,7 @@ export const getSearchSuggestions = async (req, res) => {
       .sort((a, b) => (b.relevance_score || 0) - (a.relevance_score || 0))
       .slice(0, parseInt(limit));
 
-    return sendSuccess(res, 200, "Search suggestions fetched successfully", {
+    return sendSuccess(res,  "Search suggestions fetched successfully", {
       suggestions: sortedSuggestions,
       recent_searches:
         include_recent === "true"
@@ -456,7 +456,7 @@ export const searchCourses = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(res, 200, "Courses fetched successfully", {
+    return sendSuccess(res,  "Courses fetched successfully", {
       courses: formattedCourses,
       pagination: {
         currentPage: parseInt(page),
@@ -649,7 +649,7 @@ export const comprehensiveSearch = async (req, res) => {
 
     const totalPages = Math.ceil(results.total / parseInt(limit));
 
-    return sendSuccess(res, 200, "Comprehensive search completed successfully", {
+    return sendSuccess(res,  "Comprehensive search completed successfully", {
       results: combinedResults,
       breakdown:
         type === "all"
@@ -818,7 +818,7 @@ export const searchInstructors = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(res, 200, "Instructors fetched successfully", {
+    return sendSuccess(res,  "Instructors fetched successfully", {
       instructors: formattedInstructors,
       pagination: {
         currentPage: parseInt(page),
@@ -966,7 +966,7 @@ export const getSearchFilters = async (req, res) => {
       { id: "over_200", name: "Over $200", min: 200, max: null },
     ];
 
-    return sendSuccess(res, 200, "Search filters fetched successfully", filters);
+    return sendSuccess(res,  "Search filters fetched successfully", filters);
   } catch (error) {
     console.error("Get search filters error:", error);
     return sendServerError(res, error);
@@ -1068,7 +1068,7 @@ export const getSearchAnalytics = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(res, 200, "Search analytics fetched successfully", {
+    return sendSuccess(res,  "Search analytics fetched successfully", {
       analytics,
       pagination: {
         currentPage: parseInt(page),

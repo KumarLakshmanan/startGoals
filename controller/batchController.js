@@ -96,7 +96,7 @@ export const createBatch = async (req, res) => {
       },
       { transaction: t },
     );    await t.commit();
-    return sendSuccess(res, 201, "Batch created", batch);
+    return sendSuccess(res, "Batch created", batch);
   } catch (err) {
     await t.rollback();
     console.error("Batch creation error:", err);
@@ -194,7 +194,7 @@ export const getAllBatches = async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [[sortBy, sortOrder.toUpperCase()]],
-    });    return sendSuccess(res, 200, "Batches retrieved successfully", {
+    });    return sendSuccess(res, "Batches retrieved successfully", {
         batches: rows,
         pagination: {
           currentPage: parseInt(page),
@@ -250,7 +250,7 @@ export const getBatchById = async (req, res) => {
     if (!batch) {
       return sendNotFound(res, "Batch not found");
     }
-    return sendSuccess(res, 200, "Batch retrieved successfully", batch);
+    return sendSuccess(res, "Batch retrieved successfully", batch);
   } catch (err) {
     console.error("Get batch by ID error:", err);
     return sendServerError(res, err);
@@ -290,7 +290,7 @@ export const updateBatch = async (req, res) => {  const t = await sequelize.tran
     if (maxStudents !== undefined) updateData.maxStudents = maxStudents;    await batch.update(updateData, { transaction: t });
 
     await t.commit();
-    return sendSuccess(res, 200, "Batch updated successfully", batch);
+    return sendSuccess(res, "Batch updated successfully", batch);
   } catch (err) {
     await t.rollback();
     console.error("Update batch error:", err);
@@ -332,7 +332,7 @@ export const deleteBatch = async (req, res) => {
     }    await batch.destroy({ transaction: t });
 
     await t.commit();
-    return sendSuccess(res, 200, "Batch deleted successfully");
+    return sendSuccess(res, "Batch deleted successfully");
   } catch (err) {
     await t.rollback();
     console.error("Delete batch error:", err);
@@ -384,7 +384,7 @@ export const getBatchesByCourse = async (req, res) => {
       limit: parseInt(limit),
       offset: parseInt(offset),
       order: [["createdAt", "DESC"]],
-    });    return sendSuccess(res, 200, "Batches retrieved successfully", {
+    });    return sendSuccess(res, "Batches retrieved successfully", {
         batches: rows,
         pagination: {
           currentPage: parseInt(page),
@@ -531,7 +531,7 @@ export const createBatchWithAutoEnrollment = async (req, res) => {
       }
     }    await t.commit();
 
-    return sendSuccess(res, 200, "Batch created successfully with auto-enrollment", {
+    return sendSuccess(res, "Batch created successfully with auto-enrollment", {
       batch,
       enrolledStudentsCount: enrolledStudents.length,
       assignedTeachersCount: teacherIds.length,
@@ -630,7 +630,7 @@ export const manageBatchStudents = async (req, res) => {
       }
     }    await t.commit();
 
-    return sendSuccess(res, 200, `Batch ${role}s ${action} operation completed`, results);
+    return sendSuccess(res, `Batch ${role}s ${action} operation completed`, results);
   } catch (error) {
     await t.rollback();
     console.error("Manage batch students error:", error);
@@ -727,7 +727,7 @@ export const createBatchSchedule = async (req, res) => {
       }
     }    await t.commit();
 
-    return sendSuccess(res, 200, "Batch schedule created successfully", {
+    return sendSuccess(res, "Batch schedule created successfully", {
       batchId,
       sessionsCreated: createdSessions.length,
       sessions: createdSessions,
@@ -825,7 +825,7 @@ export const getBatchAnalytics = async (req, res) => {
           }, 0) /
           completedSessions.length /
           (1000 * 60) // Convert to minutes
-        : 0;    return sendSuccess(res, 200, "Batch analytics retrieved successfully", {
+        : 0;    return sendSuccess(res, "Batch analytics retrieved successfully", {
       batch: {
         batchId: batch.batchId,
         title: batch.title,
@@ -928,7 +928,7 @@ export const bulkBatchOperations = async (req, res) => {
       }
     }    await t.commit();
 
-    return sendSuccess(res, 200, `Bulk ${action} operation completed`, results);
+    return sendSuccess(res, `Bulk ${action} operation completed`, results);
   } catch (error) {
     await t.rollback();
     console.error("Bulk batch operations error:", error);

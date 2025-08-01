@@ -97,7 +97,7 @@ export const getAllTeachers = async (req, res) => {
       distinct: true,
     });
 
-    return sendSuccess(res, 200, "Teachers fetched successfully", teachers);
+    return sendSuccess(res,  "Teachers fetched successfully", teachers);
   } catch (error) {
     console.error("Get all teachers error:", error);
     return sendServerError(res, error);
@@ -123,7 +123,7 @@ export const getTeacherById = async (req, res) => {
       return sendNotFound(res, "Teacher not found");
     }
 
-    return sendSuccess(res, 200, "Teacher fetched successfully", teacher);
+    return sendSuccess(res,  "Teacher fetched successfully", teacher);
   } catch (error) {
     console.error("Get teacher by ID error:", error);
     return sendServerError(res, error);
@@ -197,7 +197,7 @@ export const createTeacher = async (req, res) => {
     const teacherData = teacher.toJSON();
     delete teacherData.password;
 
-    return sendSuccess(res, 200, "Teacher created successfully", {
+    return sendSuccess(res,  "Teacher created successfully", {
       teacher: teacherData,
     });
   } catch (error) {
@@ -281,7 +281,7 @@ export const updateTeacher = async (req, res) => {
     const updatedTeacher = teacher.toJSON();
     delete updatedTeacher.password;
 
-    return sendSuccess(res, 200, "Teacher updated successfully", {
+    return sendSuccess(res,  "Teacher updated successfully", {
       teacher: updatedTeacher,
     });
   } catch (error) {
@@ -376,7 +376,6 @@ export const deleteTeacher = async (req, res) => {
 
     return sendSuccess(
       res,
-      200,
       `Teacher ${permanent === "true" ? "permanently deleted" : "deleted"} successfully`,
       {
         reassignedCourses: reassignToTeacherId ? activeCourses : 0,
@@ -427,7 +426,7 @@ export const assignTeacherToCourse = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Teacher assigned to course successfully", {
+    return sendSuccess(res,  "Teacher assigned to course successfully", {
       courseId,
       courseTitle: course.title,
       newTeacher: {
@@ -477,7 +476,7 @@ export const assignTeacherToBatch = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Teacher assigned to batch successfully", {
+    return sendSuccess(res,  "Teacher assigned to batch successfully", {
       batchId,
       batchTitle: batch.title,
       newTeacher: {
@@ -641,7 +640,7 @@ export const getTeacherPerformanceReport = async (req, res) => {
         return acc;
       }, {});
 
-    return sendSuccess(res, 200, "Teacher performance report fetched successfully", {
+    return sendSuccess(res,  "Teacher performance report fetched successfully", {
       teacher: {
         id: teacher.userId,
         name: teacher.username,
@@ -730,7 +729,7 @@ export const getTeacherStudentFeedback = async (req, res) => {
       ),
     };
 
-    return sendSuccess(res, 200, "Teacher student feedback fetched successfully", {
+    return sendSuccess(res,  "Teacher student feedback fetched successfully", {
       feedback: ratings.rows,
       summary,
       pagination: {
@@ -799,7 +798,7 @@ export const getTeacherAssignedCourses = async (req, res) => {
       return courseData;
     });
 
-    return sendSuccess(res, 200, "Teacher assigned courses fetched successfully", {
+    return sendSuccess(res,  "Teacher assigned courses fetched successfully", {
       courses: coursesWithStats,
       pagination: {
         currentPage: parseInt(page),

@@ -317,7 +317,7 @@ export const createProject = async (req, res) => {
       ],
     });
 
-    return sendSuccess(res, 200, "Project created successfully", completeProject);
+    return sendSuccess(res,  "Project created successfully", completeProject);
   } catch (error) {
     await transaction.rollback();
     console.error("Create project error:", error);
@@ -469,7 +469,7 @@ export const getAllProjects = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(res, 200, "Projects fetched successfully", {
+    return sendSuccess(res,  "Projects fetched successfully", {
       projects: projectsWithPurchaseStatus,
       pagination: {
         currentPage: parseInt(page),
@@ -603,7 +603,7 @@ export const getProjectById = async (req, res) => {
     await project.increment("views");
     projectData.views = project.views + 1;
 
-    return sendSuccess(res, 200, "Project fetched successfully", projectData);
+    return sendSuccess(res,  "Project fetched successfully", projectData);
   } catch (error) {
     console.error("Get project by ID error:", error);
     return sendServerError(res, error);
@@ -666,7 +666,7 @@ export const updateProject = async (req, res) => {
       ],
     });
 
-    return sendSuccess(res, 200, "Project updated successfully", updatedProject);
+    return sendSuccess(res,  "Project updated successfully", updatedProject);
   } catch (error) {
     await transaction.rollback();
     console.error("Update project error:", error);
@@ -707,7 +707,7 @@ export const deleteProject = async (req, res) => {
     await project.destroy({ transaction });
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Project deleted successfully");
+    return sendSuccess(res,  "Project deleted successfully");
   } catch (error) {
     await transaction.rollback();
     console.error("Delete project error:", error);
@@ -825,7 +825,7 @@ export const initiateProjectPurchase = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 201, "Purchase initiated successfully", {
+    return sendSuccess(res,  "Purchase initiated successfully", {
       purchaseId: purchase.id,
       orderNumber: purchase.orderNumber,
       originalPrice: purchase.originalPrice,
@@ -900,7 +900,7 @@ export const completeProjectPurchase = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Purchase status updated successfully", purchase);
+    return sendSuccess(res,  "Purchase status updated successfully", purchase);
   } catch (error) {
     await transaction.rollback();
     console.error("Complete purchase error:", error);
@@ -954,7 +954,7 @@ export const getUserPurchases = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(res, 200, "Purchases fetched successfully", {
+    return sendSuccess(res,  "Purchases fetched successfully", {
       purchases,
       pagination: {
         currentPage: parseInt(page),
@@ -1088,7 +1088,7 @@ export const getProjectStatistics = async (req, res) => {
       order: [[sequelize.fn("COUNT", sequelize.col("Project.id")), "DESC"]],
     });
 
-    return sendSuccess(res, 200, "Project statistics fetched successfully", {
+    return sendSuccess(res,  "Project statistics fetched successfully", {
       overview: {
         totalProjects,
         publishedProjects,
@@ -1226,7 +1226,7 @@ export const getProjectBuyers = async (req, res) => {
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    return sendSuccess(res, 200, "Project buyers retrieved successfully", {
+    return sendSuccess(res,  "Project buyers retrieved successfully", {
       purchases,
       pagination: {
         total: count,
@@ -1297,7 +1297,7 @@ export const getProjectDownloads = async (req, res) => {
       raw: true,
     });
 
-    return sendSuccess(res, 200, "Project download statistics retrieved successfully", {
+    return sendSuccess(res,  "Project download statistics retrieved successfully", {
       totalDownloads,
       purchaseDownloads: purchases,
       downloadTrends: downloadsByDay,
@@ -1333,7 +1333,7 @@ export const updateProjectStatus = async (req, res) => {
 
     await project.update(updateData);
 
-    return sendSuccess(res, 200, `Project status updated to ${status}`, project);
+    return sendSuccess(res,  `Project status updated to ${status}`, project);
   } catch (error) {
     console.error("Update project status error:", error);
     return sendServerError(res, error);
@@ -1374,7 +1374,7 @@ export const bulkUpdateProjectStatus = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, `${projectIds.length} projects updated to ${status}`);
+    return sendSuccess(res,  `${projectIds.length} projects updated to ${status}`);
   } catch (error) {
     await transaction.rollback();
     console.error("Bulk update project status error:", error);
@@ -1434,7 +1434,7 @@ export const getProjectReviews = async (req, res) => {
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    return sendSuccess(res, 200, "Project reviews retrieved successfully", {
+    return sendSuccess(res,  "Project reviews retrieved successfully", {
       reviews,
       pagination: {
         total: count,
@@ -1502,7 +1502,7 @@ export const updateReviewStatus = async (req, res) => {
       }
     }
 
-    return sendSuccess(res, 200, `Review status updated to ${status}`, review);
+    return sendSuccess(res,  `Review status updated to ${status}`, review);
   } catch (error) {
     console.error("Update review status error:", error);
     return sendServerError(res, error);
@@ -1590,7 +1590,7 @@ export const bulkUpdateReviewStatus = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, `${reviewIds.length} reviews updated to ${status}`);
+    return sendSuccess(res,  `${reviewIds.length} reviews updated to ${status}`);
   } catch (error) {
     await transaction.rollback();
     console.error("Bulk update review status error:", error);
@@ -1609,7 +1609,7 @@ export const getProjectSettings = async (req, res) => {
       settings = await ProjectSettings.create({});
     }
 
-    return sendSuccess(res, 200, "Project settings retrieved successfully", settings);
+    return sendSuccess(res,  "Project settings retrieved successfully", settings);
   } catch (error) {
     console.error("Get project settings error:", error);
     return sendServerError(res, error);
@@ -1648,7 +1648,7 @@ export const updateProjectSettings = async (req, res) => {
       projectEmailTemplate: projectEmailTemplate !== undefined ? projectEmailTemplate : settings.projectEmailTemplate,
     });
 
-    return sendSuccess(res, 200, "Project settings updated successfully", settings);
+    return sendSuccess(res,  "Project settings updated successfully", settings);
   } catch (error) {
     console.error("Update project settings error:", error);
     return sendServerError(res, error);

@@ -130,7 +130,6 @@ export const uploadCourseFiles = async (req, res) => {
 
     return sendSuccess(
       res, 
-      201, 
       `${uploadedFiles.length} file(s) uploaded successfully`, 
       filesWithDetails
     );
@@ -234,7 +233,6 @@ export const getCourseFiles = async (req, res) => {
 
     return sendSuccess(
       res, 
-      200, 
       "Course files retrieved successfully", 
       {
         files: formattedFiles,
@@ -405,7 +403,7 @@ export const updateCourseFile = async (req, res) => {
       ],
     });
 
-    return sendSuccess(res, 200, "File updated successfully", updatedFile);
+    return sendSuccess(res, "File updated successfully", updatedFile);
   } catch (error) {
     console.error("Update course file error:", error);
     return sendServerError(res, "Failed to update file", error.message);
@@ -452,7 +450,7 @@ export const deleteCourseFile = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "File deleted successfully");
+    return sendSuccess(res, "File deleted successfully");
   } catch (error) {
     await transaction.rollback();
     console.error("Delete course file error:", error);

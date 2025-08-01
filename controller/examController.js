@@ -88,7 +88,7 @@ export const bulkUploadExams = async (req, res) => {
     const createdExams = await Exam.bulkCreate(examsToCreate, {
       ignoreDuplicates: true,
     });
-    return sendSuccess(res, 200, "Exams uploaded successfully", createdExams);
+    return sendSuccess(res,  "Exams uploaded successfully", createdExams);
   } catch (error) {
     console.error("Bulk upload error:", error);
     return sendServerError(res, error);
@@ -122,7 +122,7 @@ export const getAllExams = async (req, res) => {
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    return sendSuccess(res, 200, "Exams fetched successfully", exams);
+    return sendSuccess(res,  "Exams fetched successfully", exams);
   } catch (error) {
     console.error("Fetch error:", error);
     return sendServerError(res, error);
@@ -148,7 +148,7 @@ export const getExamsByLevel = async (req, res) => {
         required: false,
       },
       order: [["examName", "ASC"]],
-    });    return sendSuccess(res, 200, "Exams fetched successfully", exams);
+    });    return sendSuccess(res,  "Exams fetched successfully", exams);
   } catch (error) {
     console.error("Error fetching exams by level:", error);
     return sendServerError(res, error);
@@ -160,7 +160,7 @@ export const getExamOptions = async (req, res) => {
     const levels = await CourseLevel.findAll({
       attributes: ["levelId", "name", "order"],
       order: [["order", "ASC"]],
-    });    return sendSuccess(res, 200, "Exam options fetched successfully", { levels });
+    });    return sendSuccess(res,  "Exam options fetched successfully", { levels });
   } catch (error) {
     console.error("Error fetching exam options:", error);
     return sendServerError(res, error);
@@ -199,7 +199,7 @@ export const createExam = async (req, res) => {
       levelId,
     });
 
-    return sendSuccess(res, 201, "Exam created successfully", exam);
+    return sendSuccess(res,  "Exam created successfully", exam);
   } catch (error) {
     console.error("Error creating exam:", error);
     return sendServerError(res, error);
@@ -229,7 +229,7 @@ export const getExamById = async (req, res) => {
       return sendNotFound(res, "Exam not found");
     }
 
-    return sendSuccess(res, 200, "Exam fetched successfully", exam);
+    return sendSuccess(res,  "Exam fetched successfully", exam);
   } catch (error) {
     console.error("Error fetching exam:", error);
     return sendServerError(res, error);
@@ -273,7 +273,7 @@ export const updateExam = async (req, res) => {
       levelId: levelId || exam.levelId,
     });
 
-    return sendSuccess(res, 200, "Exam updated successfully", updatedExam);
+    return sendSuccess(res,  "Exam updated successfully", updatedExam);
   } catch (error) {
     console.error("Error updating exam:", error);
     return sendServerError(res, error);
@@ -298,7 +298,7 @@ export const deleteExam = async (req, res) => {
     // Delete exam
     await exam.destroy();
 
-    return sendSuccess(res, 200, "Exam deleted successfully");
+    return sendSuccess(res,  "Exam deleted successfully");
   } catch (error) {
     console.error("Error deleting exam:", error);
     return sendServerError(res, error);

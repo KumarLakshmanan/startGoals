@@ -253,7 +253,7 @@ export const getAdminUsers = async (req, res) => {
       ).length,
     };
 
-    return sendSuccess(res, 200, "Admin users retrieved successfully", {
+    return sendSuccess(res,  "Admin users retrieved successfully", {
         admins: paginatedAdmins,
         pagination: {
           currentPage: parseInt(page),
@@ -375,7 +375,7 @@ export const getAdminUser = async (req, res) => {
       return sendNotFound(res, "Admin user not found");
     }
 
-    return sendSuccess(res, 200, "Admin user details retrieved successfully", mockAdmin);
+    return sendSuccess(res,  "Admin user details retrieved successfully", mockAdmin);
   } catch (error) {
     console.error("Get admin user details error:", error);
     return sendServerError(res, error);
@@ -496,7 +496,7 @@ export const createAdminUser = async (req, res) => {
     // Remove password from response
     const { password: _, ...adminResponse } = newAdmin;
 
-    return sendSuccess(res, 201, "Admin user created successfully", adminResponse);
+    return sendSuccess(res,  "Admin user created successfully", adminResponse);
   } catch (error) {
     console.error("Create admin user error:", error);
     return sendServerError(res, error);
@@ -592,7 +592,7 @@ export const updateAdminUser = async (req, res) => {
       lastModifiedBy,
     };
 
-    return sendSuccess(res, 200, "Admin user updated successfully", updatedAdmin);
+    return sendSuccess(res,  "Admin user updated successfully", updatedAdmin);
   } catch (error) {
     console.error("Update admin user error:", error);
     return sendServerError(res, error);
@@ -648,7 +648,7 @@ export const changeAdminPassword = async (req, res) => {
       forceChange,
     };
 
-    return sendSuccess(res, 200, "Password changed successfully", passwordUpdate);
+    return sendSuccess(res,  "Password changed successfully", passwordUpdate);
   } catch (error) {
     console.error("Change admin password error:", error);
     return sendServerError(res, error);
@@ -703,7 +703,7 @@ export const deleteAdminUser = async (req, res) => {
       forceDelete,
     };
 
-    return sendSuccess(res, 200, "Admin user deleted successfully", deletionResult);
+    return sendSuccess(res,  "Admin user deleted successfully", deletionResult);
   } catch (error) {
     console.error("Delete admin user error:", error);
     return sendServerError(res, error);
@@ -899,7 +899,7 @@ export const getActivityLogs = async (req, res) => {
       analytics,
     };
 
-    return sendSuccess(res, 200, "Activity logs retrieved successfully", responseData);
+    return sendSuccess(res,  "Activity logs retrieved successfully", responseData);
   } catch (error) {
     console.error("Get activity logs error:", error);
     return sendServerError(res, error);
@@ -1055,7 +1055,7 @@ export const getPermissions = async (req, res) => {
       availableRoles: Object.keys(roleHierarchy),
     };
 
-    return sendSuccess(res, 200, "Permissions retrieved successfully", responseData);
+    return sendSuccess(res,  "Permissions retrieved successfully", responseData);
   } catch (error) {
     console.error("Get permissions error:", error);
     return sendServerError(res, error);
@@ -1164,7 +1164,7 @@ export const exportAdminData = async (req, res) => {
       );
     }
 
-    return sendSuccess(res, 200, "Data exported successfully", exportData);
+    return sendSuccess(res,  "Data exported successfully", exportData);
   } catch (error) {
     console.error("Export admin data error:", error);
     return sendServerError(res, error);

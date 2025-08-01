@@ -113,7 +113,7 @@ export const userRegistration = async (req, res) => {
 
     await trans.commit();
 
-    return sendSuccess(res, 200, `OTP sent to ${identifier}`);
+    return sendSuccess(res,  `OTP sent to ${identifier}`);
   } catch (error) {
     await trans.rollback();
     console.error("Registration error:", error);
@@ -160,7 +160,7 @@ export const userLogin = async (req, res) => {
           });
         }
         
-        return sendSuccess(res, 200, `OTP sent to ${identifier}. Please verify OTP to continue.`, {
+        return sendSuccess(res,  `OTP sent to ${identifier}. Please verify OTP to continue.`, {
           userId: user.userId,
           email: user.email,
           mobile: user.mobile,
@@ -201,7 +201,7 @@ export const userLogin = async (req, res) => {
         await user.update({ firstLogin: false });
       }
 
-      return sendSuccess(res, 200, "Login successful.", {
+      return sendSuccess(res,  "Login successful.", {
         userId: user.userId,
         name: user.username || user.firstName || user.email,
         email: user.email,
@@ -285,7 +285,7 @@ export const addUserSkills = async (req, res) => {
       await user.addSkills(newSkillIds);
     }
 
-    return sendSuccess(res, 200, "Skills updated successfully");
+    return sendSuccess(res,  "Skills updated successfully");
   } catch (err) {
     console.error("Add skills error:", err);
     return sendServerError(res, err);
@@ -313,7 +313,7 @@ export const getUserSkills = async (req, res) => {
       ],
     });
 
-    return sendSuccess(res, 200, "User skills fetched successfully", userWithSkills.skills);
+    return sendSuccess(res,  "User skills fetched successfully", userWithSkills.skills);
   } catch (err) {
     console.error("Get skills error:", err);
     return sendServerError(res, err);
@@ -362,7 +362,7 @@ export const getUserDetails = async (req, res) => {
       return sendNotFound(res, "User not found");
     }
 
-    return sendSuccess(res, 200, "User details fetched successfully", userWithDetails);
+    return sendSuccess(res,  "User details fetched successfully", userWithDetails);
   } catch (error) {
     console.error("Error fetching user details:", error);
     return sendServerError(res, error);
@@ -483,7 +483,7 @@ export const getHomePage = async (req, res) => {
       company_name: settingsMap.company_name || "StartGoals",
     };
 
-    return sendSuccess(res, 200, "Success", response);
+    return sendSuccess(res,  "Success", response);
   } catch (error) {
     console.error("Homepage API Error:", error);
     return sendServerError(res, error);
@@ -588,7 +588,7 @@ export const getAllStudents = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(res, 200, "Students retrieved successfully", {
+    return sendSuccess(res,  "Students retrieved successfully", {
       students: studentsWithStats,
       pagination: {
         currentPage: parseInt(page),
@@ -709,7 +709,7 @@ export const getStudentById = async (req, res) => {
       }));
     }
 
-    return sendSuccess(res, 200, "Student details retrieved successfully", studentData);
+    return sendSuccess(res,  "Student details retrieved successfully", studentData);
   } catch (error) {
     console.error("Get student by ID error:", error);
     return sendServerError(res, error);
@@ -798,7 +798,7 @@ export const createStudent = async (req, res) => {
 
     const { password: _, ...studentData } = student.toJSON();
 
-    return sendSuccess(res, 200, "Student created successfully", studentData);
+    return sendSuccess(res,  "Student created successfully", studentData);
   } catch (error) {
     await transaction.rollback();
     console.error("Create student error:", error);
@@ -866,7 +866,7 @@ export const updateStudent = async (req, res) => {
       attributes: { exclude: ["password"] },
     });
 
-    return sendSuccess(res, 200, "Student updated successfully", updatedStudent);
+    return sendSuccess(res,  "Student updated successfully", updatedStudent);
   } catch (error) {
     await transaction.rollback();
     console.error("Update student error:", error);
@@ -911,7 +911,6 @@ export const deleteStudent = async (req, res) => {
 
     return sendSuccess(
       res,
-      200,
       permanent === "true"
         ? "Student permanently deleted"
         : "Student deactivated successfully"
@@ -987,7 +986,6 @@ export const bulkDeleteStudents = async (req, res) => {
 
     return sendSuccess(
       res,
-      200,
       permanent === "true"
         ? `${students.length} students permanently deleted`
         : `${students.length} students deactivated successfully`
@@ -1184,7 +1182,7 @@ export const getStudentAnalytics = async (req, res) => {
       })),
     };
 
-    return sendSuccess(res, 200, "Student analytics fetched successfully", analytics);
+    return sendSuccess(res,  "Student analytics fetched successfully", analytics);
   } catch (error) {
     console.error("Get student analytics error:", error);
     return sendServerError(res, error);

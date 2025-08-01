@@ -81,7 +81,7 @@ export const addStudentToBatch = async (req, res) => {
 
     await t.commit();
 
-    return sendSuccess(res, 201, "Student added to batch successfully", batchStudent);
+    return sendSuccess(res, "Student added to batch successfully", batchStudent);
   } catch (error) {
     await t.rollback();
     console.error("Error adding student to batch:", error);
@@ -124,7 +124,7 @@ export const removeStudentFromBatch = async (req, res) => {
 
     await t.commit();
 
-    return sendSuccess(res, 200, "Student removed from batch successfully");
+    return sendSuccess(res, "Student removed from batch successfully");
   } catch (error) {
     await t.rollback();
     console.error("Error removing student from batch:", error);
@@ -180,7 +180,7 @@ export const getStudentsInBatch = async (req, res) => {
       order: [["enrollmentDate", "DESC"]],
     });
 
-    return sendSuccess(res, 200, "Students fetched successfully", {
+    return sendSuccess(res, "Students fetched successfully", {
       students,
       pagination: {
         currentPage: parseInt(page),
@@ -239,7 +239,7 @@ export const getBatchesForStudent = async (req, res) => {
       order: [["enrollmentDate", "DESC"]],
     });
 
-    return sendSuccess(res, 200, "Batches fetched successfully", {
+    return sendSuccess(res, "Batches fetched successfully", {
       batches,
       pagination: {
         currentPage: parseInt(page),
@@ -303,7 +303,6 @@ export const updateStudentStatusInBatch = async (req, res) => {
 
     return sendSuccess(
       res,
-      200,
       `Student status updated to ${status} successfully`,
       batchStudent
     );
@@ -408,7 +407,7 @@ export const bulkAddStudentsToBatch = async (req, res) => {
 
     await t.commit();
 
-    return sendSuccess(res, 200, `${newUserIds.length} students added to batch successfully`, {
+    return sendSuccess(res, `${newUserIds.length} students added to batch successfully`, {
       addedCount: newUserIds.length,
       skippedCount: existingUserIds.length,
       enrollments: createdEnrollments,
@@ -451,7 +450,7 @@ export const getBatchStatistics = async (req, res) => {
       totalCount,
     ] = stats;
 
-    return sendSuccess(res, 200, "Batch statistics fetched successfully", {
+    return sendSuccess(res, "Batch statistics fetched successfully", {
       batchId,
       statistics: {
         total: totalCount,

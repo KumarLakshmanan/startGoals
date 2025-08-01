@@ -36,20 +36,20 @@ import OrderItem from "../model/orderItem.js";
 // Get live courses only
 export const getLiveCourses = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      search, 
-      status, 
-      sortBy = 'createdAt', 
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      sortBy = 'createdAt',
       sortOrder = 'DESC',
       categoryId,
       levelId,
-      instructorId 
+      instructorId
     } = req.query;
-    
+
     const whereClause = { type: 'live' };
-    
+
     // Handle search parameter
     if (search) {
       whereClause[Op.or] = [
@@ -57,22 +57,22 @@ export const getLiveCourses = async (req, res) => {
         { description: { [Op.iLike]: `%${search}%` } }
       ];
     }
-    
+
     // Handle status filter
     if (status && status !== 'all') {
       whereClause.status = status;
     }
-    
+
     // Handle category filter
     if (categoryId) {
       whereClause.categoryId = categoryId;
     }
-    
+
     // Handle level filter
     if (levelId) {
       whereClause.levelId = levelId;
     }
-    
+
     // Handle instructor filter
     if (instructorId) {
       whereClause.createdBy = instructorId;
@@ -92,7 +92,7 @@ export const getLiveCourses = async (req, res) => {
       offset: parseInt(offset)
     });
 
-    return sendSuccess(res, 200, "Live courses retrieved successfully", {
+    return sendSuccess(res, "Live courses retrieved successfully", {
       courses: rows,
       pagination: {
         total: count,
@@ -110,20 +110,20 @@ export const getLiveCourses = async (req, res) => {
 // Get recorded courses only
 export const getRecordedCourses = async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      search, 
-      status, 
-      sortBy = 'createdAt', 
+    const {
+      page = 1,
+      limit = 10,
+      search,
+      status,
+      sortBy = 'createdAt',
       sortOrder = 'DESC',
       categoryId,
       levelId,
-      instructorId 
+      instructorId
     } = req.query;
-    
+
     const whereClause = { type: 'recorded' };
-    
+
     // Handle search parameter
     if (search) {
       whereClause[Op.or] = [
@@ -131,22 +131,22 @@ export const getRecordedCourses = async (req, res) => {
         { description: { [Op.iLike]: `%${search}%` } }
       ];
     }
-    
+
     // Handle status filter
     if (status && status !== 'all') {
       whereClause.status = status;
     }
-    
+
     // Handle category filter
     if (categoryId) {
       whereClause.categoryId = categoryId;
     }
-    
+
     // Handle level filter
     if (levelId) {
       whereClause.levelId = levelId;
     }
-    
+
     // Handle instructor filter
     if (instructorId) {
       whereClause.createdBy = instructorId;
@@ -166,7 +166,7 @@ export const getRecordedCourses = async (req, res) => {
       offset: parseInt(offset)
     });
 
-    return sendSuccess(res, 200, "Recorded courses retrieved successfully", {
+    return sendSuccess(res, "Recorded courses retrieved successfully", {
       courses: rows,
       pagination: {
         total: count,
@@ -289,7 +289,7 @@ export const getCourseById = async (req, res) => {
     // } else {
     //   courseWithExtras.purchaseStatus = false;
     // }
-    
+
     // For now, set purchase status to false for all users
     courseWithExtras.purchaseStatus = false;
 
@@ -323,7 +323,7 @@ export const getCourseById = async (req, res) => {
 
     courseWithExtras.recommendedCourses = recommendedCourses;
 
-    return sendSuccess(res, 200, "Course fetched successfully", courseWithExtras);
+    return sendSuccess(res, "Course fetched successfully", courseWithExtras);
   } catch (error) {
     console.error("Error fetching course:", error);
     return sendServerError(res, error);
@@ -333,7 +333,7 @@ export const getCourseById = async (req, res) => {
 // Create a new course with sections and lessons
 export const createCourse = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const {
       title,
@@ -374,7 +374,7 @@ export const createCourse = async (req, res) => {
     } = req.body;
 
     const userId = req.user?.userId || req.body.createdBy;
-    
+
     if (!userId) {
       await transaction.rollback();
       return sendUnauthorized(res, "User authentication required");
@@ -497,7 +497,7 @@ export const createCourse = async (req, res) => {
       ]
     });
 
-    return sendSuccess(res, 200, "Course created successfully", completeCourse);
+    return sendSuccess(res, "Course created successfully", completeCourse);
   } catch (error) {
     await transaction.rollback();
     console.error('Error creating course:', error);
@@ -509,7 +509,7 @@ export const createCourse = async (req, res) => {
 export const updateCourse = async (req, res) => {
   const { courseId } = req.params;
   const transaction = await sequelize.transaction();
-  
+
   try {
     const course = await Course.findOne({ where: { courseId } });
     if (!course) {
@@ -659,7 +659,7 @@ export const updateCourse = async (req, res) => {
       ]
     });
 
-    return sendSuccess(res, 200, "Course updated successfully", updatedCourse);
+    return sendSuccess(res, "Course updated successfully", updatedCourse);
   } catch (error) {
     await transaction.rollback();
     console.error('Error updating course:', error);
@@ -677,7 +677,7 @@ const updateCourseStats = async (courseId, transaction) => {
 
   const totalSections = sections.length;
   let totalLessons = 0;
-  
+
   sections.forEach(section => {
     totalLessons += section.lessons.length;
   });
@@ -777,7 +777,7 @@ export const getAllCourses = async (req, res) => {
     //       required: true
     //     }]
     //   });
-      
+
     //   userPurchases = userOrders.flatMap(order => 
     //     order.items.map(item => item.itemId)
     //   );
@@ -790,7 +790,7 @@ export const getAllCourses = async (req, res) => {
       return courseJson;
     });
 
-    return sendSuccess(res, 200, "Courses retrieved successfully", {
+    return sendSuccess(res, "Courses retrieved successfully", {
       courses: coursesWithPurchaseStatus,
       pagination: {
         total: count,
@@ -842,14 +842,14 @@ export const deleteCourse = async (req, res) => {
       // Delete course
       await course.destroy({ transaction });
       await transaction.commit();
-      return sendSuccess(res, 200, "Course permanently deleted successfully.");
+      return sendSuccess(res, "Course permanently deleted successfully.");
     } else {
       // Soft delete - just change status
       await course.update({ status: "deleted" }, { transaction });
 
       await transaction.commit();
 
-      return sendSuccess(res, 200, "Course deleted successfully.");
+      return sendSuccess(res, "Course deleted successfully.");
     }
   } catch (error) {
     await transaction.rollback();
@@ -958,15 +958,15 @@ export const getCourseAnalytics = async (req, res) => {
       completionRate:
         allTimeEnrollments.length > 0
           ? (allTimeEnrollments.filter((e) => e.status === "completed").length /
-              allTimeEnrollments.length) *
-            100
+            allTimeEnrollments.length) *
+          100
           : 0,
       averageProgress:
         allTimeEnrollments.length > 0
           ? allTimeEnrollments.reduce(
-              (sum, e) => sum + (e.progressPercentage || 0),
-              0,
-            ) / allTimeEnrollments.length
+            (sum, e) => sum + (e.progressPercentage || 0),
+            0,
+          ) / allTimeEnrollments.length
           : 0,
     };
 
@@ -1042,7 +1042,7 @@ export const getCourseAnalytics = async (req, res) => {
         Math.max(allTimeEnrollments.filter((e) => e.completedAt).length, 1),
     };
 
-    return sendSuccess(res, 200, "Course analytics fetched successfully", {
+    return sendSuccess(res, "Course analytics fetched successfully", {
       course: {
         courseId: course.courseId,
         title: course.title,
@@ -1194,7 +1194,7 @@ export const getAdminDashboardOverview = async (req, res) => {
       averageOrderValue:
         courses.length > 0
           ? courses.reduce((sum, course) => sum + course.price, 0) /
-            courses.length
+          courses.length
           : 0,
       revenueGrowth: Math.floor(Math.random() * 20) + 5, // Simulated growth percentage
     };
@@ -1225,7 +1225,7 @@ export const getAdminDashboardOverview = async (req, res) => {
     };
 
     // Structure the response to match frontend expectations
-    return sendSuccess(res, 200, "Admin dashboard overview fetched successfully", {
+    return sendSuccess(res, "Admin dashboard overview fetched successfully", {
       DASHBOARD: {
         overview: {
           courses: {
@@ -1349,7 +1349,7 @@ export const searchCourses = async (req, res) => {
       distinct: true,
     });
 
-    return sendSuccess(res, 200, "Search completed successfully.", {
+    return sendSuccess(res, "Search completed successfully.", {
       searchQuery: searchTerm,
       courses,
       pagination: {
@@ -1398,7 +1398,7 @@ export const getCoursesByInstructor = async (req, res) => {
       distinct: true,
     });
 
-    return sendSuccess(res, 200, "Instructor courses fetched successfully.", {
+    return sendSuccess(res, "Instructor courses fetched successfully.", {
       courses,
       pagination: {
         currentPage: parseInt(page),
@@ -1453,7 +1453,7 @@ export const getCoursesByCategory = async (req, res) => {
       distinct: true,
     });
 
-    return sendSuccess(res, 200, "Category courses fetched successfully.", {
+    return sendSuccess(res, "Category courses fetched successfully.", {
       courses,
       pagination: {
         currentPage: parseInt(page),
@@ -1488,7 +1488,7 @@ export const toggleCourseStatus = async (req, res) => {
 
     await course.update({ status });
 
-    return sendSuccess(res, 200, `Course status updated to ${status} successfully.`, {
+    return sendSuccess(res, `Course status updated to ${status} successfully.`, {
       course: {
         courseId: course.courseId,
         title: course.title,
@@ -1525,7 +1525,7 @@ export const getCoursesStats = async (req, res) => {
       freeCourses,
     ] = stats;
 
-    return sendSuccess(res, 200, "Course statistics fetched successfully.", {
+    return sendSuccess(res, "Course statistics fetched successfully.", {
       byStatus: {
         active: activeCourses,
         inactive: inactiveCourses,
@@ -1638,7 +1638,7 @@ export const createLiveCourse = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Live course created successfully", {
+    return sendSuccess(res, "Live course created successfully", {
       courseId: course.courseId,
       title: course.title,
       type: course.type,
@@ -1760,7 +1760,7 @@ export const createRecordedCourse = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Recorded course created successfully", {
+    return sendSuccess(res, "Recorded course created successfully", {
       courseId: course.courseId,
       title: course.title,
       type: course.type,
@@ -1778,7 +1778,7 @@ export const createRecordedCourse = async (req, res) => {
 // Create course batch
 export const createCourseBatch = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { courseId } = req.params;
     const {
@@ -1836,7 +1836,7 @@ export const createCourseBatch = async (req, res) => {
       ]
     });
 
-    return sendSuccess(res, 201, "Batch created successfully", createdBatch);
+    return sendSuccess(res, "Batch created successfully", createdBatch);
 
   } catch (error) {
     await transaction.rollback();
@@ -1869,7 +1869,7 @@ export const getCourseBatches = async (req, res) => {
       offset
     });
 
-    return sendSuccess(res, 200, "Batches retrieved successfully", {
+    return sendSuccess(res, "Batches retrieved successfully", {
       batches: rows,
       pagination: {
         total: count,
@@ -1891,14 +1891,14 @@ export const getCourseBatches = async (req, res) => {
 export const createCourseTest = async (req, res) => {
   const { courseId } = req.params;
   const transaction = await sequelize.transaction();
-  
+
   try {
     const course = await Course.findByPk(courseId);
     if (!course) {
       await transaction.rollback();
       return sendNotFound(res, "Course not found");
     }
-    
+
     const {
       title,
       description,
@@ -1908,7 +1908,7 @@ export const createCourseTest = async (req, res) => {
       isActive = true,
       questions = []
     } = req.body;
-    
+
     // Validation
     if (!title || !duration || !totalMarks || !passingMarks) {
       await transaction.rollback();
@@ -1919,7 +1919,7 @@ export const createCourseTest = async (req, res) => {
         passingMarks: !passingMarks ? "Passing marks is required" : undefined
       });
     }
-    
+
     // Create the test
     const test = await CourseTest.create({
       courseId,
@@ -1931,9 +1931,9 @@ export const createCourseTest = async (req, res) => {
       isActive,
       questions: JSON.stringify(questions)
     }, { transaction });
-    
+
     await transaction.commit();
-    return sendSuccess(res, 200, "Test created successfully", test);
+    return sendSuccess(res, "Test created successfully", test);
   } catch (error) {
     await transaction.rollback();
     console.error("Error creating course test:", error);
@@ -1944,18 +1944,18 @@ export const createCourseTest = async (req, res) => {
 // Get all tests for a course
 export const getCourseTests = async (req, res) => {
   const { courseId } = req.params;
-  
+
   try {
     const course = await Course.findByPk(courseId);
     if (!course) {
       return sendNotFound(res, "Course not found");
     }
-    
+
     const tests = await CourseTest.findAll({
       where: { courseId },
       order: [['createdAt', 'DESC']]
     });
-    
+
     // Parse questions JSON for each test
     const testsWithParsedQuestions = tests.map(test => {
       const testData = test.toJSON();
@@ -1966,8 +1966,8 @@ export const getCourseTests = async (req, res) => {
       }
       return testData;
     });
-    
-    return sendSuccess(res, 200, "Tests fetched successfully", testsWithParsedQuestions);
+
+    return sendSuccess(res, "Tests fetched successfully", testsWithParsedQuestions);
   } catch (error) {
     console.error("Error fetching course tests:", error);
     return sendServerError(res, "Failed to fetch tests");
@@ -1978,17 +1978,17 @@ export const getCourseTests = async (req, res) => {
 export const updateCourseTest = async (req, res) => {
   const { courseId, testId } = req.params;
   const transaction = await sequelize.transaction();
-  
+
   try {
     const test = await CourseTest.findOne({
       where: { id: testId, courseId }
     });
-    
+
     if (!test) {
       await transaction.rollback();
       return sendNotFound(res, "Test not found");
     }
-    
+
     const {
       title,
       description,
@@ -1998,7 +1998,7 @@ export const updateCourseTest = async (req, res) => {
       isActive,
       questions
     } = req.body;
-    
+
     // Update the test
     const updateData = {};
     if (title !== undefined) updateData.title = title;
@@ -2008,10 +2008,10 @@ export const updateCourseTest = async (req, res) => {
     if (passingMarks !== undefined) updateData.passingMarks = passingMarks;
     if (isActive !== undefined) updateData.isActive = isActive;
     if (questions !== undefined) updateData.questions = JSON.stringify(questions);
-    
+
     await test.update(updateData, { transaction });
     await transaction.commit();
-    
+
     // Get the updated test with parsed questions
     const updatedTest = await CourseTest.findByPk(testId);
     const testData = updatedTest.toJSON();
@@ -2020,8 +2020,8 @@ export const updateCourseTest = async (req, res) => {
     } catch (e) {
       testData.questions = [];
     }
-    
-    return sendSuccess(res, 200, "Test updated successfully", testData);
+
+    return sendSuccess(res, "Test updated successfully", testData);
   } catch (error) {
     await transaction.rollback();
     console.error("Error updating course test:", error);
@@ -2100,7 +2100,7 @@ export const getCourseManagementData = async (req, res) => {
       where: { courseId },
     });
 
-    return sendSuccess(res, 200, "Course management data fetched successfully", {
+    return sendSuccess(res, "Course management data fetched successfully", {
       course,
       statistics: {
         totalEnrollments: enrollmentStats.count,
@@ -2116,18 +2116,18 @@ export const getCourseManagementData = async (req, res) => {
 // Delete a course test
 export const deleteCourseTest = async (req, res) => {
   const { courseId, testId } = req.params;
-  
+
   try {
     const test = await CourseTest.findOne({
       where: { id: testId, courseId }
     });
-    
+
     if (!test) {
       return sendNotFound(res, "Test not found");
     }
-    
+
     await test.destroy();
-    return sendSuccess(res, 200, "Test deleted successfully");
+    return sendSuccess(res, "Test deleted successfully");
   } catch (error) {
     console.error("Error deleting course test:", error);
     return sendServerError(res, "Failed to delete test");
@@ -2140,14 +2140,14 @@ export const deleteCourseTest = async (req, res) => {
 export const createCourseCertificate = async (req, res) => {
   const { courseId } = req.params;
   const transaction = await sequelize.transaction();
-  
+
   try {
     const course = await Course.findByPk(courseId);
     if (!course) {
       await transaction.rollback();
       return sendNotFound(res, "Course not found");
     }
-    
+
     // Get certificate data from request body
     const {
       title,
@@ -2156,13 +2156,13 @@ export const createCourseCertificate = async (req, res) => {
       minimumScore = 60,
       isActive = true
     } = req.body;
-    
+
     // Validate required fields
     if (!title) {
       await transaction.rollback();
       return sendValidationError(res, "Title is required");
     }
-    
+
     // Handle template image if uploaded
     let templateUrl = null;
     if (req.file) {
@@ -2170,7 +2170,7 @@ export const createCourseCertificate = async (req, res) => {
       // For now, we'll just use a placeholder URL
       templateUrl = `https://example.com/certificates/${courseId}/${Date.now()}.jpg`;
     }
-    
+
     // Create the certificate
     const certificate = await CourseCertificate.create({
       courseId,
@@ -2181,9 +2181,9 @@ export const createCourseCertificate = async (req, res) => {
       minimumScore,
       isActive
     }, { transaction });
-    
+
     await transaction.commit();
-    return sendSuccess(res, 200, "Certificate created successfully", certificate);
+    return sendSuccess(res, "Certificate created successfully", certificate);
   } catch (error) {
     await transaction.rollback();
     console.error("Error creating course certificate:", error);
@@ -2194,19 +2194,19 @@ export const createCourseCertificate = async (req, res) => {
 // Get all certificates for a course
 export const getCourseCertificates = async (req, res) => {
   const { courseId } = req.params;
-  
+
   try {
     const course = await Course.findByPk(courseId);
     if (!course) {
       return sendNotFound(res, "Course not found");
     }
-    
+
     const certificates = await CourseCertificate.findAll({
       where: { courseId },
       order: [['createdAt', 'DESC']]
     });
-    
-    return sendSuccess(res, 200, "Certificates fetched successfully", certificates);
+
+    return sendSuccess(res, "Certificates fetched successfully", certificates);
   } catch (error) {
     console.error("Error fetching course certificates:", error);
     return sendServerError(res, "Failed to fetch certificates");
@@ -2217,17 +2217,17 @@ export const getCourseCertificates = async (req, res) => {
 export const updateCourseCertificate = async (req, res) => {
   const { courseId, certificateId } = req.params;
   const transaction = await sequelize.transaction();
-  
+
   try {
     const certificate = await CourseCertificate.findOne({
       where: { id: certificateId, courseId }
     });
-    
+
     if (!certificate) {
       await transaction.rollback();
       return sendNotFound(res, "Certificate not found");
     }
-    
+
     const {
       title,
       description,
@@ -2235,7 +2235,7 @@ export const updateCourseCertificate = async (req, res) => {
       minimumScore,
       isActive
     } = req.body;
-    
+
     // Update certificate data
     const updateData = {};
     if (title !== undefined) updateData.title = title;
@@ -2243,18 +2243,18 @@ export const updateCourseCertificate = async (req, res) => {
     if (requiresTestCompletion !== undefined) updateData.requiresTestCompletion = requiresTestCompletion;
     if (minimumScore !== undefined) updateData.minimumScore = minimumScore;
     if (isActive !== undefined) updateData.isActive = isActive;
-    
+
     // Handle template image if uploaded
     if (req.file) {
       // In a real implementation, this would upload to S3 or other storage
       // For now, we'll just use a placeholder URL
       updateData.templateUrl = `https://example.com/certificates/${courseId}/${Date.now()}.jpg`;
     }
-    
+
     await certificate.update(updateData, { transaction });
     await transaction.commit();
-    
-    return sendSuccess(res, 200, "Certificate updated successfully", await CourseCertificate.findByPk(certificateId));
+
+    return sendSuccess(res, "Certificate updated successfully", await CourseCertificate.findByPk(certificateId));
   } catch (error) {
     await transaction.rollback();
     console.error("Error updating course certificate:", error);
@@ -2265,18 +2265,18 @@ export const updateCourseCertificate = async (req, res) => {
 // Delete a course certificate
 export const deleteCourseCertificate = async (req, res) => {
   const { courseId, certificateId } = req.params;
-  
+
   try {
     const certificate = await CourseCertificate.findOne({
       where: { id: certificateId, courseId }
     });
-    
+
     if (!certificate) {
       return sendNotFound(res, "Certificate not found");
     }
-    
+
     await certificate.destroy();
-    return sendSuccess(res, 200, "Certificate deleted successfully");
+    return sendSuccess(res, "Certificate deleted successfully");
   } catch (error) {
     console.error("Error deleting course certificate:", error);
     return sendServerError(res, "Failed to delete certificate");
@@ -2288,16 +2288,16 @@ export const deleteCourseCertificate = async (req, res) => {
 // Get all purchases (enrollments) for a course
 export const getCoursePurchases = async (req, res) => {
   const { courseId } = req.params;
-  
+
   try {
     const course = await Course.findByPk(courseId);
     if (!course) {
       return sendNotFound(res, "Course not found");
     }
-    
+
     // Get all enrollments (purchases) for the course
     const purchases = await Enrollment.findAll({
-      where: { 
+      where: {
         courseId,
         paymentStatus: 'completed'
       },
@@ -2310,7 +2310,7 @@ export const getCoursePurchases = async (req, res) => {
       ],
       order: [['enrollmentDate', 'DESC']]
     });
-    
+
     // Format the response to match expected structure
     const formattedPurchases = purchases.map(enrollment => ({
       enrollmentId: enrollment.enrollmentId,
@@ -2321,7 +2321,7 @@ export const getCoursePurchases = async (req, res) => {
       progressPercentage: enrollment.progressPercentage,
       student: {
         id: enrollment.user.userId,
-        name: enrollment.user.firstName 
+        name: enrollment.user.firstName
           ? `${enrollment.user.firstName} ${enrollment.user.lastName || ''}`.trim()
           : enrollment.user.username,
         email: enrollment.user.email,
@@ -2329,8 +2329,8 @@ export const getCoursePurchases = async (req, res) => {
         phone: enrollment.user.mobile
       }
     }));
-    
-    return sendSuccess(res, 200, "Course purchases fetched successfully", formattedPurchases);
+
+    return sendSuccess(res, "Course purchases fetched successfully", formattedPurchases);
   } catch (error) {
     console.error("Error fetching course purchases:", error);
     return sendServerError(res, "Failed to fetch course purchases");
@@ -2340,11 +2340,11 @@ export const getCoursePurchases = async (req, res) => {
 // Get purchase (enrollment) details
 export const getPurchaseDetails = async (req, res) => {
   const { courseId, purchaseId } = req.params;
-  
+
   try {
     const purchase = await Enrollment.findOne({
-      where: { 
-        enrollmentId: purchaseId, 
+      where: {
+        enrollmentId: purchaseId,
         courseId,
         paymentStatus: 'completed'
       },
@@ -2361,11 +2361,11 @@ export const getPurchaseDetails = async (req, res) => {
         }
       ]
     });
-    
+
     if (!purchase) {
       return sendNotFound(res, "Purchase not found");
     }
-    
+
     // Format the response
     const formattedPurchase = {
       enrollmentId: purchase.enrollmentId,
@@ -2378,7 +2378,7 @@ export const getPurchaseDetails = async (req, res) => {
       progressPercentage: purchase.progressPercentage,
       student: {
         id: purchase.user.userId,
-        name: purchase.user.firstName 
+        name: purchase.user.firstName
           ? `${purchase.user.firstName} ${purchase.user.lastName || ''}`.trim()
           : purchase.user.username,
         email: purchase.user.email,
@@ -2387,8 +2387,8 @@ export const getPurchaseDetails = async (req, res) => {
       },
       course: purchase.course
     };
-    
-    return sendSuccess(res, 200, "Purchase details fetched successfully", formattedPurchase);
+
+    return sendSuccess(res, "Purchase details fetched successfully", formattedPurchase);
   } catch (error) {
     console.error("Error fetching purchase details:", error);
     return sendServerError(res, "Failed to fetch purchase details");
@@ -2398,37 +2398,37 @@ export const getPurchaseDetails = async (req, res) => {
 // Delete course (Admin only)
 export const deleteCourseAdmin = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { courseId } = req.params;
-    
+
     // Find the course
     const course = await Course.findByPk(courseId);
     if (!course) {
       await transaction.rollback();
       return sendNotFound(res, "Course not found");
     }
-    
+
     // Check if course has any enrollments
     const enrollmentCount = await Enrollment.count({
       where: { courseId, paymentStatus: 'completed' }
     });
-    
+
     if (enrollmentCount > 0) {
       await transaction.rollback();
       return sendError(res, 400, "Cannot delete course with active enrollments. Please archive the course instead.");
     }
-    
+
     // Delete associated data
     await Section.destroy({ where: { courseId }, transaction });
     await CourseTeacher.destroy({ where: { courseId }, transaction });
     await CourseRating.destroy({ where: { courseId }, transaction });
     await Batch.destroy({ where: { courseId }, transaction });
-    
+
     // Delete the course
     await course.destroy({ transaction });
     await transaction.commit();
-    return sendSuccess(res, 200, "Course deleted successfully", { courseId });
+    return sendSuccess(res, "Course deleted successfully", { courseId });
   } catch (error) {
     await transaction.rollback();
     console.error("Error deleting course:", error);
@@ -2439,17 +2439,17 @@ export const deleteCourseAdmin = async (req, res) => {
 // Delete rating (Admin only)
 export const deleteRating = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { courseId, ratingId } = req.params;
-    
+
     // Verify course exists
     const course = await Course.findByPk(courseId);
     if (!course) {
       await transaction.rollback();
       return sendNotFound(res, "Course not found");
     }
-    
+
     // Find and delete the rating
     const rating = await CourseRating.findOne({
       where: {
@@ -2457,17 +2457,17 @@ export const deleteRating = async (req, res) => {
         courseId: courseId
       }
     });
-    
+
     if (!rating) {
       await transaction.rollback();
       return sendNotFound(res, "Rating not found");
     }
-    
+
     await rating.destroy({ transaction });
-    
+
     await transaction.commit();
-    
-    return sendSuccess(res, 200, "Rating deleted successfully", { ratingId });
+
+    return sendSuccess(res, "Rating deleted successfully", { ratingId });
   } catch (error) {
     await transaction.rollback();
     console.error("Error deleting rating:", error);
@@ -2478,24 +2478,24 @@ export const deleteRating = async (req, res) => {
 // Reply to rating (Admin only)
 export const replyToRating = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { courseId, ratingId } = req.params;
     const { reply } = req.body;
-    
+
     // Validate input
     if (!reply || reply.trim().length === 0) {
       await transaction.rollback();
       return sendValidationError(res, "Reply message is required");
     }
-    
+
     // Verify course exists
     const course = await Course.findByPk(courseId);
     if (!course) {
       await transaction.rollback();
       return sendNotFound(res, "Course not found");
     }
-    
+
     // Find and update the rating with reply
     const rating = await CourseRating.findOne({
       where: {
@@ -2503,23 +2503,23 @@ export const replyToRating = async (req, res) => {
         courseId: courseId
       }
     });
-    
+
     if (!rating) {
       await transaction.rollback();
       return sendNotFound(res, "Rating not found");
     }
-    
-   
-    
+
+
+
     // Update rating with reply
     await rating.update({
       adminReply: reply.trim(),
       repliedAt: new Date()
     }, { transaction });
-    
+
     await transaction.commit();
-    
-    return sendSuccess(res, 200, "Reply added successfully", {
+
+    return sendSuccess(res, "Reply added successfully", {
       ratingId,
       reply: reply.trim(),
       repliedAt: new Date()
@@ -2534,29 +2534,29 @@ export const replyToRating = async (req, res) => {
 // Batch update rating status (Admin only)
 export const batchUpdateRatingStatus = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { courseId } = req.params;
     const { ratingIds, status } = req.body;
-    
+
     // Validate inputs
     if (!ratingIds || !Array.isArray(ratingIds) || ratingIds.length === 0) {
       await transaction.rollback();
       return sendValidationError(res, "Rating IDs array is required");
     }
-    
+
     if (!['approved', 'rejected', 'pending'].includes(status)) {
       await transaction.rollback();
       return sendValidationError(res, "Invalid status. Must be 'approved', 'rejected', or 'pending'");
     }
-    
+
     // Verify course exists
     const course = await Course.findByPk(courseId);
     if (!course) {
       await transaction.rollback();
       return sendNotFound(res, "Course not found");
     }
-    
+
     // Update ratings
     const [updatedCount] = await CourseRating.update(
       { status },
@@ -2568,14 +2568,14 @@ export const batchUpdateRatingStatus = async (req, res) => {
         transaction
       }
     );
-    
+
     await transaction.commit();
-    
+
     sendSuccess(res, {
       message: `Successfully updated ${updatedCount} ratings`,
       updatedCount
     });
-    
+
   } catch (error) {
     await transaction.rollback();
     console.error('Error in batchUpdateRatingStatus:', error);
@@ -2650,9 +2650,11 @@ export const exportCourseData = async (req, res) => {
 
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', 'attachment; filename="course_export.json"');
-    
-    sendSuccess(res, exportData);
-    
+
+    sendSuccess(res,
+      "Course data exported successfully",
+      exportData
+    );
   } catch (error) {
     console.error('Error in exportCourseData:', error);
     sendServerError(res, "Failed to export course data");
@@ -2691,7 +2693,7 @@ export const getCourseRatingsStats = async (req, res) => {
     const averageRating = parseFloat(stats.averageRating) || 0;
     const totalReviews = parseInt(stats.totalReviews) || 0;
 
-    return sendSuccess(res, 200, "Course ratings stats retrieved successfully", {
+    return sendSuccess(res, "Course ratings stats retrieved successfully", {
       averageRating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
       totalReviews,
       ratingDistribution: {
@@ -2713,10 +2715,10 @@ export const getCourseRatingsStats = async (req, res) => {
 export const getCourseReviews = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { 
-      page = 1, 
-      limit = 10, 
-      sortBy = 'createdAt', 
+    const {
+      page = 1,
+      limit = 10,
+      sortBy = 'createdAt',
       sortOrder = 'DESC',
       rating // Filter by specific rating
     } = req.query;
@@ -2752,7 +2754,7 @@ export const getCourseReviews = async (req, res) => {
       offset: parseInt(offset)
     });
 
-    return sendSuccess(res, 200, "Course reviews retrieved successfully", {
+    return sendSuccess(res, "Course reviews retrieved successfully", {
       reviews,
       pagination: {
         total: count,
@@ -2844,7 +2846,7 @@ export const createCourseReview = async (req, res) => {
       ]
     });
 
-    return sendSuccess(res, 201, "Review created successfully", reviewWithUser);
+    return sendSuccess(res, "Review created successfully", reviewWithUser);
 
   } catch (error) {
     console.error("Error creating course review:", error);

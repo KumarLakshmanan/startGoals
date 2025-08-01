@@ -164,7 +164,7 @@ export const getAllGoals = async (req, res) => {
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    return sendSuccess(res, 200, "Goals fetched successfully", goals);
+    return sendSuccess(res,  "Goals fetched successfully", goals);
   } catch (error) {
     console.error("Fetch error:", error);
     return sendServerError(res, "Failed to fetch goals", {
@@ -256,7 +256,7 @@ export const getGoal = async (req, res) => {
       return sendNotFound(res, "Goal not found");
     }
     
-    return sendSuccess(res, 200, "Goal fetched successfully", goal);
+    return sendSuccess(res,  "Goal fetched successfully", goal);
   } catch (error) {
     console.error("Error fetching goal by ID:", error);
     return sendServerError(res, error);
@@ -318,7 +318,7 @@ export const createGoal = async (req, res) => {
       }
     });
     
-    return sendSuccess(res, 201, "Goal created successfully", createdGoal);
+    return sendSuccess(res,  "Goal created successfully", createdGoal);
   } catch (error) {
     console.error("Error creating goal:", error);
     return sendServerError(res, error);
@@ -388,7 +388,7 @@ export const updateGoal = async (req, res) => {
       }
     });
     
-    return sendSuccess(res, 200, "Goal updated successfully", updatedGoal);
+    return sendSuccess(res,  "Goal updated successfully", updatedGoal);
   } catch (error) {
     console.error("Error updating goal:", error);
     return sendServerError(res, error);
@@ -428,7 +428,7 @@ export const deleteGoal = async (req, res) => {
     // Delete the goal
     await goal.destroy();
     
-    return sendSuccess(res, 200, "Goal deleted successfully");
+    return sendSuccess(res,  "Goal deleted successfully");
   } catch (error) {
     console.error("Error deleting goal:", error);
     return sendServerError(res, error);

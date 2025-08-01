@@ -395,7 +395,7 @@ export const createCourseOrder = async (req, res) => {
     await transaction.commit();
 
     // Return order details to frontend
-    return sendSuccess(res, 200, "Order created successfully", {
+    return sendSuccess(res,  "Order created successfully", {
       orderId: razorpayOrder.id,
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,

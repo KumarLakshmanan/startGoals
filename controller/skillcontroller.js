@@ -152,7 +152,7 @@ export const getAllSkills = async (req, res) => {
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    return sendSuccess(res, 200, "Skills fetched successfully", skills);
+    return sendSuccess(res,  "Skills fetched successfully", skills);
   } catch (error) {
     console.error("Fetch error:", error);
     return sendServerError(res, "Failed to fetch skills", error.message);
@@ -254,7 +254,7 @@ export const getSkill = async (req, res) => {
       return sendNotFound(res, "Skill not found");
     }
 
-    return sendSuccess(res, 200, "Skill fetched successfully", skill);
+    return sendSuccess(res,  "Skill fetched successfully", skill);
   } catch (error) {
     console.error("Error fetching skill by ID:", error);
     return sendServerError(res, error);
@@ -314,7 +314,7 @@ export const createSkill = async (req, res) => {
       ]
     });
 
-    return sendSuccess(res, 201, "Skill created successfully", createdSkill);
+    return sendSuccess(res,  "Skill created successfully", createdSkill);
   } catch (error) {
     console.error("Error creating skill:", error);
     return sendServerError(res, error);
@@ -382,7 +382,7 @@ export const updateSkill = async (req, res) => {
       ]
     });
 
-    return sendSuccess(res, 200, "Skill updated successfully", updatedSkill);
+    return sendSuccess(res,  "Skill updated successfully", updatedSkill);
   } catch (error) {
     console.error("Error updating skill:", error);
     return sendServerError(res, error);
@@ -408,7 +408,7 @@ export const deleteSkill = async (req, res) => {
     // Delete the skill
     await skill.destroy();
 
-    return sendSuccess(res, 200, "Skill deleted successfully");
+    return sendSuccess(res,  "Skill deleted successfully");
   } catch (error) {
     console.error("Error deleting skill:", error);
     return sendServerError(res, error);

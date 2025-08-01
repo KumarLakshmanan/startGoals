@@ -146,7 +146,7 @@ export const createCategory = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 201, "Category created successfully", newCategory);
+    return sendSuccess(res, "Category created successfully", newCategory);
   } catch (error) {
     await transaction.rollback();
     return sendServerError(res, error);
@@ -176,7 +176,7 @@ export const getAllCategories = async (req, res) => {
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    return sendSuccess(res, 200, "Categories fetched successfully", categories);
+    return sendSuccess(res, "Categories fetched successfully", categories);
   } catch (error) {
     return sendServerError(res, error);
   }
@@ -263,7 +263,7 @@ export const bulkCreateCategories = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Categories and skills uploaded successfully.", {
+    return sendSuccess(res, "Categories and skills uploaded successfully.", {
       categories: insertedCategories,
       newSkillsCreated: newSkills.length,
       totalSkillsProcessed: allSkills.length,
@@ -284,7 +284,7 @@ export const getCategoryById = async (req, res) => {
       return sendNotFound(res, "Category not found.", { id });
     }
 
-    return sendSuccess(res, 200, "Category fetched.", category);
+    return sendSuccess(res, "Category fetched.", category);
   } catch (error) {
     return sendServerError(res, error);
   }
@@ -303,7 +303,7 @@ export const getCategoryByCode = async (req, res) => {
       return sendNotFound(res, "Category not found.", { code });
     }
 
-    return sendSuccess(res, 200, "Category fetched.", category);
+    return sendSuccess(res, "Category fetched.", category);
   } catch (error) {
     return sendServerError(res, error);
   }
@@ -322,7 +322,7 @@ export const deleteCategoryById = async (req, res) => {
 
     await category.destroy(); // Soft deletes (sets deletedAt)
 
-    return sendSuccess(res, 200, "Category deleted successfully (soft delete).");
+    return sendSuccess(res, "Category deleted successfully (soft delete).");
   } catch (error) {
     return sendServerError(res, error);
   }
@@ -423,7 +423,7 @@ export const saveAllCategories = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Categories created successfully", createdCategories);
+    return sendSuccess(res, "Categories created successfully", createdCategories);
 
   } catch (error) {
     await transaction.rollback();
@@ -499,7 +499,7 @@ export const updateCategory = async (req, res) => {
     await category.save({ transaction });
     await transaction.commit();
 
-    return sendSuccess(res, 200, "Category updated successfully", category);
+    return sendSuccess(res, "Category updated successfully", category);
   } catch (error) {
     await transaction.rollback();
     return sendServerError(res, error);
@@ -541,7 +541,7 @@ export const reorderCategories = async (req, res) => {
       );
     }
     await transaction.commit();
-    return sendSuccess(res, 200, "Categories reordered successfully");
+    return sendSuccess(res, "Categories reordered successfully");
   } catch (error) {
     await transaction.rollback();
     console.error("Error reordering categories:", error);

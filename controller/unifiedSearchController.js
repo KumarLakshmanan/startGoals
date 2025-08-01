@@ -28,7 +28,7 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
     const { query, limit = 10, type = "all" } = req.query;
 
     if (!query || query.length < 2) {
-      return sendSuccess(res, 200, "Query too short", { suggestions: [] });
+      return sendSuccess(res,  "Query too short", { suggestions: [] });
     }
 
     const searchTerm = `%${query}%`;
@@ -583,7 +583,7 @@ export const getUnifiedSearchFilters = async (req, res) => {
         .sort();
     }
 
-    return sendSuccess(res, 200, "Filters fetched successfully", filters);
+    return sendSuccess(res,  "Filters fetched successfully", filters);
   } catch (error) {
     console.error("Get unified search filters error:", error);
     return sendServerError(res, error);
