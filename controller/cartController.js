@@ -37,6 +37,7 @@ export const addToCart = async (req, res) => {
         itemId
       }
     });
+    console.log("Existing cart item:", existingCartItem);
 
     if (existingCartItem) {
       return sendResponse(res, 409, false, 'Item already in cart', null);

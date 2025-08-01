@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StartGoals - Payment</title>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .payment-container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #333;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .logo p {
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .order-summary {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+
+        .order-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .order-item:last-child {
+            border-bottom: none;
+            font-weight: 600;
+            font-size: 18px;
+            color: #333;
+        }
+
+        .item-name {
+            color: #333;
+        }
+
+        .item-price {
+            color: #667eea;
+            font-weight: 600;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 2px solid #e9ecef;
+        }
+
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .message {
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s ease;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .discount-section {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .discount-applied {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <div class="logo">
+            <h1>StartGoals</h1>
+            <p>Complete Your Purchase</p>
+        </div>
+
+        <div id="messageContainer"></div>
+
+        <div class="form-group">
+            <label for="authToken">Authentication Token:</label>
+            <input type="password" id="authToken" placeholder="Enter your JWT token">
+        </div>
+
+        <div class="form-group">
+            <label for="discountCode">Discount Code (Optional):</label>
+            <input type="text" id="discountCode" placeholder="Enter discount code">
+            <button type="button" class="btn btn-secondary" onclick="applyDiscount()" style="margin-top: 10px; width: auto; padding: 8px 16px;">Apply Discount</button>
+        </div>
+
+        <div id="discountSection" class="discount-section" style="display: none;">
+            <div id="discountInfo"></div>
+        </div>
+
+        <div id="orderSummary" class="order-summary">
+        </div>
+
+        <button id="createOrderBtn" class="btn btn-primary" onclick="createOrder()">
+            Create Order
+        </button>
+
+        <button id="payButton" class="btn btn-primary" onclick="initiatePayment()" style="display: none;">
+            Pay Now
+        </button>
+
+        <button class="btn btn-secondary" onclick="goBack()">
+            Go Back
+        </button>
+
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            Processing...
+        </div>
+    </div>
+
+    <script>
+        let currentOrder = null;
+        let authToken = null;
+
+        function showMessage(message, type = 'info') {
+            const messageContainer = document.getElementById('messageContainer');
+            messageContainer.innerHTML = `<div class="message ${type}">${message}</div>`;
+            setTimeout(() => {
+                messageContainer.innerHTML = '';
+            }, 5000);
+        }
+
+        function showLoading(show = true) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
+            document.getElementById('createOrderBtn').disabled = show;
+            document.getElementById('payButton').disabled = show;
+        }
+
+        async function applyDiscount() {
+            const discountCode = document.getElementById('discountCode').value.trim();
+            if (!discountCode) {
+                showMessage('Please enter a discount code', 'error');
+                return;
+            }
+
+            // For now, just show that discount is applied
+            // In real implementation, you'd validate with the server
+            const discountSection = document.getElementById('discountSection');
+            const discountInfo = document.getElementById('discountInfo');
+            
+            discountSection.style.display = 'block';
+            discountSection.classList.add('discount-applied');
+            discountInfo.innerHTML = `
+                <strong>Discount Code Applied: ${discountCode}</strong><br>
+                <small>Discount will be calculated when creating the order</small>
+            `;
+            
+            showMessage('Discount code will be applied to your order', 'success');
+        }
+
+        async function createOrder() {
+            authToken = document.getElementById('authToken').value.trim();
+            if (!authToken) {
+                showMessage('Please enter your authentication token', 'error');
+                return;
+            }
+
+            const discountCode = document.getElementById('discountCode').value.trim();
+            
+            showLoading(true);
+            
+            try {
+                const response = await fetch('/api/payments/create-simple-order', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        discountCode: discountCode || undefined
+                    })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentOrder = result.data;
+                    displayOrderSummary(currentOrder);
+                    document.getElementById('createOrderBtn').style.display = 'none';
+                    document.getElementById('payButton').style.display = 'block';
+                    showMessage('Order created successfully! You can now proceed with payment.', 'success');
+                } else {
+                    showMessage(result.message || 'Failed to create order', 'error');
+                }
+            } catch (error) {
+                console.error('Create order error:', error);
+                showMessage('Failed to create order. Please try again.', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function displayOrderSummary(order) {
+            const orderSummary = document.getElementById('orderSummary');
+            let html = '';
+            
+            if (order.items && order.items.length > 0) {
+                order.items.forEach(item => {
+                    html += `
+                        <div class="order-item">
+                            <span class="item-name">${item.title}</span>
+                            <span class="item-price">₹${item.finalPrice}</span>
+                        </div>
+                    `;
+                });
+            }
+            
+            if (order.discountAmount > 0) {
+                html += `
+                    <div class="order-item">
+                        <span class="item-name">Discount Applied</span>
+                        <span class="item-price" style="color: #28a745;">-₹${order.discountAmount}</span>
+                    </div>
+                `;
+            }
+            
+            html += `
+                <div class="order-item">
+                    <span class="item-name"><strong>Total Amount</strong></span>
+                    <span class="item-price"><strong>₹${order.finalAmount}</strong></span>
+                </div>
+            `;
+            
+            orderSummary.innerHTML = html;
+        }
+
+        function initiatePayment() {
+            if (!currentOrder || !authToken) {
+                showMessage('Please create an order first', 'error');
+                return;
+            }
+
+            const options = {
+                key: currentOrder.razorpayKeyId,
+                amount: currentOrder.amount * 100, // Amount in paise
+                currency: currentOrder.currency,
+                name: 'StartGoals',
+                description: 'Course/Project Purchase',
+                order_id: currentOrder.razorpayOrderId,
+                handler: function(response) {
+                    verifyPayment(response);
+                },
+                prefill: {
+                    name: 'Student',
+                    email: 'student@example.com',
+                    contact: '9999999999'
+                },
+                theme: {
+                    color: '#667eea'
+                },
+                modal: {
+                    ondismiss: function() {
+                        showMessage('Payment cancelled', 'info');
+                    }
+                }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.open();
+        }
+
+        async function verifyPayment(response) {
+            showLoading(true);
+            
+            try {
+                const verifyResponse = await fetch('/api/payments/verify', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature
+                    })
+                });
+
+                const result = await verifyResponse.json();
+                
+                if (result.success) {
+                    showMessage('Payment successful! Your order has been completed.', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/orders';
+                    }, 3000);
+                } else {
+                    showMessage(result.message || 'Payment verification failed', 'error');
+                }
+            } catch (error) {
+                console.error('Payment verification error:', error);
+                showMessage('Payment verification failed. Please contact support.', 'error');
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            showMessage('Enter your authentication token and create an order to proceed with payment.', 'info');
+        });
+    </script>
+</body>
+</html>

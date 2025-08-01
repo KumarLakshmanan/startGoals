@@ -269,29 +269,27 @@ export const getCourseById = async (req, res) => {
 
     // Add purchase status
     // TODO: Implement when order_items table is available
-    // if (userId) {
-    //   const userPurchase = await Order.findOne({
-    //     where: { 
-    //       userId,
-    //       status: 'paid'
-    //     },
-    //     include: [{
-    //       model: OrderItem,
-    //       as: 'items',
-    //       where: {
-    //         itemType: 'course',
-    //         itemId: courseId
-    //       },
-    //       required: true
-    //     }]
-    //   });
-    //   courseWithExtras.purchaseStatus = !!userPurchase;
-    // } else {
-    //   courseWithExtras.purchaseStatus = false;
-    // }
-
-    // For now, set purchase status to false for all users
-    courseWithExtras.purchaseStatus = false;
+    if (userId) {
+      const userPurchase = await Order.findOne({
+        where: {
+          userId,
+          status: 'paid'
+        },
+        include: [
+          {
+            model: OrderItem,
+            as: 'items',
+            where: {
+              itemType: 'course',
+              itemId: courseId
+            }
+          }
+        ]
+      });
+      courseWithExtras.purchaseStatus = !!userPurchase;
+    } else {
+      courseWithExtras.purchaseStatus = false;
+    }
 
     // Add recommended courses by same category
     const recommendedCourses = await Course.findAll({
@@ -761,32 +759,29 @@ export const getAllCourses = async (req, res) => {
     // Get purchase status for each course if user is authenticated
     let userPurchases = [];
     // TODO: Implement when order_items table is available
-    // if (userId) {
-    //   const userOrders = await Order.findAll({
-    //     where: { 
-    //       userId,
-    //       status: 'paid'
-    //     },
-    //     include: [{
-    //       model: OrderItem,
-    //       as: 'items',
-    //       where: {
-    //         itemType: 'course',
-    //         itemId: { [Op.in]: courses.map(course => course.courseId) }
-    //       },
-    //       required: true
-    //     }]
-    //   });
-
-    //   userPurchases = userOrders.flatMap(order => 
-    //     order.items.map(item => item.itemId)
-    //   );
-    // }
-
+    if (userId) {
+      const userOrders = await Order.findAll({
+        where: {
+          userId,
+          status: 'paid'
+        },
+        include: [
+          {
+            model: OrderItem,
+            as: 'items',
+            where: {
+              itemType: 'course',
+              itemId: { [Op.in]: courses.map(course => course.courseId) }
+            },
+          }
+        ]
+      });
+      userPurchases = userOrders.flatMap(order => order.items.map(item => item.itemId));
+    }
     // Add purchase status to each course
     const coursesWithPurchaseStatus = courses.map(course => {
       const courseJson = course.toJSON();
-      courseJson.purchaseStatus = userId ? userPurchases.includes(course.courseId) : false;
+      courseJson.purchaseStatus = userPurchases.includes(course.courseId);
       return courseJson;
     });
 
@@ -2794,25 +2789,25 @@ export const createCourseReview = async (req, res) => {
 
     // Check if user has purchased the course
     // TODO: Implement when order_items table is available
-    // const userPurchase = await Order.findOne({
-    //   where: { 
-    //     userId,
-    //     status: 'paid'
-    //   },
-    //   include: [{
-    //     model: OrderItem,
-    //     as: 'items',
-    //     where: {
-    //       itemType: 'course',
-    //       itemId: courseId
-    //     },
-    //     required: true
-    //   }]
-    // });
+    const userPurchase = await Order.findOne({
+      where: {
+        userId,
+        status: 'paid'
+      },
+      include: [{
+        model: OrderItem,
+        as: 'items',
+        where: {
+          itemType: 'course',
+          itemId: courseId
+        },
+        required: true
+      }]
+    });
 
-    // if (!userPurchase) {
-    //   return sendForbidden(res, "You can only review courses you have purchased");
-    // }
+    if (!userPurchase) {
+      return sendForbidden(res, "You can only review courses you have purchased");
+    }
 
     // For now, allow all authenticated users to review courses
     console.log("Note: Purchase verification temporarily disabled - allowing all authenticated users to review");

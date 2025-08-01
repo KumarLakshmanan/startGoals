@@ -24,7 +24,7 @@ router.post('/verify', authenticateToken, verifyPayment);
 router.post('/webhook', handleWebhook);
 
 // Get payment status
-router.get('/status/:paymentId', authenticateToken, getPaymentStatus);
+router.get('/status/:paymentId', getPaymentStatus);
 
 // Get user orders
 router.get('/orders', authenticateToken, getUserOrders);

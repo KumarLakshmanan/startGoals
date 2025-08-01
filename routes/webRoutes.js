@@ -48,6 +48,16 @@ router.get("/test", (req, res) => {
   res.sendFile(path.join(__dirname, "../web/test.html"));
 });
 
+// Payment link for Razorpay payment page
+router.get("/razorpay", (req, res) => {
+  res.sendFile(path.join(__dirname, "../web/razorpay-payment.html"));
+});
+
+// Payment link for Razorpay payment page
+router.get("/payment", (req, res) => {
+  res.sendFile(path.join(__dirname, "../web/payment.html"));
+});
+
 // API endpoint to get session configuration
 router.get("/api/session-config/:sessionId", async (req, res) => {
   try {

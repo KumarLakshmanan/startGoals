@@ -102,7 +102,7 @@ export const sendServerError = (res, error = null) => {
  */
 export const sendConflict = (res, field, value = "") => {
   const message = `${field} already exists${value ? `: ${value}` : ""}`;
-  return sendError(res, 409, message, { [field]: message  });
+  return sendError(res, 409, message, { [field]: message });
 };
 
 /**

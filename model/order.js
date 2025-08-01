@@ -54,10 +54,11 @@ const Order = sequelize.define(
       allowNull: true,
       comment: "Payment method used",
     },
-    orderItems: {
-      type: DataTypes.JSON,
+    finalAmount: {
+      type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
-      comment: "Array of items in the order with their details",
+      comment: "Final amount after discount",
+      defaultValue: 0,
     },
     discountCode: {
       type: DataTypes.STRING,

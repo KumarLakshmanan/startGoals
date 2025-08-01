@@ -84,8 +84,8 @@ router.post("/export/:courseId", isAdmin, exportCourseData);
 
 // ===================== PUBLIC AND GENERAL ROUTES =====================
 
-router.get("/getAllCourses", getAllCourses);
-router.get("/:courseId", getCourseById);
+router.get("/getAllCourses", authenticateToken, getAllCourses);
+router.get("/:courseId", authenticateToken, getCourseById);
 router.put("/:courseId", isTeacher, updateCourse);
 router.delete("/:courseId", isTeacher, deleteCourse);
 
@@ -109,6 +109,6 @@ router.post("/:courseId/reviews", authenticateToken, createCourseReview); // Cre
 
 // Legacy routes (for backward compatibility)
 router.post("/uploadCourse", isTeacher, createCourse);
-router.get("/getCourseById/:courseId", getCourseById);
+router.get("/getCourseById/:courseId", authenticateToken, getCourseById);
 
 export default router;

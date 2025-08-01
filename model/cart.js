@@ -46,17 +46,6 @@ const Cart = sequelize.define(
     },
     ...commonFields,
   },
-  {
-    tableName: "carts",
-    ...commonOptions,
-    indexes: [
-      {
-        unique: true,
-        fields: ["user_id", "item_type", "item_id"],
-        name: "unique_user_item_cart",
-      },
-    ],
-  },
 );
 
 export default Cart;

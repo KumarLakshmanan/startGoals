@@ -1,7 +1,7 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { Op } from 'sequelize';
-import { Order, Cart, Wishlist, User, Course, Project, ProjectPurchase } from '../model/assosiation.js';
+import { Order, Cart, Wishlist, User, Course, Project, ProjectPurchase, OrderItem } from '../model/assosiation.js';
 import DiscountCode from '../model/discountCode.js';
 import Enrollment from '../model/enrollment.js';
 import sequelize from '../config/db.js';
@@ -49,6 +49,12 @@ export const verifyPayment = async (req, res) => {
         razorpayOrderId: razorpay_order_id,
         userId
       },
+      include: [
+        {
+          model: OrderItem,
+          as: 'items',
+        }
+      ],
       transaction
     });
 
@@ -59,59 +65,79 @@ export const verifyPayment = async (req, res) => {
 
     // Update order status
     await order.update({
-      paymentId: razorpay_payment_id,
-      status: 'completed',
-      paidAt: new Date()
+      razorpayPaymentId: razorpay_payment_id,
+      razorpaySignature: razorpay_signature,
+      status: 'paid',
+      paymentDate: new Date()
     }, { transaction });
 
-    // Grant access to purchased items
-    const orderItems = JSON.parse(order.orderItems);
 
-    for (const item of orderItems) {
-      if (item.itemType === 'course') {
-        await Enrollment.findOrCreate({
-          where: {
-            userId,
-            courseId: item.itemId
-          },
-          defaults: {
-            userId,
-            courseId: item.itemId,
-            enrollmentDate: new Date(),
-            amountPaid: item.finalPrice,
-            paymentStatus: 'completed',
-            completionStatus: 'not_started',
-            progressPercentage: 0,
-            isActive: true,
-            enrollmentType: item.type || 'recorded',
-            paymentMethod: 'razorpay'
-          },
-          transaction
-        });
-      } else if (item.itemType === 'project') {
-        await ProjectPurchase.findOrCreate({
-          where: {
-            userId,
-            projectId: item.itemId
-          },
-          defaults: {
-            userId,
-            projectId: item.itemId,
-            purchaseDate: new Date(),
-            amount: item.finalPrice,
-            paymentStatus: 'completed'
-          },
-          transaction
-        });
+    for (const item of order.items) {
+      try {
+        if (item.itemType === 'course') {
+          await Enrollment.findOrCreate({
+            where: {
+              userId,
+              courseId: item.itemId
+            },
+            defaults: {
+              userId,
+              courseId: item.itemId,
+              enrollmentDate: new Date(),
+              amountPaid: item.finalPrice,
+              paymentStatus: 'completed',
+              completionStatus: 'not_started',
+              progressPercentage: 0,
+              isActive: true,
+              enrollmentType: item.type || 'recorded',
+              paymentMethod: 'razorpay'
+            },
+            transaction
+          });
+        } else if (item.itemType === 'project') {
+          await ProjectPurchase.findOrCreate({
+            where: {
+              userId,
+              projectId: item.itemId
+            },
+            defaults: {
+              userId,
+              projectId: item.itemId,
+              purchaseDate: new Date(),
+              amount: item.finalPrice,
+              paymentStatus: 'completed'
+            },
+            transaction
+          });
+        }
+      } catch (itemError) {
+        console.error(`Error processing order item:`, item, itemError);
+        if (itemError && itemError.stack) {
+          console.error('Stack trace:', itemError.stack);
+        }
+        await transaction.rollback();
+        return sendResponse(
+          res,
+          500,
+          false,
+          `Failed to process order item: ${item.itemType} (${item.itemId}) - ${itemError.message}`,
+          itemError
+        );
       }
     }
 
     // Clear cart after successful payment if it was a cart checkout
     if (!req.body.courseId && !req.body.projectId) {
-      await Cart.destroy({
-        where: { userId },
-        transaction
-      });
+      try {
+        await Cart.destroy({
+          where: { userId },
+          transaction
+        });
+      } catch (cartError) {
+        console.error('Error clearing cart:', cartError);
+        await transaction.rollback();
+        return sendResponse(res, 500, false, 'Failed to clear cart after payment', cartError.message);
+      }
     }
 
     await transaction.commit();
@@ -165,7 +191,7 @@ export const handleWebhook = async (req, res) => {
         await order.update({
           paymentId: payment.id,
           status: 'paid',
-          paidAt: new Date()
+          paymentDate: new Date()
         }, { transaction });
 
         // Grant access to purchased items (same logic as verifyPayment)
@@ -235,17 +261,9 @@ export const getPaymentStatus = async (req, res) => {
   try {
     const { paymentId } = req.params;
 
-    const payment = await razorpay.payments.fetch(paymentId);
+    const payment = await razorpay.orders.fetch(paymentId);
 
-    return sendResponse(res, 200, true, 'Payment status retrieved', {
-      paymentId: payment.id,
-      orderId: payment.order_id,
-      status: payment.status,
-      method: payment.method,
-      amount: payment.amount / 100, // Convert from paise to rupees
-      currency: payment.currency,
-      createdAt: payment.created_at
-    });
+    return sendResponse(res, 200, true, 'Payment status retrieved', payment);
 
   } catch (error) {
     console.error('Get payment status error:', error);
@@ -262,7 +280,13 @@ export const getUserOrders = async (req, res) => {
 
     const orders = await Order.findAll({
       where: { userId },
-      order: [['createdAt', 'DESC']]
+      order: [['createdAt', 'DESC']],
+      include: [
+        {
+          model: OrderItem,
+          as: 'items',
+        }
+      ]
     });
 
     return sendResponse(res, 200, true, 'Orders retrieved successfully', orders);
@@ -270,157 +294,6 @@ export const getUserOrders = async (req, res) => {
   } catch (error) {
     console.error('Get user orders error:', error);
     return sendResponse(res, 500, false, 'Failed to get orders', error.message);
-  }
-};
-
-/**
- * Create order for course purchase specifically
- */
-export const createCourseOrder = async (req, res) => {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const { courseId } = req.body;
-    const userId = req.user?.userId;
-
-    // Validate user authentication
-    if (!userId) {
-      await transaction.rollback();
-      return sendError(res, 401, "Authentication required");
-    }
-
-    // Validate courseId is provided
-    if (!courseId) {
-      await transaction.rollback();
-      return sendValidationError(res, "Course ID is required", {
-        courseId: "Required field",
-      });
-    }
-
-    // Validate UUID format
-    if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-        courseId,
-      )
-    ) {
-      await transaction.rollback();
-      return sendValidationError(res, "Invalid course ID format", {
-        courseId: "Must be a valid UUID",
-      });
-    }
-
-    // Check if course exists and is published
-    const course = await Course.findOne({
-      where: {
-        courseId: courseId,
-        isPublished: true,
-        status: "active",
-      },
-    });
-
-    if (!course) {
-      await transaction.rollback();
-      return sendNotFound(res, "Course not found or not available for purchase");
-    }
-
-    // Check if user already enrolled
-    const existingEnrollment = await Enrollment.findOne({
-      where: {
-        userId: userId,
-        courseId: courseId,
-      },
-    });
-
-    if (existingEnrollment) {
-      await transaction.rollback();
-      return sendConflict(res, "course", courseId);
-    }
-
-    // Get user details
-    const user = await User.findByPk(userId);
-    if (!user) {
-      await transaction.rollback();
-      return sendNotFound(res, "User not found");
-    }
-
-    // Calculate final price (use salePrice if available, otherwise regular price)
-    const finalPrice = course.salePrice || course.price;
-    const amountInPaise = Math.round(finalPrice * 100); // Convert to paise
-
-    if (amountInPaise <= 0) {
-      await transaction.rollback();
-      return sendValidationError(res, "Invalid course price", {
-        price: "Price must be greater than zero",
-      });
-    }
-
-    // Create Razorpay order
-    const orderOptions = {
-      amount: amountInPaise,
-      currency: "INR",
-      receipt: `course_${courseId}_user_${userId}_${Date.now()}`,
-      notes: {
-        courseId: courseId,
-        userId: userId,
-        courseTitle: course.title,
-        userEmail: user.email,
-        courseType: course.type,
-        orderType: 'course_purchase',
-      },
-    };
-
-    const razorpayOrder = await razorpay.orders.create(orderOptions);
-
-    // Create order record in database
-    const order = await Order.create({
-      userId,
-      razorpayOrderId: razorpayOrder.id,
-      totalAmount: finalPrice,
-      currency: 'INR',
-      status: 'created',
-      receipt: orderOptions.receipt,
-      orderItems: JSON.stringify([{
-        itemType: 'course',
-        itemId: courseId,
-        price: course.price,
-        salePrice: course.salePrice,
-        finalPrice: finalPrice,
-        title: course.title,
-        type: course.type
-      }]),
-      notes: orderOptions.notes,
-      expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes expiry
-    }, { transaction });
-
-    await transaction.commit();
-
-    // Return order details to frontend
-    return sendSuccess(res,  "Order created successfully", {
-      orderId: razorpayOrder.id,
-      amount: razorpayOrder.amount,
-      currency: razorpayOrder.currency,
-      courseDetails: {
-        courseId: course.courseId,
-        title: course.title,
-        type: course.type,
-        thumbnail: course.thumbnailUrl,
-        originalPrice: course.price,
-        salePrice: course.salePrice,
-        finalPrice: finalPrice,
-      },
-      userDetails: {
-        name: user.firstName
-          ? `${user.firstName} ${user.lastName || ""}`.trim()
-          : user.username,
-        email: user.email,
-        mobile: user.mobile,
-      },
-      razorpayKeyId: process.env.RAZORPAY_KEY_ID,
-    });
-  } catch (error) {
-    await transaction.rollback();
-    console.error("Create course order error:", error);
-    return sendServerError(res, error);
   }
 };
 
@@ -680,7 +553,7 @@ export const getUserPurchases = async (req, res) => {
         amount: order.amount,
         status: order.status,
         createdAt: order.createdAt,
-        paidAt: order.paidAt,
+        paymentDate: order.paymentDate,
         items: itemsWithDetails,
         discountCode: order.discountCode,
         discountAmount: order.discountAmount,
@@ -856,7 +729,6 @@ export const createSimpleOrder = async (req, res) => {
       finalAmount: finalAmount,
       status: 'pending',
       paymentMethod: 'razorpay',
-      orderItems: JSON.stringify(orderItems),
       discountCode: discountCode || null,
       currency: 'INR',
       receipt: razorpayOrder.receipt
@@ -864,6 +736,20 @@ export const createSimpleOrder = async (req, res) => {
 
     console.log('Order created in database:', order.orderId);
 
+    // Save each order item in OrderItem table
+    for (const item of orderItems) {
+      await OrderItem.create({
+        orderId: order.orderId,
+        itemType: item.itemType,
+        itemId: item.itemId,
+        quantity: 1,
+        price: item.price,
+        discountApplied: item.discount || 0,
+        finalPrice: item.finalPrice,
+      });
+    }
+    console.log(razorpayOrder);
+    console.log(order);
     // Prepare response
     const response = {
       orderId: order.orderId,
@@ -875,7 +761,7 @@ export const createSimpleOrder = async (req, res) => {
       finalAmount: finalAmount,
       items: orderItems,
       razorpayKeyId: process.env.RAZORPAY_KEY_ID,
-      paymentUrl: `https://checkout.razorpay.com/v1/checkout.js`,
+      paymentUrl: `${req.protocol}://${req.get('host')}/api/web/payment?orderId=${razorpayOrder.id}`,
       webhookUrl: `${req.protocol}://${req.get('host')}/api/payments/webhook`,
       message: "Real Razorpay order created successfully. Ready for payment."
     };

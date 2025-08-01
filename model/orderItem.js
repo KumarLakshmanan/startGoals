@@ -66,4 +66,6 @@ const OrderItem = sequelize.define(
   }
 );
 
+// No changes needed; model is already correct for normalized order items.
+
 export default OrderItem;
