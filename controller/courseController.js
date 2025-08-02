@@ -11,6 +11,9 @@ import Lesson from "../model/lesson.js";
 import Resource from "../model/resource.js";
 import User from "../model/user.js";
 import Enrollment from "../model/enrollment.js";
+import CourseTechStack from "../model/courseTechStack.js";
+import CourseProgrammingLanguage from "../model/courseProgrammingLanguage.js";
+import Skill from "../model/skill.js";
 import { Op } from "sequelize";
 import {
   sendSuccess,
@@ -85,7 +88,31 @@ export const getLiveCourses = async (req, res) => {
         { model: Category, as: "category", attributes: ["categoryId", "categoryName"] },
         { model: CourseLevel, as: "level", attributes: ["levelId", "name"] },
         // { model: Language, as: "language", attributes: ["languageId", "language"] },
-        { model: User, as: "instructor", attributes: ["userId", "username", "email", "profileImage"] }
+        { model: User, as: "instructor", attributes: ["userId", "username", "email", "profileImage"] },
+        {
+          model: CourseTechStack,
+          as: "techStack",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+          required: false,
+        },
+        {
+          model: CourseProgrammingLanguage,
+          as: "programmingLanguages",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+          required: false,
+        },
       ],
       order: [[sortBy, sortOrder]],
       limit: parseInt(limit),
@@ -159,7 +186,31 @@ export const getRecordedCourses = async (req, res) => {
         { model: Category, as: "category", attributes: ["categoryId", "categoryName"] },
         { model: CourseLevel, as: "level", attributes: ["levelId", "name"] },
         // { model: Language, as: "language", attributes: ["languageId", "language"] },
-        { model: User, as: "instructor", attributes: ["userId", "username", "email", "profileImage"] }
+        { model: User, as: "instructor", attributes: ["userId", "username", "email", "profileImage"] },
+        {
+          model: CourseTechStack,
+          as: "techStack",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+          required: false,
+        },
+        {
+          model: CourseProgrammingLanguage,
+          as: "programmingLanguages",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+          required: false,
+        },
       ],
       order: [[sortBy, sortOrder]],
       limit: parseInt(limit),
@@ -219,6 +270,28 @@ export const getCourseById = async (req, res) => {
           model: CourseTag,
           as: "tags",
           attributes: ["tag"],
+        },
+        {
+          model: CourseTechStack,
+          as: "techStack",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
+        {
+          model: CourseProgrammingLanguage,
+          as: "programmingLanguages",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
         },
         {
           model: Section,
@@ -427,8 +500,6 @@ export const createCourse = async (req, res) => {
       screenshots: Array.isArray(screenshots) ? screenshots : [],
       hasCertificate,
       certificateTemplateUrl,
-      techStack: Array.isArray(techStack) ? techStack : [],
-      programmingLanguages: Array.isArray(programmingLanguages) ? programmingLanguages : [],
       features,
       prerequisites,
       whatYouGet,
@@ -443,6 +514,42 @@ export const createCourse = async (req, res) => {
     };
 
     const course = await Course.create(courseData, { transaction });
+
+    // Add tech stack if provided
+    if (techStack && techStack.length > 0) {
+      const techStackPromises = techStack.map(async (skillId) => {
+        try {
+          const skill = await Skill.findByPk(skillId);
+          if (skill) {
+            await CourseTechStack.create({
+              courseId: course.courseId,
+              skillId
+            }, { transaction });
+          }
+        } catch (error) {
+          console.warn(`Error adding tech stack skill ${skillId}: ${error.message}`);
+        }
+      });
+      await Promise.all(techStackPromises);
+    }
+
+    // Add programming languages if provided
+    if (programmingLanguages && programmingLanguages.length > 0) {
+      const programmingLanguagePromises = programmingLanguages.map(async (skillId) => {
+        try {
+          const skill = await Skill.findByPk(skillId);
+          if (skill) {
+            await CourseProgrammingLanguage.create({
+              courseId: course.courseId,
+              skillId
+            }, { transaction });
+          }
+        } catch (error) {
+          console.warn(`Error adding programming language skill ${skillId}: ${error.message}`);
+        }
+      });
+      await Promise.all(programmingLanguagePromises);
+    }
 
     // Create sections and lessons
     if (sections && sections.length > 0) {
@@ -491,7 +598,29 @@ export const createCourse = async (req, res) => {
           as: "sections",
           include: [{ model: Lesson, as: "lessons", order: [['order', 'ASC']] }],
           order: [['order', 'ASC']]
-        }
+        },
+        {
+          model: CourseTechStack,
+          as: "techStack",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
+        {
+          model: CourseProgrammingLanguage,
+          as: "programmingLanguages",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
       ]
     });
 
@@ -749,6 +878,28 @@ export const getAllCourses = async (req, res) => {
           model: CourseTag,
           as: "tags",
           attributes: ["tag"],
+        },
+        {
+          model: CourseTechStack,
+          as: "techStack",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
+        {
+          model: CourseProgrammingLanguage,
+          as: "programmingLanguages",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
         },
       ],
       order: [[sortBy, sortOrder]],
@@ -1336,6 +1487,28 @@ export const searchCourses = async (req, res) => {
             tag: { [Op.iLike]: `%${searchTerm}%` },
           },
           required: false,
+        },
+        {
+          model: CourseTechStack,
+          as: "techStack",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
+        {
+          model: CourseProgrammingLanguage,
+          as: "programmingLanguages",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
         },
       ],
       limit: parseInt(limit),

@@ -5,6 +5,9 @@ import Category from '../model/category.js';
 import CourseLevel from '../model/courseLevel.js';
 import Language from '../model/language.js';
 import User from '../model/user.js';
+import Skill from '../model/skill.js';
+import ProjectTechStack from '../model/projectTechStack.js';
+import ProjectProgrammingLanguage from '../model/projectProgrammingLanguage.js';
 import { faker } from '@faker-js/faker';
 
 export async function seedProjects(basicData) {
@@ -15,6 +18,7 @@ export async function seedProjects(basicData) {
   const levels = basicData?.levels || await CourseLevel.findAll();
   const languages = basicData?.languages || await Language.findAll();
   const teachers = basicData?.teachers || await User.findAll({ where: { role: 'teacher' } });
+  const skills = basicData?.skills || await Skill.findAll();
 
   if (categories.length === 0 || levels.length === 0 || teachers.length === 0) {
     throw new Error('Missing required data: categories, levels, or teachers. Run basic data seeder first.');
@@ -79,17 +83,39 @@ export async function seedProjects(basicData) {
       categoryId: category.categoryId,
       levelId: level.levelId,
       createdBy: teacher.userId,
-      isPublished: true,
+      status: 'published',
       price: faker.number.float({ min: 29, max: 299, fractionDigits: 2 }),
-      salePrice: faker.number.float({ min: 19, max: 199, fractionDigits: 2 }),
-      thumbnailUrl: `https://example.com/project-${i + 1}.jpg`,
-      previewVideoUrl: `https://youtube.com/watch?v=${faker.string.alphanumeric(11)}`
+      discountEnabled: true,
+      coverImage: `https://example.com/project-${i + 1}.jpg`,
+      previewVideo: `https://youtube.com/watch?v=${faker.string.alphanumeric(11)}`
     });
+
+    // Add random tech stack (2-5 skills)
+    if (skills.length > 0) {
+      const techStackSkills = faker.helpers.arrayElements(skills, { min: 2, max: 5 });
+      for (const skill of techStackSkills) {
+        await ProjectTechStack.create({
+          projectId: project.projectId,
+          skillId: skill.skillId
+        });
+      }
+    }
+
+    // Add random programming languages (1-3 skills)
+    if (skills.length > 0) {
+      const progLangSkills = faker.helpers.arrayElements(skills, { min: 1, max: 3 });
+      for (const skill of progLangSkills) {
+        await ProjectProgrammingLanguage.create({
+          projectId: project.projectId,
+          skillId: skill.skillId
+        });
+      }
+    }
 
     projects.push(project);
   }
 
-  console.log(`✅ Created ${projects.length} projects`);
+  console.log(`✅ Created ${projects.length} projects with tech stacks and programming languages`);
   return projects;
 }
 

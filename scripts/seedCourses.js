@@ -6,6 +6,8 @@ import CourseLevel from '../model/courseLevel.js';
 import Language from '../model/language.js';
 import User from '../model/user.js';
 import { faker } from '@faker-js/faker';
+import CourseTechStack from '../model/courseTechStack.js';
+import CourseProgrammingLanguage from '../model/courseProgrammingLanguage.js';
 
 export async function seedCourses(basicData) {
   console.log('🎓 Seeding courses...');
@@ -15,6 +17,7 @@ export async function seedCourses(basicData) {
   const levels = basicData?.levels || await CourseLevel.findAll();
   const languages = basicData?.languages || await Language.findAll();
   const teachers = basicData?.teachers || await User.findAll({ where: { role: 'teacher' } });
+  const skills = basicData?.skills || await Skill.findAll();
 
   if (categories.length === 0 || levels.length === 0 || teachers.length === 0) {
     throw new Error('Missing required data: categories, levels, or teachers. Run basic data seeder first.');
@@ -86,6 +89,27 @@ export async function seedCourses(basicData) {
       liveEndDate: faker.date.future({ years: 1 })
     });
 
+    // Add random tech stack (2-5 skills)
+    if (skills.length > 0) {
+      const techStackSkills = faker.helpers.arrayElements(skills, { min: 2, max: 5 });
+      for (const skill of techStackSkills) {
+        await CourseTechStack.create({
+          courseId: course.courseId,
+          skillId: skill.skillId
+        });
+      }
+    }
+
+    // Add random programming languages (1-3 skills)
+    if (skills.length > 0) {
+      const progLangSkills = faker.helpers.arrayElements(skills, { min: 1, max: 3 });
+      for (const skill of progLangSkills) {
+        await CourseProgrammingLanguage.create({
+          courseId: course.courseId,
+          skillId: skill.skillId
+        });
+      }
+    }
     courses.push(course);
   }
 
@@ -113,6 +137,28 @@ export async function seedCourses(basicData) {
       thumbnailUrl: `https://example.com/recorded-${i + 1}.jpg`,
       previewVideoUrl: `https://youtube.com/watch?v=${faker.string.alphanumeric(11)}`
     });
+
+    // Add random tech stack (2-5 skills)
+    if (skills.length > 0) {
+      const techStackSkills = faker.helpers.arrayElements(skills, { min: 2, max: 5 });
+      for (const skill of techStackSkills) {
+        await CourseTechStack.create({
+          courseId: course.courseId,
+          skillId: skill.skillId
+        });
+      }
+    }
+
+    // Add random programming languages (1-3 skills)
+    if (skills.length > 0) {
+      const progLangSkills = faker.helpers.arrayElements(skills, { min: 1, max: 3 });
+      for (const skill of progLangSkills) {
+        await CourseProgrammingLanguage.create({
+          courseId: course.courseId,
+          skillId: skill.skillId
+        });
+      }
+    }
 
     courses.push(course);
   }

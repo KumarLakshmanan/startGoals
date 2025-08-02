@@ -3225,6 +3225,96 @@
 				}
 			],
 			"description": "Comprehensive API collection for ratings and reviews functionality including course ratings, project reviews, instructor ratings, and admin moderation tools."
+		},
+		{
+			"name": "Address Routes API Collection",
+			"item": [
+				{
+					"name": "Get All Countries",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/address/countries",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"address",
+								"countries"
+							]
+						},
+						"description": "Retrieve a list of all available countries from the countries+states.json file."
+					},
+					"response": []
+				},
+				{
+					"name": "Get States by Country (Query Parameter)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/address/states?country=India",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"address",
+								"states"
+							],
+							"query": [
+								{
+									"key": "country",
+									"value": "India",
+									"description": "Name of the country to get states for"
+								}
+							]
+						},
+						"description": "Retrieve states for a specific country using query parameter. Country name is case-insensitive."
+					},
+					"response": []
+				},
+				{
+					"name": "Get States by Country (Path Parameter)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/address/United States",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"address",
+								"United States"
+							]
+						},
+						"description": "Retrieve states for a specific country using path parameter. Country name is case-insensitive. This is for backward compatibility."
+					},
+					"response": []
+				},
+				{
+					"name": "Get States by Country (Alternative Path)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{host}}/address/Canada/states",
+							"host": [
+								"{{host}}"
+							],
+							"path": [
+								"address",
+								"Canada",
+								"states"
+							]
+						},
+						"description": "Alternative endpoint to retrieve states for a specific country. Country name is case-insensitive. This is for backward compatibility."
+					},
+					"response": []
+				}
+			],
+			"description": "API endpoints for address management including countries and states data retrieval. All endpoints are public and do not require authentication."
 		}
 	],
 	"variable": [

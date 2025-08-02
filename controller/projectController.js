@@ -295,9 +295,28 @@ export const createProject = async (req, res) => {
           through: { attributes: [] },
         },
         {
-          model: User,
-          as: "linkedTeacher",
-          attributes: ["userId", "username", "email"],
+          model: ProjectTechStack,
+          as: "techStack",
+          attributes: ["skillId"],
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
+        {
+          model: ProjectProgrammingLanguage,
+          as: "programmingLanguages",
+          attributes: ["skillId"],
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
         },
       ],
     });
@@ -391,6 +410,32 @@ export const getAllProjects = async (req, res) => {
         as: "ratings",
         attributes: ["rating"],
         where: { moderationStatus: "approved" },
+        required: false,
+      },
+      {
+        model: ProjectTechStack,
+        as: "techStack",
+        attributes: ["skillId"],
+        include: [
+          {
+            model: Skill,
+            as: "skill",
+            attributes: ["skillId", "skillName"],
+          },
+        ],
+        required: false,
+      },
+      {
+        model: ProjectProgrammingLanguage,
+        as: "programmingLanguages",
+        attributes: ["skillId"],
+        include: [
+          {
+            model: Skill,
+            as: "skill",
+            attributes: ["skillId", "skillName"],
+          },
+        ],
         required: false,
       },
     ];
@@ -662,6 +707,30 @@ export const updateProject = async (req, res) => {
           as: "tags",
           attributes: ["courseTagId", "tag"],
           through: { attributes: [] },
+        },
+        {
+          model: ProjectTechStack,
+          as: "techStack",
+          attributes: ["skillId"],
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
+        {
+          model: ProjectProgrammingLanguage,
+          as: "programmingLanguages",
+          attributes: ["skillId"],
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
         },
       ],
     });
