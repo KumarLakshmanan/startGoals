@@ -300,3 +300,6 @@ A flexible, robust discount system for all course/project types, with full admin
 
 
 
+
+
+Create a profile update api for student and use the userControllers and userRoutes to handle the profile update functionality.

@@ -116,7 +116,6 @@ export const getUserCertificates = async (req, res) => {
     
     // Pagination parameters
     const { page = 1, limit = 10 } = req.query;
-    const offset = (page - 1) * limit;
     
     // Fetch certificates from database
     // Comment out until Certificate model is confirmed to exist

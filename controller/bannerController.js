@@ -314,7 +314,6 @@ export const updateBanner = async (req, res) => {
     console.error("Update banner error:", error);
     return sendServerError(res, error);
   }
-  return sendError(res, 500, "An unexpected error occurred while updating the banner");
 };
 
 // Delete banner by ID (soft delete)

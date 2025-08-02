@@ -17,41 +17,15 @@ import {
   getCoursesStats,
   getLiveCourses,
   getRecordedCourses,
-  // Admin course management functions
   createLiveCourse,
   createRecordedCourse,
-  createCourseBatch,
-  getCourseBatches,
-  deleteCourseAdmin,
-  getCourseManagementData,
-  // Analytics and reporting functions
   getCourseAnalytics,
   getAdminDashboardOverview,
   exportCourseData,
-  // Course tests management
-  getCourseTests,
-  createCourseTest,
-  updateCourseTest,
-  deleteCourseTest,
-  // Course certificates management
-  getCourseCertificates,
-  createCourseCertificate,
-  updateCourseCertificate,
-  deleteCourseCertificate,
-  // Course purchases management
-  getCoursePurchases,
-  getPurchaseDetails,
-  // Course ratings management
-  getCourseRatings,
-  replyToRating,
-  deleteRating,
-  batchUpdateRatingStatus,
-  // New rating and review APIs
   getCourseRatingsStats,
   getCourseReviews,
   createCourseReview
 } from "../controller/courseController.js";
-import upload from "../middleware/fileUploadMiddleware.js";
 
 const router = express.Router();
 
@@ -65,9 +39,6 @@ router.get("/list", isAdmin, getAllCourses); // Add specific route for list view
 // Get courses by type
 router.get("/live", authenticateToken, getLiveCourses);
 router.get("/recorded", authenticateToken, getRecordedCourses);
-
-// Course management
-router.get("/manage/:courseId", isAdmin, getCourseManagementData);
 
 // Create courses (Admin/Owner only)
 router.post("/create/live", isAdmin, createLiveCourse);

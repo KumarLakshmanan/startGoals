@@ -459,7 +459,7 @@ export const createBatchWithAutoEnrollment = async (req, res) => {
     // Auto-enroll students if criteria provided
     let enrolledStudents = [];
     if (autoEnrollmentCriteria) {
-      const { enrollmentStatus, registrationDate, skillLevel } =
+      const { enrollmentStatus, registrationDate } =
         autoEnrollmentCriteria;
 
       const whereClause = { courseId };
@@ -746,7 +746,6 @@ export const createBatchSchedule = async (req, res) => {
 export const getBatchAnalytics = async (req, res) => {
   try {
     const { batchId } = req.params;
-    const { dateRange } = req.query;    // Get batch with all related data
     const batch = await Batch.findByPk(batchId, {
       include: [
         {

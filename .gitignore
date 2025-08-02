@@ -7,4 +7,3 @@ __tests__/
 .backup/
 *.md
 *.txt
-*.json

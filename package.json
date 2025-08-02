@@ -14,7 +14,9 @@
     "seed": "node scripts/index.js",
     "seed:comprehensive": "node scripts/seedData.js",
     "seed:validate": "node scripts/validateComprehensiveSeeding.js",
-    "seed:truncate": "node scripts/truncateAllTables.js"
+    "seed:truncate": "node scripts/truncateAllTables.js",
+    "lint": "eslint \"**/*.js\"",
+    "lint:fix": "eslint --fix \"**/*.js\""
   },
   "keywords": [],
   "author": "",
@@ -53,8 +55,11 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.32.0",
     "@faker-js/faker": "^9.9.0",
     "chai": "^5.2.1",
+    "eslint": "^9.32.0",
+    "globals": "^16.3.0",
     "mocha": "^11.7.1",
     "nodemon": "^3.1.9",
     "supertest": "^7.1.4"

@@ -1,7 +1,6 @@
 // Create a new course (hybrid, recorded, or live)
 import sequelize from "../config/db.js";
 import Course from "../model/course.js";
-import { validateCourseInput } from "../utils/commonUtils.js";
 import CourseLevel from "../model/courseLevel.js";
 import Category from "../model/category.js";
 import CourseTag from "../model/courseTag.js";
@@ -35,6 +34,7 @@ import CourseCertificate from "../model/courseCertificate.js";
 import CourseRating from "../model/courseRating.js";
 import Order from "../model/order.js";
 import OrderItem from "../model/orderItem.js";
+import CourseGoal from "../model/courseGoal.js";
 
 // Get live courses only
 export const getLiveCourses = async (req, res) => {
@@ -269,7 +269,10 @@ export const getCourseById = async (req, res) => {
         {
           model: CourseTag,
           as: "tags",
-          attributes: ["tag"],
+        },
+        {
+          model: CourseGoal,
+          as: "goals",
         },
         {
           model: CourseTechStack,
@@ -980,7 +983,6 @@ export const deleteCourse = async (req, res) => {
       // Hard delete - remove from database completely
       await CourseTag.destroy({ where: { courseId }, transaction });
       await CourseGoal.destroy({ where: { courseId }, transaction });
-      await CourseRequirement.destroy({ where: { courseId }, transaction });
 
       // Remove language associations
       await course.setLanguages([], { transaction });
@@ -1011,7 +1013,6 @@ export const getCourseAnalytics = async (req, res) => {
       dateRange = "30d",
       includeRevenue = true,
       includeEngagement = true,
-      includeCompletion = true,
     } = req.query;
 
     // Check if course exists
@@ -1535,7 +1536,6 @@ export const searchCourses = async (req, res) => {
 
 export const getCoursesByInstructor = async (req, res) => {
   const { page = 1, limit = 10, status = "active" } = req.query;
-  const instructorId = req.user?.userId;
   try {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -2127,7 +2127,8 @@ export const getCourseTests = async (req, res) => {
       const testData = test.toJSON();
       try {
         testData.questions = JSON.parse(testData.questions);
-      } catch (e) {
+      } catch (_error) {
+        console.error("Error parsing questions JSON:", _error);
         testData.questions = [];
       }
       return testData;
@@ -2184,6 +2185,7 @@ export const updateCourseTest = async (req, res) => {
     try {
       testData.questions = JSON.parse(testData.questions);
     } catch (e) {
+      console.error("Error parsing questions JSON:", e);
       testData.questions = [];
     }
 
@@ -2196,89 +2198,6 @@ export const updateCourseTest = async (req, res) => {
 };
 
 
-export const getCourseManagementData = async (req, res) => {
-  try {
-    const { courseId } = req.params;
-
-    const course = await Course.findByPk(courseId, {
-      include: [
-        {
-          model: CourseLevel,
-          as: "level",
-          attributes: ["level"],
-        },
-        {
-          model: Category,
-          as: "category",
-          attributes: ["categoryName"],
-        },
-        {
-          model: User,
-          as: "instructor",
-          attributes: ["username", "email", "profileImage"],
-        },
-        {
-          model: CourseGoal,
-          as: "goals",
-          attributes: ["goalText", "order"],
-          order: [["order", "ASC"]],
-        },
-        {
-          model: CourseRequirement,
-          as: "requirements",
-          attributes: ["requirementText", "order"],
-          order: [["order", "ASC"]],
-        },
-        {
-          model: CourseTag,
-          as: "tags",
-          attributes: ["tagName", "order"],
-          order: [["order", "ASC"]],
-        },
-        {
-          model: Section,
-          as: "sections",
-          attributes: ["title", "description", "order"],
-          include: [
-            {
-              model: Lesson,
-              as: "lessons",
-              attributes: [
-                "title",
-                "description",
-                "videoUrl",
-                "duration",
-                "order",
-                "isPreview",
-              ],
-            },
-          ],
-          order: [["order", "ASC"]],
-        },
-      ],
-    });
-
-    if (!course) {
-      return sendNotFound(res, "Course not found");
-    }
-
-    const enrollmentStats = await Enrollment.findAndCountAll({
-      where: { courseId },
-    });
-
-    return sendSuccess(res, "Course management data fetched successfully", {
-      course,
-      statistics: {
-        totalEnrollments: enrollmentStats.count,
-        averageRating: course.averageRating,
-        totalRatings: course.totalRatings,
-      },
-    });
-  } catch (error) {
-    console.error("Get course management data error:", error);
-    return sendServerError(res, error);
-  }
-};
 // Delete a course test
 export const deleteCourseTest = async (req, res) => {
   const { courseId, testId } = req.params;
@@ -2746,37 +2665,6 @@ export const batchUpdateRatingStatus = async (req, res) => {
     await transaction.rollback();
     console.error('Error in batchUpdateRatingStatus:', error);
     sendServerError(res, "Failed to update rating status");
-  }
-};
-
-// Get course ratings
-export const getCourseRatings = async (req, res) => {
-  try {
-    const { courseId } = req.params;
-    const { page = 1, limit = 10 } = req.query;
-
-    // Implementation will depend on your ratings model
-    const ratings = [];
-    const total = 0;
-
-    res.json({
-      success: true,
-      data: {
-        ratings,
-        pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          total,
-          pages: Math.ceil(total / limit)
-        }
-      }
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch course ratings',
-      error: error.message
-    });
   }
 };
 

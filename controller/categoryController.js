@@ -153,7 +153,7 @@ export const getAllCategories = async (req, res) => {
       ];
     }
 
-    const { count, rows: categories } = await Category.findAndCountAll({
+    const { rows: categories } = await Category.findAndCountAll({
       where: whereClause,
       order: [[sortBy, sortOrder.toUpperCase()]],
     });

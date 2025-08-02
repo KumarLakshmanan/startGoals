@@ -101,7 +101,7 @@ export const getPlatformOverview = async (req, res) => {
  */
 export const getUserAnalytics = async (req, res) => {
   try {
-    const { startDate, endDate, type } = req.query;
+    const { startDate, endDate } = req.query;
     const dateRange = {};
     
     if (startDate && endDate) {
@@ -297,7 +297,7 @@ export const getCourseAnalytics = async (req, res) => {
  */
 export const getRevenueAnalytics = async (req, res) => {
   try {
-    const { startDate, endDate, type } = req.query;
+    const { startDate, endDate } = req.query;
     const dateRange = {};
     
     if (startDate && endDate) {
