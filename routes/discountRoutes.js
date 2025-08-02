@@ -7,7 +7,6 @@
 import express from "express";
 import {
   createDiscountCode,
-  getAllDiscountCodes,
   getDiscountCodeById,
   updateDiscountCode,
   deleteDiscountCode,
@@ -23,87 +22,6 @@ import { isAdmin, authenticateToken } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 // ===================== ADMIN DISCOUNT CODE MANAGEMENT =====================
-
-// Create new discount code (Admin only)
-router.post(
-  "/",
-  isAdmin,
-  [
-    body("code")
-      .notEmpty()
-      .isLength({ min: 3, max: 20 })
-      .withMessage("Code must be 3-20 characters"),
-    body("description")
-      .optional()
-      .isLength({ max: 500 })
-      .withMessage("Description must be under 500 characters"),
-    body("discountType")
-      .isIn(["percentage", "fixed"])
-      .withMessage("Discount type must be 'percentage' or 'fixed'"),
-    body("discountValue")
-      .isFloat({ min: 0.01 })
-      .withMessage("Discount value must be greater than 0"),
-    body("applicableType")
-      .isIn(["course", "project", "both"])
-      .withMessage("Applicable type must be 'course', 'project', or 'both'"),
-    body("minPurchaseAmount")
-      .optional()
-      .isFloat({ min: 0 })
-      .withMessage("Min purchase amount must be non-negative"),
-    body("maxUses")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Max uses must be a positive integer"),
-    body("maxUsesPerUser")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Max uses per user must be a positive integer"),
-    body("validFrom")
-      .isISO8601()
-      .withMessage("Valid from date must be a valid ISO 8601 date"),
-    body("validUntil")
-      .isISO8601()
-      .withMessage("Valid until date must be a valid ISO 8601 date"),
-    body("isActive")
-      .optional()
-      .isBoolean()
-      .withMessage("Is active must be a boolean"),
-  ],
-  createDiscountCode,
-);
-
-// Get all discount codes (Admin only)
-router.get(
-  "/",
-  isAdmin,
-  [
-    query("page")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Page must be a positive integer"),
-    query("limit")
-      .optional()
-      .isInt({ min: 1, max: 100 })
-      .withMessage("Limit must be between 1 and 100"),
-    query("status")
-      .optional()
-      .isIn(["active", "inactive", "expired", "scheduled"])
-      .withMessage("Invalid status"),
-    query("applicableType")
-      .optional()
-      .isIn(["course", "project", "both"])
-      .withMessage("Invalid applicable type"),
-    query("sortBy")
-      .optional()
-      .isIn(["createdAt", "code", "validFrom", "validUntil", "currentUses"])
-      .withMessage("Invalid sort field"),
-    query("sortOrder")
-      .optional()
-      .isIn(["ASC", "DESC"])
-      .withMessage("Sort order must be ASC or DESC"),
-  ],
-  getAllDiscountCodes,
-);
 
 // Get single discount code by ID (Admin only)
 router.get(
@@ -217,7 +135,7 @@ router.get(
  * @access Private (Super Admin, Payment Manager)
  */
 router.get(
-  "/admin/all",
+  "/all",
   isAdmin,
   [
     query("page")
@@ -254,7 +172,7 @@ router.get(
  * @access Private (Super Admin, Payment Manager)
  */
 router.get(
-  "/admin/:discountId/analytics",
+  "/:discountId/analytics",
   isAdmin,
   [
     param("discountId").isInt().withMessage("Valid discount ID is required"),
@@ -268,6 +186,88 @@ router.get(
       .withMessage("Invalid groupBy value"),
   ],
   getDiscountAnalytics,
+);
+
+
+// Create new discount code (Admin only)
+router.post(
+  "/",
+  isAdmin,
+  [
+    body("code")
+      .notEmpty()
+      .isLength({ min: 3, max: 20 })
+      .withMessage("Code must be 3-20 characters"),
+    body("description")
+      .optional()
+      .isLength({ max: 500 })
+      .withMessage("Description must be under 500 characters"),
+    body("discountType")
+      .isIn(["percentage", "fixed"])
+      .withMessage("Discount type must be 'percentage' or 'fixed'"),
+    body("discountValue")
+      .isFloat({ min: 0.01 })
+      .withMessage("Discount value must be greater than 0"),
+    body("applicableType")
+      .isIn(["course", "project", "both"])
+      .withMessage("Applicable type must be 'course', 'project', or 'both'"),
+    body("minPurchaseAmount")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Min purchase amount must be non-negative"),
+    body("maxUses")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Max uses must be a positive integer"),
+    body("maxUsesPerUser")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Max uses per user must be a positive integer"),
+    body("validFrom")
+      .isISO8601()
+      .withMessage("Valid from date must be a valid ISO 8601 date"),
+    body("validUntil")
+      .isISO8601()
+      .withMessage("Valid until date must be a valid ISO 8601 date"),
+    body("isActive")
+      .optional()
+      .isBoolean()
+      .withMessage("Is active must be a boolean"),
+  ],
+  createDiscountCode,
+);
+
+// Get all discount codes (Admin only)
+router.get(
+  "/",
+  isAdmin,
+  [
+    query("page")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Page must be a positive integer"),
+    query("limit")
+      .optional()
+      .isInt({ min: 1, max: 100 })
+      .withMessage("Limit must be between 1 and 100"),
+    query("status")
+      .optional()
+      .isIn(["active", "inactive", "expired", "scheduled"])
+      .withMessage("Invalid status"),
+    query("applicableType")
+      .optional()
+      .isIn(["course", "project", "both"])
+      .withMessage("Invalid applicable type"),
+    query("sortBy")
+      .optional()
+      .isIn(["createdAt", "code", "validFrom", "validUntil", "currentUses"])
+      .withMessage("Invalid sort field"),
+    query("sortOrder")
+      .optional()
+      .isIn(["ASC", "DESC"])
+      .withMessage("Sort order must be ASC or DESC"),
+  ],
+  getAllDiscountCodesAdmin,
 );
 
 export default router;

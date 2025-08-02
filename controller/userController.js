@@ -5,7 +5,7 @@ import Goal from "../model/goal.js";
 import Batch from "../model/batch.js";
 import BatchStudents from "../model/batchStudents.js";
 import Enrollment from "../model/enrollment.js";
-import CourseCategory from "../model/courseCategory.js";
+import Category from "../model/category.js";
 import { generateToken } from "../utils/jwtToken.js";
 import sequelize from "../config/db.js";
 import { validateEmail, validateMobile } from "../utils/commonUtils.js";
@@ -14,7 +14,6 @@ import bcrypt from "bcrypt";
 // ✅ OTP-related imports
 import { sendOtp } from "../utils/sendOtp.js";
 import Banner from "../model/banner.js";
-import Category from "../model/courseCategory.js";
 import Course from "../model/course.js";
 import Settings from "../model/settings.js";
 import { Op } from "sequelize";
@@ -426,7 +425,6 @@ export const getHomePage = async (req, res) => {
     const enrolledCourseIds = myClasses.map((course) => course.id);
     const recommendedCourses = await Course.findAll({
       where: {
-        isPublished: true,
         status: "active",
         ...(enrolledCourseIds.length > 0 && {
           courseId: { [Op.notIn]: enrolledCourseIds },
@@ -1089,7 +1087,7 @@ export const getStudentAnalytics = async (req, res) => {
       ],
     });
 
-    const categoryStats = await CourseCategory.findAll({
+    const categoryStats = await Category.findAll({
       attributes: [
         "categoryId",
         "categoryName",
@@ -1127,7 +1125,7 @@ export const getStudentAnalytics = async (req, res) => {
           attributes: [],
         },
       ],
-      group: ["CourseCategory.categoryId", "CourseCategory.categoryName"],
+      group: ["Category.categoryId", "Category.categoryName"],
       having: sequelize.where(
         sequelize.fn(
           "COUNT",

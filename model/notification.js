@@ -1,8 +1,3 @@
-// ===========================================================================================
-// NOTIFICATION MODEL
-// Defines the structure for user notifications in the database
-// ===========================================================================================
-
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import User from "./user.js";

@@ -3,7 +3,7 @@ import User from "./user.js";
 import Language from "./language.js";
 import Otp from "./otp.js";
 import Course from "./course.js";
-import CourseCategory from "./courseCategory.js";
+import Category from "./category.js";
 import CourseTag from "./courseTag.js";
 import Banner from "./banner.js";
 import Goal from "./goal.js";
@@ -47,6 +47,10 @@ import Cart from "./cart.js";
 import Order from "./order.js";
 import OrderItem from "./orderItem.js";
 import CourseFile from "./courseFile.js";
+import ProjectTechStack from "./projectTechStack.js";
+import ProjectProgrammingLanguage from "./projectProgrammingLanguage.js";
+import CourseProgrammingLanguage from "./courseProgrammingLanguage.js";
+import CourseTechStack from "./courseTechStack.js";
 
 // All models must be defined before we associate them
 const models = {
@@ -54,7 +58,7 @@ const models = {
   Course,
   Language,
   Otp,
-  CourseCategory,
+  Category,
   CourseTag,
   Banner,
   Goal,
@@ -191,15 +195,15 @@ Skill.belongsToMany(User, {
   onDelete: "CASCADE",
 });
 
-// Skill to CourseCategory
-Skill.belongsTo(CourseCategory, {
+// Skill to Category
+Skill.belongsTo(Category, {
   foreignKey: "category_id",
   as: "category",
   onDelete: "SET NULL",
   onUpdate: "CASCADE",
 });
 
-CourseCategory.hasMany(Skill, {
+Category.hasMany(Skill, {
   foreignKey: "category_id",
   as: "skills",
   onDelete: "SET NULL",
@@ -232,15 +236,15 @@ CourseTag.belongsTo(Course, {
   as: "course",
 });
 
-//cours with courseCategory
+//cours with Category
 // One category has many courses
-CourseCategory.hasMany(Course, {
+Category.hasMany(Course, {
   foreignKey: "categoryId",
   as: "courses",
 });
 
 // A course belongs to one category
-Course.belongsTo(CourseCategory, {
+Course.belongsTo(Category, {
   foreignKey: "categoryId",
   as: "category",
 });
@@ -473,13 +477,13 @@ User.hasMany(Project, {
   as: "projects",
 });
 
-// Project belongs to Category (using existing CourseCategory)
-Project.belongsTo(CourseCategory, {
+// Project belongs to Category (using existing Category)
+Project.belongsTo(Category, {
   foreignKey: "categoryId",
   as: "category",
 });
 
-CourseCategory.hasMany(Project, {
+Category.hasMany(Project, {
   foreignKey: "categoryId",
   as: "projects",
 });
@@ -489,7 +493,7 @@ Project.belongsToMany(CourseTag, {
   through: "project_tags",
   foreignKey: "project_id",
   otherKey: "tag_id",
-  as: "projectTags",
+  as: "tags",
   onDelete: "CASCADE",
 });
 
@@ -614,7 +618,7 @@ User.hasMany(DiscountCode, {
 });
 
 // DiscountCode can apply to categories - TEMPORARILY DISABLED
-// DiscountCode.belongsToMany(CourseCategory, {
+// DiscountCode.belongsToMany(Category, {
 //   through: "discount_categories",
 //   foreignKey: "discount_id", // Corrected to match actual primary key
 //   otherKey: "category_id",
@@ -622,7 +626,7 @@ User.hasMany(DiscountCode, {
 //   onDelete: "CASCADE",
 // });
 
-// CourseCategory.belongsToMany(DiscountCode, {
+// Category.belongsToMany(DiscountCode, {
 //   through: "discount_categories",
 //   foreignKey: "category_id",
 //   otherKey: "discount_id", // Corrected to match actual primary key
@@ -785,7 +789,7 @@ OrderItem.belongsTo(Order, {
 });
 
 // Export all models + sequelize
-export { 
+export {
   sequelize,
   User,
   Course,
@@ -796,7 +800,7 @@ export {
   Order,
   OrderItem,
   ProjectPurchase
- };
+};
 
 // CourseFile associations
 CourseFile.belongsTo(Course, {
@@ -848,7 +852,23 @@ RatingHelpful.belongsTo(User, {
   as: "user",
 });
 
-// Generic associations for all rating types (polymorphic relationship)
-// Note: Sequelize doesn't support true polymorphic associations, so we handle this in the application logic
+
+// Associations for eager loading
+Project.hasMany(ProjectTechStack, { as: "techStack", foreignKey: "projectId" });
+ProjectTechStack.belongsTo(Project, { foreignKey: "projectId" });
+
+Project.hasMany(ProjectProgrammingLanguage, { as: "programmingLanguages", foreignKey: "projectId" });
+ProjectProgrammingLanguage.belongsTo(Project, { foreignKey: "projectId" });
+
+Course.hasMany(CourseTechStack, { as: "techStack", foreignKey: "courseId" });
+CourseTechStack.belongsTo(Course, { foreignKey: "courseId" });
+
+Course.hasMany(CourseProgrammingLanguage, { as: "programmingLanguages", foreignKey: "courseId" });
+CourseProgrammingLanguage.belongsTo(Course, { foreignKey: "courseId" });
+
+ProjectTechStack.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
+CourseTechStack.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
+ProjectProgrammingLanguage.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
+CourseProgrammingLanguage.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
 
 export default models;

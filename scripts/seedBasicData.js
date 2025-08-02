@@ -2,7 +2,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import { Op } from 'sequelize';
 import User from '../model/user.js';
-import CourseCategory from '../model/courseCategory.js';
+import Category from '../model/category.js';
 import CourseLevel from '../model/courseLevel.js';
 import Language from '../model/language.js';
 import { faker } from '@faker-js/faker';
@@ -141,7 +141,7 @@ export async function seedBasicData() {
   console.log('Creating course categories...');
   const categories = [];
   for (const categoryData of courseCategories) {
-    const [category] = await CourseCategory.findOrCreate({
+    const [category] = await Category.findOrCreate({
       where: { categoryCode: categoryData.categoryCode },
       defaults: {
         categoryId: uuidv4(),

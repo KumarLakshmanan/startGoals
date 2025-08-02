@@ -7,7 +7,7 @@ import BatchStudents from "../model/batchStudents.js";
 import Enrollment from "../model/enrollment.js";
 import InstructorRating from "../model/instructorRating.js";
 import CourseRating from "../model/courseRating.js";
-import CourseCategory from "../model/courseCategory.js";
+import Category from "../model/category.js";
 import { Op } from "sequelize";
 import bcrypt from "bcrypt";
 import {
@@ -764,7 +764,7 @@ export const getTeacherAssignedCourses = async (req, res) => {
       where: whereConditions,
       include: [
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },

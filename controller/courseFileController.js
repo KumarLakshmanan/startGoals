@@ -268,7 +268,7 @@ export const downloadCourseFile = async (req, res) => {
         {
           model: Course,
           as: "course",
-          attributes: ["courseId", "title", "createdBy", "status", "isPublished"],
+          attributes: ["courseId", "title", "createdBy", "status"],
         },
       ],
     });
@@ -279,7 +279,7 @@ export const downloadCourseFile = async (req, res) => {
 
     // Check if course is published or user is creator/admin
     if (
-      (!courseFile.course.isPublished || courseFile.course.status !== "active") &&
+      (courseFile.course.status !== "active") &&
       courseFile.course.createdBy !== userId &&
       req.user?.role !== "admin"
     ) {
@@ -475,7 +475,7 @@ export const streamCourseFile = async (req, res) => {
         {
           model: Course,
           as: "course",
-          attributes: ["courseId", "title", "createdBy", "status", "isPublished"],
+          attributes: ["courseId", "title", "createdBy", "status"],
         },
       ],
     });
@@ -491,7 +491,7 @@ export const streamCourseFile = async (req, res) => {
 
     // Check if course is published or user is creator/admin
     if (
-      (!courseFile.course.isPublished || courseFile.course.status !== "active") &&
+      (courseFile.course.status !== "active") &&
       courseFile.course.createdBy !== userId &&
       req.user?.role !== "admin"
     ) {

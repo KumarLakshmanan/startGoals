@@ -1,7 +1,7 @@
 // Fast Course Seeder - Creates multiple courses efficiently
 import { v4 as uuidv4 } from 'uuid';
 import Course from '../model/course.js';
-import CourseCategory from '../model/courseCategory.js';
+import Category from '../model/category.js';
 import CourseLevel from '../model/courseLevel.js';
 import Language from '../model/language.js';
 import User from '../model/user.js';
@@ -11,7 +11,7 @@ export async function seedCourses(basicData) {
   console.log('🎓 Seeding courses...');
 
   // Use provided data or fetch from database
-  const categories = basicData?.categories || await CourseCategory.findAll();
+  const categories = basicData?.categories || await Category.findAll();
   const levels = basicData?.levels || await CourseLevel.findAll();
   const languages = basicData?.languages || await Language.findAll();
   const teachers = basicData?.teachers || await User.findAll({ where: { role: 'teacher' } });

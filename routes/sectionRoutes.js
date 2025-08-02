@@ -10,7 +10,6 @@ import {
   deleteSectionAdmin,
   reorderSections,
   getCourseContentManagement,
-  bulkPublishContent,
   uploadLessonVideo,
 } from "../controller/sectionController.js";
 import {
@@ -37,11 +36,6 @@ router.get(
   getCourseContentManagement,
 );
 router.post("/admin/course/:courseId/reorder", isAdmin, reorderSections);
-router.post(
-  "/admin/course/:courseId/bulk-publish",
-  isAdmin,
-  bulkPublishContent,
-);
 
 // ===================== GENERAL SECTION ROUTES =====================
 

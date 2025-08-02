@@ -1,7 +1,7 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { Op } from 'sequelize';
-import { Order, Cart, Wishlist, User, Course, Project, ProjectPurchase, OrderItem } from '../model/assosiation.js';
+import { Order, Cart, Wishlist, User, Course, Project, ProjectPurchase, OrderItem } from '../model/associations.js';
 import DiscountCode from '../model/discountCode.js';
 import Enrollment from '../model/enrollment.js';
 import sequelize from '../config/db.js';
@@ -379,7 +379,6 @@ export const verifyPaymentAndEnroll = async (req, res) => {
     const course = await Course.findOne({
       where: {
         courseId: courseId,
-        isPublished: true,
         status: "active",
       },
     });

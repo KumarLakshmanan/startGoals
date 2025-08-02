@@ -1,7 +1,7 @@
 // Fast Project Seeder - Creates multiple projects efficiently
 import { v4 as uuidv4 } from 'uuid';
 import Project from '../model/project.js';
-import CourseCategory from '../model/courseCategory.js';
+import Category from '../model/category.js';
 import CourseLevel from '../model/courseLevel.js';
 import Language from '../model/language.js';
 import User from '../model/user.js';
@@ -11,7 +11,7 @@ export async function seedProjects(basicData) {
   console.log('💼 Seeding projects...');
 
   // Use provided data or fetch from database
-  const categories = basicData?.categories || await CourseCategory.findAll();
+  const categories = basicData?.categories || await Category.findAll();
   const levels = basicData?.levels || await CourseLevel.findAll();
   const languages = basicData?.languages || await Language.findAll();
   const teachers = basicData?.teachers || await User.findAll({ where: { role: 'teacher' } });

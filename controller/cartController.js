@@ -1,4 +1,4 @@
-import { Cart, Course, Project, User } from '../model/assosiation.js';
+import { Cart, Course, Project, User } from '../model/associations.js';
 import { sendResponse } from '../utils/responseHelper.js';
 
 /**

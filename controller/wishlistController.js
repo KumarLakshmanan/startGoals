@@ -1,4 +1,4 @@
-import { Wishlist, Course, Project, User } from '../model/assosiation.js';
+import { Wishlist, Course, Project, User } from '../model/associations.js';
 import { sendResponse } from '../utils/responseHelper.js';
 
 /**
@@ -202,7 +202,7 @@ export const moveToCart = async (req, res) => {
     }
 
     // Check if item already in cart
-    const { Cart } = await import('../model/assosiation.js');
+    const { Cart } = await import('../model/associations.js');
     const existingCartItem = await Cart.findOne({
       where: {
         userId,

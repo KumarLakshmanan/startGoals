@@ -25,9 +25,8 @@ import {
   bulkUpdateReviewStatus,
   getProjectSettings,
   updateProjectSettings,
-  getProjectDetailsAdmin,
 } from "../controller/projectController.js";
-import { isAdmin, authenticateToken } from "../middleware/authMiddleware.js";
+import { isAdmin, authenticateToken, isStudent } from "../middleware/authMiddleware.js";
 import { validateInput } from "../middleware/validationMiddleware.js";
 import { body, param, query } from "express-validator";
 
@@ -135,10 +134,6 @@ router.post(
       .optional({ nullable: true })
       .custom((value) => value === null || typeof value === "string")
       .withMessage("Support email must be a string"),
-    body("linkedTeacherId")
-      .optional()
-      .isUUID()
-      .withMessage("Linked teacher ID must be a valid UUID"),
     body("previewVideo")
       .optional({ nullable: true })
       .custom((value) => value === null || typeof value === "string")
@@ -253,10 +248,6 @@ router.put(
       .optional({ nullable: true })
       .custom((value) => value === null || typeof value === "string")
       .withMessage("Support email must be a string"),
-    body("linkedTeacherId")
-      .optional()
-      .isUUID()
-      .withMessage("Linked teacher ID must be a valid UUID"),
     body("previewVideo")
       .optional({ nullable: true })
       .custom((value) => value === null || typeof value === "string")
@@ -272,6 +263,7 @@ router.put(
 // Get all projects with filtering (Public)
 router.get(
   "/getAll",
+  isStudent,
   [
     query("page")
       .optional()
@@ -320,6 +312,7 @@ router.get(
 // Get single project by ID (Public)
 router.get(
   "/get/:id",
+  isStudent,
   [param("id").isUUID().withMessage("Valid project ID is required")],
   validateInput,
   getProjectById,
@@ -347,7 +340,7 @@ router.delete(
 // Initiate project purchase (Authenticated users only)
 router.post(
   "/purchase",
-  authenticateToken, // Add authentication for purchase
+  isStudent, // Add authentication for purchase
   [
     body("projectId").isUUID().withMessage("Valid project ID is required"),
     body("discountCode")
@@ -416,7 +409,7 @@ router.get(
   isAdmin,
   [param("id").isUUID().withMessage("Valid project ID is required")],
   validateInput,
-  getProjectDetailsAdmin
+  getProjectById,
 );
 
 router.put(

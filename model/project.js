@@ -35,7 +35,7 @@ const Project = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
       references: {
-        model: "course_categories",
+        model: "categories",
         key: "category_id",
       },
     },
@@ -47,11 +47,6 @@ const Project = sequelize.define(
         key: "level_id",
       },
       comment: "Level of difficulty (beginner, intermediate, advanced)",
-    },
-    tags: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      comment: "Array of technology tags",
     },
     languageId: {
       type: DataTypes.UUID,
@@ -93,16 +88,6 @@ const Project = sequelize.define(
       type: DataTypes.JSON,
       allowNull: true,
       comment: "Array of screenshot URLs",
-    },
-    techStack: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      comment: "Technologies used in the project (JSON array of skill IDs)",
-    },
-    programmingLanguages: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      comment: "Programming languages used in the project (JSON array of skill IDs)",
     },
     features: {
       type: DataTypes.TEXT,
@@ -210,11 +195,6 @@ const Project = sequelize.define(
       allowNull: true,
       comment: "Support contact email",
     },
-    readmeFileUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      comment: "URL to the project's README file",
-    },
     ...commonFields,
   },
   {
@@ -262,7 +242,7 @@ const Project = sequelize.define(
         type: "BTREE",
       },
     ],
-  },
+  }
 );
 
 export default Project;

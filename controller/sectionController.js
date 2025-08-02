@@ -276,7 +276,6 @@ export const createSectionAdmin = async (req, res) => {
       description,
       order,
       lessons = [],
-      isPublished = false,
     } = req.body;
 
     // Validate required fields
@@ -312,7 +311,6 @@ export const createSectionAdmin = async (req, res) => {
         title,
         description,
         order: sectionOrder,
-        isPublished,
         createdBy: req.user.userId,
       },
       { transaction },
@@ -352,7 +350,6 @@ export const createSectionAdmin = async (req, res) => {
           order: lessonOrder || i + 1,
           isPreview,
           isFree,
-          isPublished: isPublished,
           createdBy: req.user.userId,
         },
         { transaction },
@@ -413,7 +410,6 @@ export const updateSectionAdmin = async (req, res) => {
       title,
       description,
       order,
-      isPublished,
       lessonUpdates = [],
     } = req.body;
 
@@ -429,7 +425,6 @@ export const updateSectionAdmin = async (req, res) => {
     if (title !== undefined) updateData.title = title;
     if (description !== undefined) updateData.description = description;
     if (order !== undefined) updateData.order = order;
-    if (isPublished !== undefined) updateData.isPublished = isPublished;
 
     await section.update(updateData, { transaction });
 
@@ -566,13 +561,9 @@ export const reorderSections = async (req, res) => {
 export const getCourseContentManagement = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { includeUnpublished = true } = req.query;
 
     // Build where clause for sections
     const sectionWhere = { courseId };
-    if (includeUnpublished === "false") {
-      sectionWhere.isPublished = true;
-    }
 
     // Get course with complete content structure
     const course = await Course.findByPk(courseId, {
@@ -614,13 +605,13 @@ export const getCourseContentManagement = async (req, res) => {
     // Calculate content statistics
     const stats = {
       totalSections: course.sections.length,
-      publishedSections: course.sections.filter((s) => s.isPublished).length,
+      publishedSections: course.sections.length,
       totalLessons: course.sections.reduce(
         (sum, s) => sum + s.lessons.length,
         0,
       ),
       publishedLessons: course.sections.reduce(
-        (sum, s) => sum + s.lessons.filter((l) => l.isPublished).length,
+        (sum, s) => sum + s.lessons.length,
         0,
       ),
       totalResources: course.sections.reduce(
@@ -654,14 +645,12 @@ export const getCourseContentManagement = async (req, res) => {
       title: section.title,
       description: section.description,
       order: section.order,
-      isPublished: section.isPublished,
       lessons: section.lessons.map((lesson) => ({
         lessonId: lesson.lessonId,
         title: lesson.title,
         type: lesson.type,
         order: lesson.order,
         videoDuration: lesson.videoDuration,
-        isPublished: lesson.isPublished,
         isPreview: lesson.isPreview,
         isFree: lesson.isFree,
         resourceCount: lesson.resources.length,
@@ -690,78 +679,6 @@ export const getCourseContentManagement = async (req, res) => {
   }
 };
 
-export const bulkPublishContent = async (req, res) => {
-  const transaction = await sequelize.transaction();
-  try {
-    const { courseId } = req.params;
-    const { action, sectionIds = [], lessonIds = [] } = req.body;
-
-    if (!["publish", "unpublish"].includes(action)) {
-      return sendValidationError(res, "Invalid action. Use 'publish' or 'unpublish'");
-    }
-
-    const results = {
-      sectionsUpdated: 0,
-      lessonsUpdated: 0,
-      errors: [],
-    };
-
-    const isPublished = action === "publish";
-
-    // Update sections
-    if (sectionIds.length > 0) {
-      try {
-        const [sectionsUpdated] = await Section.update(
-          { isPublished },
-          {
-            where: {
-              sectionId: sectionIds,
-              courseId,
-            },
-            transaction,
-          },
-        );
-        results.sectionsUpdated = sectionsUpdated;
-      } catch (error) {
-        results.errors.push(`Sections update error: ${error.message}`);
-      }
-    }
-
-    // Update lessons (only if they belong to course sections)
-    if (lessonIds.length > 0) {
-      try {
-        const [lessonsUpdated] = await Lesson.update(
-          { isPublished },
-          {
-            where: {
-              lessonId: lessonIds,
-              "$section.courseId$": courseId,
-            },
-            include: [
-              {
-                model: Section,
-                as: "section",
-                attributes: [],
-              },
-            ],
-            transaction,
-          },
-        );
-        results.lessonsUpdated = lessonsUpdated;
-      } catch (error) {
-        results.errors.push(`Lessons update error: ${error.message}`);
-      }
-    }
-
-    await transaction.commit();
-
-    return sendSuccess(res,  `Content ${action}ed successfully`, results);
-  } catch (error) {
-    await transaction.rollback();
-    console.error("Bulk publish content error:", error);
-    return sendServerError(res, error);
-  }
-};
 // Upload lesson video controller
 export const uploadLessonVideo = async (req, res) => {
   try {

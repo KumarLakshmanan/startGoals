@@ -25,7 +25,7 @@ const updateSkillsTableStructure = async () => {
       
       // Add foreign key constraint
       await sequelize.query(
-        "ALTER TABLE skills ADD CONSTRAINT skills_category_id_fkey FOREIGN KEY (category_id) REFERENCES course_categories(category_id) ON DELETE SET NULL ON UPDATE CASCADE",
+        "ALTER TABLE skills ADD CONSTRAINT skills_category_id_fkey FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE SET NULL ON UPDATE CASCADE",
         { transaction }
       );
     }

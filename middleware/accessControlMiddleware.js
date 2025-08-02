@@ -1,4 +1,4 @@
-import { ProjectPurchase, Course, Project } from '../model/assosiation.js';
+import { ProjectPurchase, Course, Project } from '../model/associations.js';
 import Enrollment from '../model/enrollment.js';
 import { sendResponse } from '../utils/responseHelper.js';
 

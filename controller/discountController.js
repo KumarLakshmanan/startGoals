@@ -2,7 +2,7 @@ import DiscountCode from "../model/discountCode.js";
 import DiscountUsage from "../model/discountUsage.js";
 import Course from "../model/course.js";
 import Project from "../model/project.js";
-import CourseCategory from "../model/courseCategory.js";
+import Category from "../model/category.js";
 import User from "../model/user.js";
 import Enrollment from "../model/enrollment.js";
 import ProjectPurchase from "../model/projectPurchase.js";
@@ -136,7 +136,7 @@ export const createDiscountCode = async (req, res) => {
         },
         // TEMPORARILY DISABLED - discount categories association
         // {
-        //   model: CourseCategory,
+        //   model: Category,
         //   as: "discountCategories", // FIXED: use correct alias
         //   attributes: ["id", "title"],
         //   through: { attributes: [] },
@@ -157,110 +157,6 @@ export const createDiscountCode = async (req, res) => {
   }
 };
 
-// Get all discount codes with filtering (Admin only)
-export const getAllDiscountCodes = async (req, res) => {
-  try {
-    const {
-      page = 1,
-      limit = 20,
-      status,
-      applicableType,
-      search,
-      sortBy = "createdAt",
-      sortOrder = "DESC",
-    } = req.query;
-
-    // Build where conditions
-    const whereConditions = {};
-
-    if (status === "active") {
-      whereConditions.isActive = true;
-      whereConditions.validUntil = { [Op.gte]: new Date() };
-    } else if (status === "inactive") {
-      whereConditions[Op.or] = [
-        { isActive: false },
-        { validUntil: { [Op.lt]: new Date() } },
-      ];
-    } else if (status === "expired") {
-      whereConditions.validUntil = { [Op.lt]: new Date() };
-    }
-
-    if (applicableType) {
-      whereConditions.applicableType = applicableType;
-    }
-
-    if (search) {
-      whereConditions[Op.or] = [
-        { code: { [Op.iLike]: `%${search}%` } },
-        { description: { [Op.iLike]: `%${search}%` } },
-      ];
-    }
-
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    const { count, rows: discountCodes } = await DiscountCode.findAndCountAll({
-      where: whereConditions,
-      include: [
-        {
-          model: User,
-          as: "creator",
-          attributes: ["userId", "username"],
-        },
-        // TEMPORARILY DISABLED - discount categories association
-        // {
-        //   model: CourseCategory,
-        //   as: "discountCategories", // FIXED: use correct alias
-        //   attributes: ["id", "title"],
-        //   through: { attributes: [] },
-        // },
-      ],
-      limit: parseInt(limit),
-      offset: offset,
-      order: [[sortBy, sortOrder.toUpperCase()]],
-    });
-
-    // Add computed status to each discount code
-    const formattedDiscountCodes = discountCodes.map((dc) => {
-      const dcData = dc.toJSON();
-      const now = new Date();
-
-      if (!dcData.isActive) {
-        dcData.status = "inactive";
-      } else if (dcData.validUntil < now) {
-        dcData.status = "expired";
-      } else if (dcData.validFrom > now) {
-        dcData.status = "scheduled";
-      } else {
-        dcData.status = "active";
-      }
-
-      // Calculate usage percentage
-      if (dcData.maxUses) {
-        dcData.usagePercentage = (dcData.currentUses / dcData.maxUses) * 100;
-      } else {
-        dcData.usagePercentage = 0;
-      }
-
-      return dcData;
-    });
-
-    const totalPages = Math.ceil(count / parseInt(limit));
-
-    return sendSuccess(res,  "Discount codes fetched successfully", {
-      discountCodes: formattedDiscountCodes,
-      pagination: {
-        currentPage: parseInt(page),
-        totalPages,
-        totalItems: count,
-        itemsPerPage: parseInt(limit),
-      },
-    });
-  } catch (error) {
-    console.error("Get all discount codes error:", error);
-    return sendServerError(res, error);
-  }
-};
-
 // Get single discount code by ID (Admin only)
 export const getDiscountCodeById = async (req, res) => {
   try {
@@ -275,7 +171,7 @@ export const getDiscountCodeById = async (req, res) => {
         },
         // TEMPORARILY DISABLED - discount categories association
         // {
-        //   model: CourseCategory,
+        //   model: Category,
         //   as: "discountCategories", // FIXED: use correct alias
         //   attributes: ["id", "title"],
         //   through: { attributes: [] },
@@ -428,7 +324,7 @@ export const updateDiscountCode = async (req, res) => {
         },
         // TEMPORARILY DISABLED - discount categories association
         // {
-        //   model: CourseCategory,
+        //   model: Category,
         //   as: "discountCategories", // FIXED: use correct alias
         //   attributes: ["id", "title"],
         //   through: { attributes: [] },
@@ -1134,7 +1030,6 @@ const getDiscountStatus = (discount) => {
 
 export default {
   createDiscountCode,
-  getAllDiscountCodes,
   getDiscountCodeById,
   updateDiscountCode,
   deleteDiscountCode,

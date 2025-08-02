@@ -1,4 +1,4 @@
-import { sequelize } from "../model/assosiation.js";
+import { sequelize } from "../model/associations.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -52,7 +52,7 @@ const sortModelsByDependencies = (modelsArray) => {
     // Base models with no dependencies first
     'user',           // Base user model - MUST be first (lowercase!)
     'language',       // Base language model (lowercase!)
-    'courseCategory', // Base category model
+    'category', // Base category model
     'courseLevel',    // Course level model
     'Banner',         // Banner model
     'goal',           // Goal model (lowercase!)
@@ -60,9 +60,9 @@ const sortModelsByDependencies = (modelsArray) => {
     'otp',           // OTP model (lowercase!)
     
     // Models that depend on base models
-    'Course',         // Depends on User, CourseCategory, CourseLevel
-    'skill',          // Depends on Goal, CourseCategory, CourseLevel (lowercase!)
-    'Project',        // Depends on User, CourseCategory
+    'Course',         // Depends on User, Category, CourseLevel
+    'skill',          // Depends on Goal, Category, CourseLevel (lowercase!)
+    'Project',        // Depends on User, Category
     'DiscountCode',   // Depends on User
     'SearchAnalytics', // Depends on User
     
@@ -105,7 +105,7 @@ const sortModelsByDependencies = (modelsArray) => {
     
     // Many-to-many association tables
     'project_tags',   // Depends on Project, CourseTag (exact name!)
-    'discount_categories', // Depends on DiscountCode, CourseCategory (exact name!)
+    'discount_categories', // Depends on DiscountCode, Category (exact name!)
   ];
 
   const modelMap = {};

@@ -4,7 +4,7 @@ import sequelize from "../config/db.js";
 import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
 const Category = sequelize.define(
-  "courseCategory",
+  "category",
   {
     categoryId: {
       type: DataTypes.UUID,
@@ -28,14 +28,6 @@ const Category = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    parentCategoryId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      references: {
-        model: "course_categories",
-        key: "category_id",
-      },
-    },
     displayOrder: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -44,7 +36,7 @@ const Category = sequelize.define(
     ...commonFields,
   },
   {
-    tableName: "course_categories",
+    tableName: "categories",
     ...commonOptions,
   },
 );

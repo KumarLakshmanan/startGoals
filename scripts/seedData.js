@@ -4,7 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import User from '../model/user.js';
 import Course from '../model/course.js';
-import CourseCategory from '../model/courseCategory.js';
+import Category from '../model/category.js';
 import CourseLevel from '../model/courseLevel.js';
 import Project from '../model/project.js';
 import ProjectFile from '../model/projectFile.js';
@@ -177,7 +177,7 @@ async function initBasicData() {
   // Create course categories
   const categories = [];
   for (const categoryData of courseCategories) {
-    const [category] = await CourseCategory.findOrCreate({
+    const [category] = await Category.findOrCreate({
       where: { categoryName: categoryData.categoryName },
       defaults: {
         categoryId: uuidv4(),

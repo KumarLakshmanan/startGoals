@@ -1,7 +1,7 @@
 import Course from "../model/course.js";
 import Project from "../model/project.js";
 import User from "../model/user.js";
-import Category from "../model/courseCategory.js";
+import Category from "../model/category.js";
 import CourseLevel from "../model/courseLevel.js";
 import CourseTag from "../model/courseTag.js";
 import CourseGoal from "../model/courseGoal.js";
@@ -40,7 +40,6 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
         where: {
           title: { [Op.iLike]: searchTerm },
           status: "active",
-          isPublished: true,
         },
         attributes: ["courseId", "title", "type", "thumbnailImage"],
         limit: Math.floor(parseInt(limit) / 3),
@@ -181,7 +180,6 @@ export const searchCoursesAndProjects = async (req, res) => {
     if (type === "all" || type === "courses") {
       const courseWhere = {
         status: "active",
-        isPublished: true,
       };
 
       if (query) {

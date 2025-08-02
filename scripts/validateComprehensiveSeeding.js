@@ -1,7 +1,7 @@
 import sequelize from '../config/db.js';
 import User from '../model/user.js';
 import Course from '../model/course.js';
-import CourseCategory from '../model/courseCategory.js';
+import Category from '../model/category.js';
 import CourseLevel from '../model/courseLevel.js';
 import Project from '../model/project.js';
 import ProjectFile from '../model/projectFile.js';
@@ -39,7 +39,7 @@ async function validateSeedData() {
     console.log(`👨‍🎓 Student users: ${studentCount}`);
 
     const levelCount = await CourseLevel.count();
-    const categoryCount = await CourseCategory.count();
+    const categoryCount = await Category.count();
     const languageCount = await Language.count();
     
     console.log(`📊 Course levels: ${levelCount}`);

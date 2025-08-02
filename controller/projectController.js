@@ -4,7 +4,7 @@ import ProjectPurchase from "../model/projectPurchase.js";
 import ProjectRating from "../model/projectRating.js";
 import ProjectSettings from "../model/projectSettings.js";
 import User from "../model/user.js";
-import CourseCategory from "../model/courseCategory.js";
+import Category from "../model/category.js";
 import CourseTag from "../model/courseTag.js";
 import CourseLevel from "../model/courseLevel.js";
 import Goal from "../model/goal.js";
@@ -59,12 +59,10 @@ export const createProject = async (req, res) => {
       supportIncluded = false,
       supportDuration,
       version = "1.0",
-      linkedTeacherId,
       licenseType = "personal",
       discountEnabled = true,
       featured = false,
       status = "draft",
-      readmeFile,
     } = req.body;
 
     const userId = req.user.userId; // From auth middleware
@@ -130,7 +128,6 @@ export const createProject = async (req, res) => {
       validateUUID(categoryId, "categoryId");
       validateUUID(levelId, "levelId");
       if (languageId) validateUUID(languageId, "languageId");
-      if (linkedTeacherId) validateUUID(linkedTeacherId, "linkedTeacherId");
     } catch (error) {
       await transaction.rollback();
       return sendValidationError(res, error.message, {
@@ -139,7 +136,7 @@ export const createProject = async (req, res) => {
     }
 
     // Check if category exists
-    const category = await CourseCategory.findByPk(categoryId);
+    const category = await Category.findByPk(categoryId);
     if (!category) {
       await transaction.rollback();
       return sendNotFound(res, "Category not found", {
@@ -167,16 +164,6 @@ export const createProject = async (req, res) => {
       }
     }
 
-    // Validate linked teacher if provided
-    if (linkedTeacherId) {
-      const teacher = await User.findByPk(linkedTeacherId);
-      if (!teacher) {
-        await transaction.rollback();
-        return sendNotFound(res, "Linked teacher not found", {
-          linkedTeacherId: "Linked teacher not found"
-        });
-      }
-    }    // Create project
     const project = await Project.create(
       {
         title,
@@ -202,8 +189,6 @@ export const createProject = async (req, res) => {
         discountEnabled: discountEnabled ?? true,
         featured: featured || false,
         status: status || 'draft',
-        readmeFileUrl: readmeFile || null,
-        linkedTeacherId: linkedTeacherId || null,
         createdBy: userId,
       },
       { transaction }
@@ -299,13 +284,13 @@ export const createProject = async (req, res) => {
           attributes: ["userId", "username", "email"],
         },
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
         {
           model: CourseTag,
-          as: "projectTags",
+          as: "tags",
           attributes: ["courseTagId", "tag"],
           through: { attributes: [] },
         },
@@ -317,7 +302,7 @@ export const createProject = async (req, res) => {
       ],
     });
 
-    return sendSuccess(res,  "Project created successfully", completeProject);
+    return sendSuccess(res, "Project created successfully", completeProject);
   } catch (error) {
     await transaction.rollback();
     console.error("Create project error:", error);
@@ -391,13 +376,13 @@ export const getAllProjects = async (req, res) => {
         attributes: ["userId", "username", "profileImage"],
       },
       {
-        model: CourseCategory,
+        model: Category,
         as: "category",
         attributes: ["categoryId", "categoryName"],
       },
       {
         model: CourseTag,
-        as: "projectTags",
+        as: "tags",
         attributes: ["courseTagId", "tag"],
         through: { attributes: [] },
       },
@@ -451,13 +436,13 @@ export const getAllProjects = async (req, res) => {
     let userPurchases = [];
     if (userId) {
       const userProjectPurchases = await ProjectPurchase.findAll({
-        where: { 
+        where: {
           userId,
           paymentStatus: 'completed', // Use correct field name
           projectId: { [Op.in]: formattedProjects.map(project => project.projectId) }
         }
       });
-      
+
       userPurchases = userProjectPurchases.map(purchase => purchase.projectId);
     }
 
@@ -469,7 +454,7 @@ export const getAllProjects = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(res,  "Projects fetched successfully", {
+    return sendSuccess(res, "Projects fetched successfully", {
       projects: projectsWithPurchaseStatus,
       pagination: {
         currentPage: parseInt(page),
@@ -488,7 +473,7 @@ export const getAllProjects = async (req, res) => {
 export const getProjectById = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user?.userId; // Optional - for checking if user purchased
+    const userId = req.user?.userId;
 
     const project = await Project.findByPk(id, {
       include: [
@@ -503,13 +488,13 @@ export const getProjectById = async (req, res) => {
           ],
         },
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
         {
           model: CourseTag,
-          as: "projectTags",
+          as: "tags",
           attributes: ["courseTagId", "tag"],
           through: { attributes: [] },
         },
@@ -517,14 +502,12 @@ export const getProjectById = async (req, res) => {
           model: ProjectFile,
           as: "files",
           attributes: ["fileId", "fileName", "fileType", "fileSize"],
-          where: { isPreview: true },
           required: false,
         },
         {
           model: ProjectRating,
           as: "ratings",
           attributes: ["ratingId", "rating", "review", "createdAt"],
-          where: { status: "approved" },
           required: false,
           include: [
             {
@@ -534,16 +517,35 @@ export const getProjectById = async (req, res) => {
             },
           ],
         },
+        {
+          model: ProjectTechStack,
+          as: "techStack",
+          attributes: ["skillId"],
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
+        {
+          model: ProjectProgrammingLanguage,
+          as: "programmingLanguages",
+          attributes: ["skillId"],
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
       ],
     });
 
     if (!project) {
-      return sendNotFound(res, "Project not found");
-    }
-
-    // Check if project is published or user is the creator
-    if (project.status !== "published" && project.createdBy !== userId) {
-      return sendError(res, 400, "Project not available");
+      return sendNotFound(res, "Project is not found");
     }
 
     const projectData = project.toJSON();
@@ -573,42 +575,40 @@ export const getProjectById = async (req, res) => {
     } else {
       projectData.purchaseStatus = false;
     }
-
-    // Add recommended projects by same category
-    const recommendedProjects = await Project.findAll({
-      where: {
-        categoryId: project.categoryId,
-        projectId: { [Op.ne]: id }, // Exclude current project
-        status: 'published'
-      },
-      include: [
-        {
-          model: CourseCategory,
-          as: "category",
-          attributes: ["categoryId", "categoryName"],
+    if (req.user.role == "student") {
+      // Add recommended projects by same category
+      const recommendedProjects = await Project.findAll({
+        where: {
+          categoryId: project.categoryId,
+          projectId: { [Op.ne]: id }, // Exclude current project
+          status: 'published'
         },
-        {
-          model: User,
-          as: "creator",
-          attributes: ["userId", "username", "profileImage"],
-        }
-      ],
-      limit: 5,
-      order: [['createdAt', 'DESC']]
-    });
+        include: [
+          {
+            model: Category,
+            as: "category",
+            attributes: ["categoryId", "categoryName"],
+          },
+          {
+            model: User,
+            as: "creator",
+            attributes: ["userId", "username", "profileImage"],
+          }
+        ],
+        limit: 5,
+        order: [['createdAt', 'DESC']]
+      });
 
-    projectData.recommendedProjects = recommendedProjects;
+      projectData.recommendedProjects = recommendedProjects;
+    }
 
-    // Increment view count
-    await project.increment("views");
-    projectData.views = project.views + 1;
-
-    return sendSuccess(res,  "Project fetched successfully", projectData);
+    return sendSuccess(res, "Project fetched successfully", projectData);
   } catch (error) {
     console.error("Get project by ID error:", error);
     return sendServerError(res, error);
   }
 };
+
 
 // Update project (Admin/Creator only)
 export const updateProject = async (req, res) => {
@@ -653,20 +653,20 @@ export const updateProject = async (req, res) => {
           attributes: ["userId", "username", "email"],
         },
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
         {
           model: CourseTag,
-          as: "projectTags",
+          as: "tags",
           attributes: ["courseTagId", "tag"],
           through: { attributes: [] },
         },
       ],
     });
 
-    return sendSuccess(res,  "Project updated successfully", updatedProject);
+    return sendSuccess(res, "Project updated successfully", updatedProject);
   } catch (error) {
     await transaction.rollback();
     console.error("Update project error:", error);
@@ -707,7 +707,7 @@ export const deleteProject = async (req, res) => {
     await project.destroy({ transaction });
     await transaction.commit();
 
-    return sendSuccess(res,  "Project deleted successfully");
+    return sendSuccess(res, "Project deleted successfully");
   } catch (error) {
     await transaction.rollback();
     console.error("Delete project error:", error);
@@ -825,7 +825,7 @@ export const initiateProjectPurchase = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res,  "Purchase initiated successfully", {
+    return sendSuccess(res, "Purchase initiated successfully", {
       purchaseId: purchase.id,
       orderNumber: purchase.orderNumber,
       originalPrice: purchase.originalPrice,
@@ -900,7 +900,7 @@ export const completeProjectPurchase = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res,  "Purchase status updated successfully", purchase);
+    return sendSuccess(res, "Purchase status updated successfully", purchase);
   } catch (error) {
     await transaction.rollback();
     console.error("Complete purchase error:", error);
@@ -954,7 +954,7 @@ export const getUserPurchases = async (req, res) => {
 
     const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(res,  "Purchases fetched successfully", {
+    return sendSuccess(res, "Purchases fetched successfully", {
       purchases,
       pagination: {
         currentPage: parseInt(page),
@@ -1079,7 +1079,7 @@ export const getProjectStatistics = async (req, res) => {
       ],
       include: [
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
@@ -1088,7 +1088,7 @@ export const getProjectStatistics = async (req, res) => {
       order: [[sequelize.fn("COUNT", sequelize.col("Project.id")), "DESC"]],
     });
 
-    return sendSuccess(res,  "Project statistics fetched successfully", {
+    return sendSuccess(res, "Project statistics fetched successfully", {
       overview: {
         totalProjects,
         publishedProjects,
@@ -1103,94 +1103,6 @@ export const getProjectStatistics = async (req, res) => {
     });
   } catch (error) {
     console.error("Get project statistics error:", error);
-    return sendServerError(res, error);
-  }
-};
-
-// Get detailed project information for admin panel
-export const getProjectDetailsAdmin = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const project = await Project.findByPk(id, {
-      include: [
-        {
-          model: User,
-          as: "creator",
-          attributes: ["userId", "username", "email", "profileImage"],
-        },
-        {
-          model: CourseCategory,
-          as: "category",
-          attributes: ["categoryId", "categoryName"],
-        },
-        {
-          model: CourseTag,
-          as: "projectTags",
-          attributes: ["courseTagId", "tag"],
-          through: { attributes: [] },
-        },
-        {
-          model: ProjectFile,
-          as: "files",
-        },
-        {
-          model: ProjectRating,
-          as: "ratings",
-          include: [
-            {
-              model: User,
-              as: "user",
-              attributes: ["userId", "username", "profileImage"],
-            },
-          ],
-        },
-      ],
-    });
-
-    if (!project) {
-      return sendNotFound(res, "Project not found");
-    }
-
-    // Get purchase statistics
-    const purchaseCount = await ProjectPurchase.count({
-      where: { projectId: id, paymentStatus: "completed" },
-    });
-
-    const totalRevenue = await ProjectPurchase.sum("finalPrice", {
-      where: { projectId: id, paymentStatus: "completed" },
-    });
-
-    const projectData = project.toJSON();
-
-    // Calculate average rating
-    const ratings = projectData.ratings || [];
-    if (ratings.length > 0) {
-      projectData.averageRating =
-        Math.round(
-          (ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length) * 10
-        ) / 10;
-    } else {
-      projectData.averageRating = 0;
-    }
-
-    // Add statistics to response
-    projectData.statistics = {
-      totalPurchases: purchaseCount || 0,
-      totalRevenue: totalRevenue || 0,
-      lastPurchaseDate: await ProjectPurchase.max("createdAt", {
-        where: { projectId: id, paymentStatus: "completed" },
-      }),
-    };
-
-    return sendSuccess(
-      res,
-      200,
-      "Project details retrieved successfully",
-      projectData
-    );
-  } catch (error) {
-    console.error("Get project details admin error:", error);
     return sendServerError(res, error);
   }
 };
@@ -1226,7 +1138,7 @@ export const getProjectBuyers = async (req, res) => {
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    return sendSuccess(res,  "Project buyers retrieved successfully", {
+    return sendSuccess(res, "Project buyers retrieved successfully", {
       purchases,
       pagination: {
         total: count,
@@ -1297,7 +1209,7 @@ export const getProjectDownloads = async (req, res) => {
       raw: true,
     });
 
-    return sendSuccess(res,  "Project download statistics retrieved successfully", {
+    return sendSuccess(res, "Project download statistics retrieved successfully", {
       totalDownloads,
       purchaseDownloads: purchases,
       downloadTrends: downloadsByDay,
@@ -1333,7 +1245,7 @@ export const updateProjectStatus = async (req, res) => {
 
     await project.update(updateData);
 
-    return sendSuccess(res,  `Project status updated to ${status}`, project);
+    return sendSuccess(res, `Project status updated to ${status}`, project);
   } catch (error) {
     console.error("Update project status error:", error);
     return sendServerError(res, error);
@@ -1374,7 +1286,7 @@ export const bulkUpdateProjectStatus = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res,  `${projectIds.length} projects updated to ${status}`);
+    return sendSuccess(res, `${projectIds.length} projects updated to ${status}`);
   } catch (error) {
     await transaction.rollback();
     console.error("Bulk update project status error:", error);
@@ -1434,7 +1346,7 @@ export const getProjectReviews = async (req, res) => {
       order: [[sortBy, sortOrder.toUpperCase()]],
     });
 
-    return sendSuccess(res,  "Project reviews retrieved successfully", {
+    return sendSuccess(res, "Project reviews retrieved successfully", {
       reviews,
       pagination: {
         total: count,
@@ -1502,7 +1414,7 @@ export const updateReviewStatus = async (req, res) => {
       }
     }
 
-    return sendSuccess(res,  `Review status updated to ${status}`, review);
+    return sendSuccess(res, `Review status updated to ${status}`, review);
   } catch (error) {
     console.error("Update review status error:", error);
     return sendServerError(res, error);
@@ -1590,7 +1502,7 @@ export const bulkUpdateReviewStatus = async (req, res) => {
 
     await transaction.commit();
 
-    return sendSuccess(res,  `${reviewIds.length} reviews updated to ${status}`);
+    return sendSuccess(res, `${reviewIds.length} reviews updated to ${status}`);
   } catch (error) {
     await transaction.rollback();
     console.error("Bulk update review status error:", error);
@@ -1609,7 +1521,7 @@ export const getProjectSettings = async (req, res) => {
       settings = await ProjectSettings.create({});
     }
 
-    return sendSuccess(res,  "Project settings retrieved successfully", settings);
+    return sendSuccess(res, "Project settings retrieved successfully", settings);
   } catch (error) {
     console.error("Get project settings error:", error);
     return sendServerError(res, error);
@@ -1648,7 +1560,7 @@ export const updateProjectSettings = async (req, res) => {
       projectEmailTemplate: projectEmailTemplate !== undefined ? projectEmailTemplate : settings.projectEmailTemplate,
     });
 
-    return sendSuccess(res,  "Project settings updated successfully", settings);
+    return sendSuccess(res, "Project settings updated successfully", settings);
   } catch (error) {
     console.error("Update project settings error:", error);
     return sendServerError(res, error);
@@ -1763,7 +1675,6 @@ export default {
   completeProjectPurchase,
   getUserPurchases,
   getProjectStatistics,
-  getProjectDetailsAdmin,
   getProjectBuyers,
   getProjectDownloads,
   bulkDeleteProjects,

@@ -43,10 +43,6 @@ const CourseEnhanced = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
-    isPublished: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-    },
     type: {
       type: DataTypes.ENUM("recorded", "live"),
       allowNull: false,
@@ -122,18 +118,6 @@ const CourseEnhanced = sequelize.define(
     hasCertificate: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
-    },
-    techStack: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      comment: "Technologies taught in the course (JSON array)",
-    },
-    // languageId removed - column doesn't exist in database
-    // Course language info is stored in programmingLanguages JSON field
-    programmingLanguages: {
-      type: DataTypes.JSON,
-      allowNull: true,
-      comment: "Programming languages used (JSON array)",
     },
     features: {
       type: DataTypes.TEXT,

@@ -3,7 +3,7 @@ import sequelize from "../config/db.js";
 import Course from "../model/course.js";
 import { validateCourseInput } from "../utils/commonUtils.js";
 import CourseLevel from "../model/courseLevel.js";
-import CourseCategory from "../model/courseCategory.js";
+import Category from "../model/category.js";
 import CourseTag from "../model/courseTag.js";
 import Language from "../model/language.js";
 import Section from "../model/section.js";
@@ -82,7 +82,7 @@ export const getLiveCourses = async (req, res) => {
     const { count, rows } = await Course.findAndCountAll({
       where: whereClause,
       include: [
-        { model: CourseCategory, as: "category", attributes: ["categoryId", "categoryName"] },
+        { model: Category, as: "category", attributes: ["categoryId", "categoryName"] },
         { model: CourseLevel, as: "level", attributes: ["levelId", "name"] },
         // { model: Language, as: "language", attributes: ["languageId", "language"] },
         { model: User, as: "instructor", attributes: ["userId", "username", "email", "profileImage"] }
@@ -156,7 +156,7 @@ export const getRecordedCourses = async (req, res) => {
     const { count, rows } = await Course.findAndCountAll({
       where: whereClause,
       include: [
-        { model: CourseCategory, as: "category", attributes: ["categoryId", "categoryName"] },
+        { model: Category, as: "category", attributes: ["categoryId", "categoryName"] },
         { model: CourseLevel, as: "level", attributes: ["levelId", "name"] },
         // { model: Language, as: "language", attributes: ["languageId", "language"] },
         { model: User, as: "instructor", attributes: ["userId", "username", "email", "profileImage"] }
@@ -183,7 +183,7 @@ export const getRecordedCourses = async (req, res) => {
 
 export const getCourseById = async (req, res) => {
   const { courseId } = req.params;
-
+  console.log(`Fetching course with ID: ${courseId}`);
   // Basic UUID validation
   if (
     !courseId ||
@@ -206,7 +206,7 @@ export const getCourseById = async (req, res) => {
           attributes: ["levelId", "name", "order"],
         },
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
@@ -305,7 +305,7 @@ export const getCourseById = async (req, res) => {
           attributes: ["levelId", "name"],
         },
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
@@ -483,7 +483,7 @@ export const createCourse = async (req, res) => {
     const completeCourse = await Course.findOne({
       where: { courseId: course.courseId },
       include: [
-        { model: CourseCategory, as: "category" },
+        { model: Category, as: "category" },
         { model: CourseLevel, as: "level" },
         { model: User, as: "instructor" },
         {
@@ -645,7 +645,7 @@ export const updateCourse = async (req, res) => {
     const updatedCourse = await Course.findOne({
       where: { courseId },
       include: [
-        { model: CourseCategory, as: "category" },
+        { model: Category, as: "category" },
         { model: CourseLevel, as: "level" },
         { model: User, as: "instructor" },
         {
@@ -736,7 +736,7 @@ export const getAllCourses = async (req, res) => {
           attributes: ["levelId", "name", "order"],
         },
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
@@ -867,7 +867,7 @@ export const getCourseAnalytics = async (req, res) => {
     const course = await Course.findByPk(courseId, {
       include: [
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
@@ -1319,7 +1319,7 @@ export const searchCourses = async (req, res) => {
           attributes: ["levelId", "name"],
         },
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
@@ -1377,7 +1377,7 @@ export const getCoursesByInstructor = async (req, res) => {
           attributes: ["levelId", "name"],
         },
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
@@ -1427,7 +1427,7 @@ export const getCoursesByCategory = async (req, res) => {
           attributes: ["levelId", "name"],
         },
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
         },
@@ -1594,7 +1594,6 @@ export const createLiveCourse = async (req, res) => {
         isPaid: price > 0,
         price,
         status: "draft",
-        isPublished: false,
         visibility,
         batchSettings: JSON.stringify(batchSettings),
       },
@@ -1682,7 +1681,6 @@ export const createRecordedCourse = async (req, res) => {
         isPaid: price > 0,
         price,
         status: "draft",
-        isPublished: false,
         visibility,
         enableReviews,
         enableChat,
@@ -2037,7 +2035,7 @@ export const getCourseManagementData = async (req, res) => {
           attributes: ["level"],
         },
         {
-          model: CourseCategory,
+          model: Category,
           as: "category",
           attributes: ["categoryName"],
         },
@@ -2619,7 +2617,7 @@ export const exportCourseData = async (req, res) => {
     const course = await Course.findByPk(courseId, {
       include: [
         { model: User, as: 'instructor', attributes: ['id', 'name', 'email'] },
-        { model: CourseCategory, as: 'category', attributes: ['id', 'name'] },
+        { model: Category, as: 'category', attributes: ['id', 'name'] },
         // Add other associations as needed
       ]
     });

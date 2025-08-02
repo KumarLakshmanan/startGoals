@@ -1,4 +1,4 @@
-import Category from "../model/courseCategory.js";
+import Category from "../model/category.js";
 import Skill from "../model/skill.js";
 import sequelize from "../config/db.js";
 import { Op } from "sequelize";
@@ -23,7 +23,6 @@ export const createCategory = async (req, res) => {
       categoryName,
       categoryCode,
       description,
-      parentCategoryId,
       skills,
     } = req.body;
 
@@ -51,22 +50,6 @@ export const createCategory = async (req, res) => {
       });
     }
 
-    // Validate parentCategoryId format if provided
-    if (parentCategoryId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(parentCategoryId)) {
-      await transaction.rollback();
-      return sendValidationError(res, "Invalid parent category ID format", {
-        parentCategoryId: "Invalid parent category ID format. Must be a valid UUID"
-      });
-    }
-
-    // Check if parent category exists
-    if (parentCategoryId) {
-      const parentCategory = await Category.findByPk(parentCategoryId, { transaction });
-      if (!parentCategory) {
-        await transaction.rollback();
-        return sendNotFound(res, "Parent category not found", { parentCategoryId });
-      }
-    }
 
     const existing = await Category.findOne({
       where: {
@@ -92,7 +75,6 @@ export const createCategory = async (req, res) => {
         categoryName,
         categoryCode,
         description,
-        parentCategoryId,
       },
       { transaction },
     );
@@ -252,7 +234,6 @@ export const bulkCreateCategories = async (req, res) => {
       categoryName: cat.name,
       categoryCode: cat.code,
       description: cat.description,
-      parentCategoryId: cat.parentCategoryId || null,
     }));
 
     // Insert categories
@@ -402,7 +383,6 @@ export const saveAllCategories = async (req, res) => {
         categoryName: category.name,
         categoryCode: category.code,
         description: category.description || null,
-        parentCategoryId: category.parentCategoryId || null,
         displayOrder: category.displayOrder || 0
       };
 
