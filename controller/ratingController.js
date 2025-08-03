@@ -20,6 +20,8 @@ import {
   sendValidationError,
   sendNotFound,
   sendServerError,
+  sendUnauthorized,
+  sendForbidden,
 } from "../utils/responseHelper.js";
 
 // ===========================================================================================
@@ -345,7 +347,6 @@ export const createReview = async (req, res) => {
     
     // Check if entity exists
     const EntityModel = getEntityModel(entityType);
-    const entityPrimaryKey = entityType === 'instructor' ? 'userId' : `${entityType}Id`;
     const entity = await EntityModel.findByPk(entityId, { transaction });
     
     if (!entity) {

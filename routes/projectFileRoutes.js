@@ -9,7 +9,6 @@ import {
 } from "../controller/projectFileController.js";
 import { isAdmin } from "../middleware/authMiddleware.js";
 
-import { validateInput } from "../middleware/validationMiddleware.js";
 import { param, query, body } from "express-validator";
 import { fileUploadMiddleware } from "../middleware/fileUploadMiddleware.js";
 
@@ -33,7 +32,6 @@ router.post(
       .isArray()
       .withMessage("Preview flags must be an array"),
   ],
-  validateInput,
   uploadProjectFiles,
 );
 
@@ -58,7 +56,6 @@ router.get(
       .isBoolean()
       .withMessage("Is preview must be a boolean"),
   ],
-  validateInput,
   getProjectFiles,
 );
 
@@ -67,7 +64,6 @@ router.get(
   "/files/:fileId/download",
   isAdmin, // Add authentication - only purchased users should download
   [param("fileId").isInt().withMessage("Valid file ID is required")],
-  validateInput,
   downloadProjectFile,
 );
 
@@ -97,7 +93,6 @@ router.put(
       ])
       .withMessage("Invalid file type"),
   ],
-  validateInput,
   updateProjectFile,
 );
 
@@ -106,7 +101,6 @@ router.delete(
   "/files/:fileId",
   isAdmin, // Add authentication
   [param("fileId").isInt().withMessage("Valid file ID is required")],
-  validateInput,
   deleteProjectFile,
 );
 
@@ -126,7 +120,6 @@ router.get(
       .isIn(["7d", "30d", "90d", "1y"])
       .withMessage("Invalid period"),
   ],
-  validateInput,
   getDownloadStatistics,
 );
 

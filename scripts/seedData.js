@@ -7,9 +7,7 @@ import Course from '../model/course.js';
 import Category from '../model/category.js';
 import CourseLevel from '../model/courseLevel.js';
 import Project from '../model/project.js';
-import ProjectFile from '../model/projectFile.js';
 import ProjectTechStack from '../model/projectTechStack.js';
-import ProjectProgrammingLanguage from '../model/projectProgrammingLanguage.js';
 import Language from '../model/language.js';
 import LiveSession from '../model/liveSession.js';
 import Banner from '../model/banner.js';
@@ -19,17 +17,14 @@ import Exam from '../model/exam.js';
 import Batch from '../model/batch.js';
 import Section from '../model/section.js';
 import Lesson from '../model/lesson.js';
-import Resource from '../model/resource.js';
 import CourseRating from '../model/courseRating.js';
 import ProjectRating from '../model/projectRating.js';
 import Enrollment from '../model/enrollment.js';
 import ProjectPurchase from '../model/projectPurchase.js';
 import { faker } from '@faker-js/faker';
 import bcrypt from 'bcrypt';
-import fs from 'fs';
 import sequelize from '../config/db.js';
 import CourseTechStack from '../model/courseTechStack.js';
-import CourseProgrammingLanguage from '../model/courseProgrammingLanguage.js';
 
 // Configure environment variables - use path relative to this file
 const __filename = fileURLToPath(import.meta.url);
@@ -237,7 +232,7 @@ async function createLiveCourses(teachers, categories, programmingLanguages, lev
       // Create course
       const course = await Course.create({
         courseId: uuidv4(),
-        title: `Live Course: ${faker.company.buzzPhrase()}`,
+        title: `${faker.company.buzzPhrase()}`,
         description: faker.lorem.paragraphs(3),
         shortDescription: faker.lorem.sentence(),
         thumbnailUrl: `https://picsum.photos/seed/${i + 1}/640/480`,
@@ -292,17 +287,6 @@ async function createLiveCourses(teachers, categories, programmingLanguages, lev
         const techStackSkills = faker.helpers.arrayElements(skills, { min: 2, max: 5 });
         for (const skill of techStackSkills) {
           await CourseTechStack.create({
-            courseId: course.courseId,
-            skillId: skill.skillId
-          });
-        }
-      }
-
-      // Add random programming languages (1-3 skills) using junction table
-      if (skills && skills.length > 0) {
-        const progLangSkills = faker.helpers.arrayElements(skills, { min: 1, max: 3 });
-        for (const skill of progLangSkills) {
-          await CourseProgrammingLanguage.create({
             courseId: course.courseId,
             skillId: skill.skillId
           });
@@ -378,7 +362,7 @@ async function createRecordedCourses(teachers, categories, programmingLanguages,
       // Create course
       const course = await Course.create({
         courseId: uuidv4(),
-        title: `Recorded Course: ${faker.company.buzzPhrase()}`,
+        title: `${faker.company.buzzPhrase()}`,
         description: faker.lorem.paragraphs(3),
         shortDescription: faker.lorem.sentence(),
         thumbnailUrl: `https://picsum.photos/seed/${i + 100}/640/480`,
@@ -438,17 +422,6 @@ async function createRecordedCourses(teachers, categories, programmingLanguages,
           });
         }
       }
-      // add random programming languages (1-3 skills) using junction table
-      if (skills && skills.length > 0) {
-        const progLangSkills = faker.helpers.arrayElements(skills, { min: 1, max: 3 });
-        for (const skill of progLangSkills) {
-          await CourseProgrammingLanguage.create({
-            courseId: course.courseId,
-            skillId: skill.skillId
-          });
-        }
-      }
-
       let totalSections = 0;
       let totalLessons = 0;
       let totalDuration = 0;
@@ -589,17 +562,6 @@ async function createProjects(teachers, categories, languages, levels, skills) {
         const techStackSkills = faker.helpers.arrayElements(skills, { min: 2, max: 5 });
         for (const skill of techStackSkills) {
           await ProjectTechStack.create({
-            projectId: project.projectId,
-            skillId: skill.skillId
-          });
-        }
-      }
-
-      // Add random programming languages (1-3 skills) using junction table
-      if (skills && skills.length > 0) {
-        const progLangSkills = faker.helpers.arrayElements(skills, { min: 1, max: 3 });
-        for (const skill of progLangSkills) {
-          await ProjectProgrammingLanguage.create({
             projectId: project.projectId,
             skillId: skill.skillId
           });
@@ -953,7 +915,7 @@ async function seedDatabase() {
 
     // Initialize basic data
     console.log('Step 1: Initializing basic data...');
-    const { admin, teachers, students, levels, categories, programmingLanguages } = await initBasicData();
+    const { teachers, students, levels, categories, programmingLanguages } = await initBasicData();
 
     // Create goals
     console.log('Step 4: Creating goals...');

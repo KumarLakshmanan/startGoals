@@ -15,83 +15,10 @@ import {
   getAllDiscountCodesAdmin,
   getDiscountAnalytics,
 } from "../controller/discountController.js";
-import validateInput from "../middleware/validateInput.js";
 import { body, param, query } from "express-validator";
 import { isAdmin, authenticateToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
-
-// ===================== ADMIN DISCOUNT CODE MANAGEMENT =====================
-
-// Get single discount code by ID (Admin only)
-router.get(
-  "/:id",
-  isAdmin,
-  [param("id").isInt().withMessage("Valid discount code ID is required")],
-  getDiscountCodeById,
-);
-
-// Update discount code (Admin only)
-router.put(
-  "/:id",
-  isAdmin,
-  [
-    param("id").isInt().withMessage("Valid discount code ID is required"),
-    body("code")
-      .optional()
-      .isLength({ min: 3, max: 20 })
-      .withMessage("Code must be 3-20 characters"),
-    body("description")
-      .optional()
-      .isLength({ max: 500 })
-      .withMessage("Description must be under 500 characters"),
-    body("discountType")
-      .optional()
-      .isIn(["percentage", "fixed"])
-      .withMessage("Discount type must be 'percentage' or 'fixed'"),
-    body("discountValue")
-      .optional()
-      .isFloat({ min: 0.01 })
-      .withMessage("Discount value must be greater than 0"),
-    body("applicableType")
-      .optional()
-      .isIn(["course", "project", "both"])
-      .withMessage("Applicable type must be 'course', 'project', or 'both'"),
-    body("minPurchaseAmount")
-      .optional()
-      .isFloat({ min: 0 })
-      .withMessage("Min purchase amount must be non-negative"),
-    body("maxUses")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Max uses must be a positive integer"),
-    body("maxUsesPerUser")
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage("Max uses per user must be a positive integer"),
-    body("validFrom")
-      .optional()
-      .isISO8601()
-      .withMessage("Valid from date must be a valid ISO 8601 date"),
-    body("validUntil")
-      .optional()
-      .isISO8601()
-      .withMessage("Valid until date must be a valid ISO 8601 date"),
-    body("isActive")
-      .optional()
-      .isBoolean()
-      .withMessage("Is active must be a boolean"),
-  ],
-  updateDiscountCode,
-);
-
-// Delete discount code (Admin only)
-router.delete(
-  "/:id",
-  isAdmin,
-  [param("id").isInt().withMessage("Valid discount code ID is required")],
-  deleteDiscountCode,
-);
 
 // ===================== DISCOUNT CODE VALIDATION =====================
 
@@ -268,6 +195,78 @@ router.get(
       .withMessage("Sort order must be ASC or DESC"),
   ],
   getAllDiscountCodesAdmin,
+);
+
+// ===================== ADMIN DISCOUNT CODE MANAGEMENT =====================
+
+// Get single discount code by ID (Admin only)
+router.get(
+  "/:id",
+  isAdmin,
+  [param("id").isInt().withMessage("Valid discount code ID is required")],
+  getDiscountCodeById,
+);
+
+// Update discount code (Admin only)
+router.put(
+  "/:id",
+  isAdmin,
+  [
+    param("id").isInt().withMessage("Valid discount code ID is required"),
+    body("code")
+      .optional()
+      .isLength({ min: 3, max: 20 })
+      .withMessage("Code must be 3-20 characters"),
+    body("description")
+      .optional()
+      .isLength({ max: 500 })
+      .withMessage("Description must be under 500 characters"),
+    body("discountType")
+      .optional()
+      .isIn(["percentage", "fixed"])
+      .withMessage("Discount type must be 'percentage' or 'fixed'"),
+    body("discountValue")
+      .optional()
+      .isFloat({ min: 0.01 })
+      .withMessage("Discount value must be greater than 0"),
+    body("applicableType")
+      .optional()
+      .isIn(["course", "project", "both"])
+      .withMessage("Applicable type must be 'course', 'project', or 'both'"),
+    body("minPurchaseAmount")
+      .optional()
+      .isFloat({ min: 0 })
+      .withMessage("Min purchase amount must be non-negative"),
+    body("maxUses")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Max uses must be a positive integer"),
+    body("maxUsesPerUser")
+      .optional()
+      .isInt({ min: 1 })
+      .withMessage("Max uses per user must be a positive integer"),
+    body("validFrom")
+      .optional()
+      .isISO8601()
+      .withMessage("Valid from date must be a valid ISO 8601 date"),
+    body("validUntil")
+      .optional()
+      .isISO8601()
+      .withMessage("Valid until date must be a valid ISO 8601 date"),
+    body("isActive")
+      .optional()
+      .isBoolean()
+      .withMessage("Is active must be a boolean"),
+  ],
+  updateDiscountCode,
+);
+
+// Delete discount code (Admin only)
+router.delete(
+  "/:id",
+  isAdmin,
+  [param("id").isInt().withMessage("Valid discount code ID is required")],
+  deleteDiscountCode,
 );
 
 export default router;

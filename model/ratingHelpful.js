@@ -5,11 +5,6 @@ import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 const RatingHelpful = sequelize.define(
   "RatingHelpful",
   {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
     ratingId: {
       type: DataTypes.UUID,
       allowNull: false,

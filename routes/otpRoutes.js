@@ -6,9 +6,6 @@ import {
   verifyResetOtp,
   resetPassword,
 } from "../controller/otpController.js";
-import validateInput from "../middleware/validateInput.js";
-import otpRateLimiter from "../middleware/rateLimiter.js";
-import apiKeyAuth from "../middleware/apiKeyAuth.js";
 const otpRoutes = express.Router();
 
 //Route for user after registration -- OTP for verification

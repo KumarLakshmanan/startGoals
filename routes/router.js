@@ -21,7 +21,6 @@ import ratingRoutes from "./ratingRoutes.js";
 import projectRoutes from "./projectRoutes.js";
 import discountRoutes from "./discountRoutes.js";
 import projectFileRoutes from "./projectFileRoutes.js";
-import projectRatingRoutes from "./projectRatingRoutes.js";
 import fileUploadRoutes from "./fileUploadRoutes.js";
 import teacherRoutes from "./teacherRoutes.js";
 import notificationRoutes from "./notificationRoutes.js";
@@ -32,6 +31,7 @@ import cartRoutes from "./cartRoutes.js";
 import wishlistRoutes from "./wishlistRoutes.js";
 import courseFileRoutes from "./courseFileRoutes.js";
 import addressRoutes from "./addressRoutes.js";
+import userAddressRoutes from "./userAddressRoutes.js";
 
 const router = express.Router();
 
@@ -66,7 +66,6 @@ router.use("/search", searchRoutes);
 router.use("/ratings", ratingRoutes);
 router.use("/projects", projectRoutes);
 router.use("/project-files", projectFileRoutes);
-router.use("/project-ratings", projectRatingRoutes);
 router.use("/discounts", discountRoutes);
 router.use("/upload", fileUploadRoutes);
 router.use("/teachers", teacherRoutes);
@@ -78,5 +77,6 @@ router.use("/cart", cartRoutes);
 router.use("/wishlist", wishlistRoutes);
 router.use("/courses", courseFileRoutes);
 router.use("/address", addressRoutes);
+router.use("/user-addresses", userAddressRoutes);
 
 export default router;

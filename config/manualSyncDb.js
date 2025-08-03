@@ -66,8 +66,6 @@ const sortModelsByDependencies = (modelsArray) => {
     'DiscountCode',   // Depends on User
     'SearchAnalytics', // Depends on User
     
-    // Course-related models
-    'courseTag',      // Depends on Course (lowercase!)
     'courseGoal',     // Depends on Course (lowercase!)
     'courseRequirement', // Depends on Course (lowercase!)
     'section',        // Depends on Course (lowercase!)
@@ -104,7 +102,6 @@ const sortModelsByDependencies = (modelsArray) => {
     'DiscountUsage',  // Depends on DiscountCode, User, Course, Project, Enrollment
     
     // Many-to-many association tables
-    'project_tags',   // Depends on Project, CourseTag (exact name!)
     'discount_categories', // Depends on DiscountCode, Category (exact name!)
   ];
 

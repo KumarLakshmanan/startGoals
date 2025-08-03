@@ -5,11 +5,6 @@ import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 const ProjectTechStack = sequelize.define(
   "project_tech_stack",
   {
-    id: {
-      type: DataTypes.UUID,
-      defaultValue: DataTypes.UUIDV4,
-      primaryKey: true,
-    },
     projectId: {
       type: DataTypes.UUID,
       allowNull: false,

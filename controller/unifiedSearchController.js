@@ -3,7 +3,7 @@ import Project from "../model/project.js";
 import User from "../model/user.js";
 import Category from "../model/category.js";
 import CourseLevel from "../model/courseLevel.js";
-import CourseTag from "../model/courseTag.js";
+
 import Language from "../model/language.js";
 import SearchAnalytics from "../model/searchAnalytics.js";
 import { Op } from "sequelize";
@@ -156,9 +156,7 @@ export const searchCoursesAndProjects = async (req, res) => {
       duration_max,
       language,
       instructor,
-      tags,
       difficulty,
-      programmingLanguages,
       sort = "relevance",
       page = 1,
       limit = 12,
@@ -227,16 +225,6 @@ export const searchCoursesAndProjects = async (req, res) => {
         });
       }
 
-      if (tags) {
-        const tagIds = Array.isArray(tags) ? tags : [tags];
-        courseInclude.push({
-          model: CourseTag,
-          as: "tags",
-          where: { id: { [Op.in]: tagIds } },
-          through: { attributes: [] },
-        });
-      }
-
       let courseOrder = [];
       switch (sort) {
         case "price_low":
@@ -301,15 +289,6 @@ export const searchCoursesAndProjects = async (req, res) => {
         if (price_max) projectWhere.price[Op.lte] = parseFloat(price_max);
       }
 
-      if (programmingLanguages) {
-        const languages = Array.isArray(programmingLanguages)
-          ? programmingLanguages
-          : [programmingLanguages];
-        projectWhere.programmingLanguages = {
-          [Op.overlap]: languages,
-        };
-      }
-
       const projectInclude = [
         {
           model: User,
@@ -323,15 +302,6 @@ export const searchCoursesAndProjects = async (req, res) => {
         },
       ];
 
-      if (tags) {
-        const tagIds = Array.isArray(tags) ? tags : [tags];
-        projectInclude.push({
-          model: CourseTag,
-          as: "tags",
-          where: { id: { [Op.in]: tagIds } },
-          through: { attributes: [] },
-        });
-      }
 
       let projectOrder = [];
       switch (sort) {
@@ -387,9 +357,7 @@ export const searchCoursesAndProjects = async (req, res) => {
           duration_max,
           language,
           instructor,
-          tags,
           difficulty,
-          programmingLanguages,
         }),
         resultsCount: results.courses.length + results.projects.length,
         timestamp: new Date(),
@@ -443,9 +411,7 @@ export const searchCoursesAndProjects = async (req, res) => {
           duration_max,
           language,
           instructor,
-          tags,
           difficulty,
-          programmingLanguages,
           sort,
         },
       },
@@ -516,12 +482,6 @@ export const getUnifiedSearchFilters = async (req, res) => {
       order: [["title", "ASC"]],
     });
 
-    // Tags
-    const tags = await CourseTag.findAll({
-      attributes: ["id", "title"],
-      order: [["title", "ASC"]],
-    });
-
     // Instructors/Creators
     const instructors = await User.findAll({
       where: { role: "teacher" },
@@ -532,7 +492,6 @@ export const getUnifiedSearchFilters = async (req, res) => {
     let filters = {
       categories,
       languages,
-      tags,
       instructors,
     };
 
@@ -552,26 +511,6 @@ export const getUnifiedSearchFilters = async (req, res) => {
         { value: "intermediate", label: "Intermediate" },
         { value: "advanced", label: "Advanced" },
       ];
-
-      // Get programming languages from projects
-      const programmingLanguages = await Project.findAll({
-        attributes: [
-          [
-            sequelize.fn(
-              "DISTINCT",
-              sequelize.fn("unnest", sequelize.col("programmingLanguages")),
-            ),
-            "language",
-          ],
-        ],
-        where: { status: "published" },
-        raw: true,
-      });
-
-      filters.programmingLanguages = programmingLanguages
-        .map((item) => item.language)
-        .filter((lang) => lang)
-        .sort();
     }
 
     return sendSuccess(res,  "Filters fetched successfully", filters);

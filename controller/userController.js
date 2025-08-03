@@ -55,6 +55,7 @@ export const userRegistration = async (req, res) => {
       await trans.rollback();
       return sendValidationError(res, "Invalid mobile number format");
     }
+
     // Check for existing email
     if (email) {
       const existingEmail = await User.findOne({
@@ -80,6 +81,20 @@ export const userRegistration = async (req, res) => {
         return sendConflict(res, "mobile", mobile);
       }
     }
+
+    // Check for existing username
+    if (username) {
+      const existingUsername = await User.findOne({
+        where: { username },
+        transaction: trans,
+      });
+
+      if (existingUsername) {
+        await trans.rollback();
+        return sendConflict(res, "username", username);
+      }
+    }
+
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const _newUser = await User.create(
@@ -1182,7 +1197,6 @@ export const getStudentAnalytics = async (req, res) => {
     return sendServerError(res, error);
   }
 };
-
 export const updateUserProfile = async (req, res) => {
   const trans = await sequelize.transaction();
 
@@ -1207,10 +1221,9 @@ export const updateUserProfile = async (req, res) => {
       experienceDescription,
       profileImage,
       mobile,
-    } = req.body;
-
+    } = req.body || {};
     // Find the user
-    const user = await User.findByPk(userId, { transaction: trans });
+    const user = await User.findOne({ where: { userId }, transaction: trans });
     if (!user) {
       await trans.rollback();
       return sendNotFound(res, "User not found");
@@ -1218,7 +1231,7 @@ export const updateUserProfile = async (req, res) => {
 
     // Field validations
     if (dob !== undefined) {
-      if (typeof dob !== "string" || isNaN(Date.parse(dob))) {
+      if ((typeof dob !== "string" && typeof dob !== "object") || isNaN(Date.parse(dob))) {
         await trans.rollback();
         return sendValidationError(res, "Invalid date of birth");
       }
@@ -1349,49 +1362,30 @@ export const updateUserProfile = async (req, res) => {
 
     await user.update(updateData, { transaction: trans });
 
-    // For now, skip associations (skills, languages, goals)
-
     await trans.commit();
 
-    // Fetch updated user
-    const updatedUser = await User.findByPk(userId);
-
     return sendSuccess(res, "Profile updated successfully", {
-      userId: updatedUser.userId,
-      username: updatedUser.username,
-      dob: updatedUser.dob,
-      bio: updatedUser.bio,
-      experience: updatedUser.experience,
-      experienceDescription: updatedUser.experienceDescription,
-      linkedin: updatedUser.linkedin,
-      github: updatedUser.github,
-      website: updatedUser.website,
-      twitter: updatedUser.twitter,
-      status: updatedUser.status,
-      doorNo: updatedUser.doorNo,
-      street: updatedUser.street,
-      city: updatedUser.city,
-      state: updatedUser.state,
-      zipCode: updatedUser.zipCode,
-      country: updatedUser.country,
-      qualification: updatedUser.qualification,
-      email: updatedUser.email,
-      profileImage: updatedUser.profileImage,
-      role: updatedUser.role,
-      provider: updatedUser.provider,
-      googleId: updatedUser.googleId,
-      mobile: updatedUser.mobile,
-      isVerified: updatedUser.isVerified,
-      androidRegId: updatedUser.androidRegId,
-      iosRegId: updatedUser.iosRegId,
-      firstLogin: updatedUser.firstLogin,
-      passwordResetVerified: updatedUser.passwordResetVerified,
-      isOnboarded: updatedUser.isOnboarded,
-      averageRating: updatedUser.averageRating,
-      totalRatings: updatedUser.totalRatings,
-      skills: [], // To be populated when associations are implemented
-      languages: [],
-      goals: []
+      userId: user.userId,
+      username: user.username,
+      email: user.email,
+      mobile: user.mobile,
+      profileImage: user.profileImage,
+      dob: user.dob,
+      bio: user.bio,
+      linkedin: user.linkedin,
+      github: user.github,
+      website: user.website,
+      twitter: user.twitter,
+      doorNo: user.doorNo,
+      street: user.street,
+      city: user.city,
+      state: user.state,
+      zipCode: user.zipCode,
+      country: user.country,
+      qualification: user.qualification,
+      occupation: user.occupation,
+      experience: user.experience,
+      experienceDescription: user.experienceDescription
     });
   } catch (error) {
     await trans.rollback();

@@ -87,6 +87,21 @@ const CourseEnhanced = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
+    registrationOpen: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+      comment: "Whether course registration is open",
+    },
+    maxEnrollments: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      comment: "Maximum number of students allowed to enroll",
+    },
+    registrationDeadline: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "Deadline for course registration",
+    },
     thumbnailUrl: {
       type: DataTypes.STRING,
       allowNull: true,

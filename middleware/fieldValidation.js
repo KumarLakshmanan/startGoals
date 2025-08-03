@@ -16,10 +16,10 @@ const handleValidationError = (res, err) => {
     data: null,
     errors: err.details
       ? err.details.map((detail) => ({
-          field: detail.path ? detail.path.join(".") : "unknown",
-          message: detail.message,
-          value: detail.context?.value,
-        }))
+        field: detail.path ? detail.path.join(".") : "unknown",
+        message: detail.message,
+        value: detail.context?.value,
+      }))
       : [{ message: err.message }],
   });
 };
@@ -87,14 +87,24 @@ export const userValidation = {
   }),
 
   updateProfile: Joi.object({
-    firstName: Joi.string().min(2).max(50),
-    lastName: Joi.string().min(2).max(50),
-    dateOfBirth: Joi.date().max("now"),
+    dob: Joi.date().max("now"),
     profileImage: commonSchemas.url,
     bio: Joi.string().max(500),
-    skills: Joi.array().items(commonSchemas.id),
-    languages: Joi.array().items(commonSchemas.id),
-    goalId: commonSchemas.id,
+    linkedin: commonSchemas.url,
+    github: commonSchemas.url,
+    website: commonSchemas.url,
+    twitter: commonSchemas.url,
+    doorNo: Joi.string().max(20),
+    street: Joi.string().max(100),
+    city: Joi.string().max(100),
+    state: Joi.string().max(100),
+    zipCode: Joi.string().max(20),
+    country: Joi.string().max(100),
+    qualification: Joi.string().max(100),
+    occupation: Joi.string().max(100),
+    experience: Joi.number().integer().min(0).max(100),
+    experienceDescription: Joi.string().max(500),
+    mobile: commonSchemas.mobile,
   }),
 };
 
@@ -115,7 +125,6 @@ export const courseValidation = {
     previewVideo: commonSchemas.url,
     requirements: Joi.array().items(Joi.string().max(200)),
     goals: Joi.array().items(Joi.string().max(200)),
-    tags: Joi.array().items(commonSchemas.id),
     isPublished: Joi.boolean().default(false),
     isFeatured: Joi.boolean().default(false),
   }),
@@ -134,7 +143,6 @@ export const courseValidation = {
     previewVideo: commonSchemas.url,
     requirements: Joi.array().items(Joi.string().max(200)),
     goals: Joi.array().items(Joi.string().max(200)),
-    tags: Joi.array().items(commonSchemas.id),
     isPublished: Joi.boolean(),
     isFeatured: Joi.boolean(),
     status: commonSchemas.status,
@@ -167,32 +175,176 @@ export const courseValidation = {
 // Project validation schemas
 export const projectValidation = {
   create: Joi.object({
-    title: Joi.string().min(5).max(200).required(),
-    description: Joi.string().min(10).max(2000).required(),
-    shortDescription: Joi.string().max(500),
-    price: Joi.number().min(0).max(10000).required(),
-    salePrice: Joi.number().min(0).max(Joi.ref("price")),
-    categoryId: commonSchemas.id.required(),
-    techStack: Joi.array().items(Joi.string().max(50)),
-    programmingLanguages: Joi.array().items(Joi.string().max(30)),
-    difficulty: Joi.string().valid("beginner", "intermediate", "advanced"),
-    estimatedTime: Joi.string().max(50),
-    demoUrl: commonSchemas.url,
-    previewImages: Joi.array().items(commonSchemas.url),
-    requirements: Joi.array().items(Joi.string().max(200)),
-    features: Joi.array().items(Joi.string().max(200)),
-    compatibility: Joi.array().items(Joi.string().max(100)),
-    license: Joi.string().max(100),
-    version: Joi.string().max(20),
-    tags: Joi.array().items(commonSchemas.id),
+    title: Joi.string().min(1).required(),
+    description: Joi.string().min(1).required(),
+    shortDescription: Joi.string().max(500).optional(),
+    price: Joi.number().min(0).optional(),
+    categoryId: Joi.string().required(),
+    levelId: Joi.string().required(),
+    languageId: Joi.string().optional(),
+    techStack: Joi.alternatives().try(
+      Joi.array().items(Joi.string()),
+      Joi.string().custom((value, helpers) => {
+        try {
+          const arr = JSON.parse(value);
+          if (!Array.isArray(arr)) throw new Error();
+          return arr;
+        } catch {
+          return helpers.error('any.invalid');
+        }
+      })
+    ).optional(),
+    goals: Joi.alternatives().try(
+      Joi.array().items(Joi.string()),
+      Joi.string().custom((value, helpers) => {
+        try {
+          const arr = JSON.parse(value);
+          if (!Array.isArray(arr)) throw new Error();
+          return arr;
+        } catch {
+          return helpers.error('any.invalid');
+        }
+      })
+    ).optional(),
+    requirements: Joi.string().optional(),
+    features: Joi.string().optional(),
+    whatYouGet: Joi.string().optional(),
+    supportIncluded: Joi.boolean().optional(),
+    supportDuration: Joi.number().integer().min(0).optional().default(0),
+    licenseType: Joi.string().valid("personal", "commercial", "one_time", "unlimited").optional(),
+    status: Joi.string().valid("draft", "published", "archived", "hidden", "rejected").optional(),
+    version: Joi.string().optional(),
+    discountEnabled: Joi.boolean().optional(),
+    demoUrl: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
+    documentation: Joi.string().optional(),
+    supportEmail: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
+    previewVideo: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
+    featured: Joi.boolean().optional(),
   }),
-
+  update: Joi.object({
+    title: Joi.string().optional(),
+    description: Joi.string().optional(),
+    price: Joi.number().min(0).optional(),
+    salePrice: Joi.number().min(0).optional(),
+    categoryId: Joi.string().optional(),
+    levelId: Joi.string().optional(),
+    techStack: Joi.alternatives().try(
+      Joi.array().items(Joi.string()),
+      Joi.string().custom((value, helpers) => {
+        try {
+          const arr = JSON.parse(value);
+          if (!Array.isArray(arr)) throw new Error();
+          return arr;
+        } catch {
+          return helpers.error('any.invalid');
+        }
+      })
+    ).optional(),
+    features: Joi.alternatives().try(
+      Joi.array().items(Joi.string()),
+      Joi.string().custom((value, helpers) => {
+        try {
+          const arr = JSON.parse(value);
+          if (!Array.isArray(arr)) throw new Error();
+          return arr;
+        } catch {
+          return helpers.error('any.invalid');
+        }
+      })
+    ).optional(),
+    requirements: Joi.alternatives().try(
+      Joi.array().items(Joi.string()),
+      Joi.string().custom((value, helpers) => {
+        try {
+          const arr = JSON.parse(value);
+          if (!Array.isArray(arr)) throw new Error();
+          return arr;
+        } catch {
+          return helpers.error('any.invalid');
+        }
+      })
+    ).optional(),
+    compatibility: Joi.alternatives().try(
+      Joi.array().items(Joi.string()),
+      Joi.string().custom((value, helpers) => {
+        try {
+          const arr = JSON.parse(value);
+          if (!Array.isArray(arr)) throw new Error();
+          return arr;
+        } catch {
+          return helpers.error('any.invalid');
+        }
+      })
+    ).optional(),
+    previewImages: Joi.alternatives().try(
+      Joi.array().items(Joi.string()),
+      Joi.string().custom((value, helpers) => {
+        try {
+          const arr = JSON.parse(value);
+          if (!Array.isArray(arr)) throw new Error();
+          return arr;
+        } catch {
+          return helpers.error('any.invalid');
+        }
+      })
+    ).optional(),
+    difficulty: Joi.string().valid("beginner", "intermediate", "advanced").optional(),
+    license: Joi.string().valid("Regular License", "Extended License").optional(),
+    status: Joi.string().valid("draft", "published", "inactive").optional(),
+    estimatedTime: Joi.number().integer().min(1).optional(),
+    version: Joi.string().optional(),
+    discountEnabled: Joi.boolean().optional(),
+    demoUrl: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
+    documentation: Joi.string().optional(),
+    supportEmail: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
+    previewVideo: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
+    featured: Joi.boolean().optional(),
+  }),
+  filter: Joi.object({
+    page: Joi.number().integer().min(1).optional()
+      .messages({ "number.base": "Page must be a positive integer", "number.min": "Page must be a positive integer" }),
+    limit: Joi.number().integer().min(1).max(50).optional()
+      .messages({ "number.base": "Limit must be between 1 and 50", "number.min": "Limit must be between 1 and 50", "number.max": "Limit must be between 1 and 50" }),
+    minPrice: Joi.number().min(0).optional()
+      .messages({ "number.base": "Min price must be non-negative", "number.min": "Min price must be non-negative" }),
+    maxPrice: Joi.number().min(0).optional()
+      .messages({ "number.base": "Max price must be non-negative", "number.min": "Max price must be non-negative" }),
+    sortBy: Joi.string().valid("createdAt", "price", "title", "views", "totalSales", "averageRating").optional()
+      .messages({ "any.only": "Invalid sort field" }),
+    sortOrder: Joi.string().valid("ASC", "DESC").optional()
+      .messages({ "any.only": "Sort order must be ASC or DESC" }),
+    status: Joi.string().valid("published", "draft", "inactive", "all").optional()
+      .messages({ "any.only": "Invalid status" }),
+    difficulty: Joi.string().valid("beginner", "intermediate", "advanced").optional()
+      .messages({ "any.only": "Invalid difficulty level" }),
+  }),
+  bulkDelete: Joi.object({
+    ids: Joi.array().items(Joi.string().guid({ version: ["uuidv4"] })).required().messages({
+      "array.base": "IDs must be an array",
+      "string.guid": "Each ID must be a valid UUID"
+    }),
+  }),
   purchase: Joi.object({
-    projectId: commonSchemas.id.required(),
-    discountCode: Joi.string().max(50),
-    paymentMethod: Joi.string()
-      .valid("credit_card", "debit_card", "paypal", "stripe")
-      .required(),
+    projectId: Joi.string().guid({ version: ["uuidv4"] }).required(),
+    discountCode: Joi.string().optional(),
+  }),
+  completePurchase: Joi.object({
+    purchaseId: Joi.string().guid({ version: ["uuidv4"] }).required(),
+    paymentId: Joi.string().required(),
+    paymentStatus: Joi.string().valid("completed", "failed", "cancelled").required(),
+  }),
+  purchaseHistory: Joi.object({
+    page: Joi.number().integer().min(1).optional(),
+    limit: Joi.number().integer().min(1).max(50).optional(),
+    status: Joi.string().valid("pending", "completed", "failed", "cancelled").optional(),
+  }),
+  statistics: Joi.object({
+    period: Joi.string().valid("7d", "30d", "90d", "1y").optional(),
+  }),
+  getById: Joi.object({
+    id: Joi.string().guid({ version: ["uuidv4"] }).required().messages({
+      "string.guid": "Valid project ID is required"
+    })
   }),
 };
 
@@ -235,7 +387,6 @@ export const courseRatingValidation = {
       .optional(),
     timeToComplete: Joi.string().max(50).optional(),
     wouldRecommend: Joi.boolean().optional(),
-    tags: Joi.array().items(Joi.string().max(50)).max(10).optional(),
   }),
 
   filter: Joi.object({
@@ -293,7 +444,6 @@ export const projectRatingValidation = {
     review: Joi.string().max(1000).optional().allow("").messages({
       "string.max": "Review must be under 1000 characters",
     }),
-    tags: Joi.array().items(Joi.string().max(50)).max(10).optional(),
     pros: Joi.array().items(Joi.string().max(100)).max(5).optional(),
     cons: Joi.array().items(Joi.string().max(100)).max(5).optional(),
     difficulty: Joi.string()
@@ -334,7 +484,6 @@ export const sectionValidation = {
     difficulty: Joi.string()
       .valid("beginner", "intermediate", "advanced")
       .optional(),
-    tags: Joi.array().items(Joi.string().max(50)).max(20).optional(),
     lessons: Joi.array()
       .items(
         Joi.object({
@@ -470,14 +619,6 @@ export const searchValidation = {
     price_max: Joi.number().min(0),
     difficulty: Joi.string().valid("beginner", "intermediate", "advanced"),
     instructor: commonSchemas.id,
-    tags: Joi.alternatives().try(
-      commonSchemas.id,
-      Joi.array().items(commonSchemas.id),
-    ),
-    programmingLanguages: Joi.alternatives().try(
-      Joi.string().max(30),
-      Joi.array().items(Joi.string().max(30)),
-    ),
   }),
 };
 
@@ -521,8 +662,8 @@ export const validateSchema = (schema, source = "body") => {
     }
 
     // Replace the source data with validated and sanitized data
-    if (source === "query") req.query = value;
-    else if (source === "params") req.params = value;
+    if (source === "query") Object.assign(req.query, value);
+    else if (source === "params") Object.assign(req.params, value);
     else req.body = value;
 
     next();
@@ -689,7 +830,6 @@ export const fileValidation = {
       .required(),
     description: Joi.string().max(200).optional(),
     isPublic: Joi.boolean().default(false),
-    tags: Joi.array().items(Joi.string().max(30)).max(10).optional(),
   }),
 
   query: Joi.object({

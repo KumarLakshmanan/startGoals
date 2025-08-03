@@ -3,7 +3,7 @@ import Project from "../model/project.js";
 import User from "../model/user.js";
 import Category from "../model/category.js";
 import CourseLevel from "../model/courseLevel.js";
-import CourseTag from "../model/courseTag.js";
+
 import _CourseGoal from "../model/courseGoal.js";
 import Language from "../model/language.js";
 import SearchAnalytics from "../model/searchAnalytics.js";
@@ -261,7 +261,6 @@ export const searchCourses = async (req, res) => {
       page = 1,
       limit = 12,
       category,
-      tags,
       courseType,
       priceMin,
       priceMax,
@@ -367,18 +366,6 @@ export const searchCourses = async (req, res) => {
         attributes: ["userId", "username", "profileImage"],
       },
       {
-        model: CourseTag,
-        as: "tags",
-        attributes: ["tag"],
-        ...(tags && {
-          where: {
-            tag: {
-              [Op.in]: Array.isArray(tags) ? tags : [tags],
-            },
-          },
-        }),
-      },
-      {
         model: Language,
         through: { attributes: [] },
         attributes: ["languageId", "language"],
@@ -444,7 +431,6 @@ export const searchCourses = async (req, res) => {
       category: course.category,
       level: course.level,
       instructor: course.instructor,
-      tags: course.tags?.map((tag) => tag.tag) || [],
       languages: course.Languages || [],
       rating: parseFloat(course.averageRating) || 0,
       reviewCount: course.totalRatings || 0,
@@ -467,7 +453,6 @@ export const searchCourses = async (req, res) => {
         query,
         activeFilters: {
           category,
-          tags,
           courseType,
           priceRange: { min: priceMin, max: priceMax },
           level,
@@ -502,7 +487,6 @@ export const comprehensiveSearch = async (req, res) => {
       language,
       duration_min,
       duration_max,
-      tags,
       instructor,
       rating_min,
 
@@ -549,12 +533,6 @@ export const comprehensiveSearch = async (req, res) => {
           ? instructor
           : [instructor]
         : [],
-      tags: tags
-        ? typeof tags === "string"
-          ? tags.split(",").map((t) => t.trim())
-          : tags
-        : [],
-
       price_range: {
         min: price_min ? parseFloat(price_min) : null,
         max: price_max ? parseFloat(price_max) : null,
@@ -801,6 +779,7 @@ export const searchInstructors = async (req, res) => {
       profileImage: instructor.profileImage,
       courseCount: instructor.courses?.length || 0,
       subjects:
+        // eslint-disable-next-line no-constant-binary-expression
         [
           ...new Set(
             instructor.courses
@@ -888,18 +867,6 @@ export const getSearchFilters = async (req, res) => {
         { id: "live", name: "Live Sessions" },
         { id: "recorded", name: "Recorded Content" },
       ];
-
-      // Popular tags
-      const tags = await CourseTag.findAll({
-        attributes: [
-          "tag",
-          [sequelize.fn("COUNT", sequelize.col("tag")), "usage_count"],
-        ],
-        group: ["tag"],
-        order: [[sequelize.literal("usage_count"), "DESC"]],
-        limit: 20,
-      });
-      filters.tags = tags.map((tag) => tag.tag);
     }
 
     // Project-specific filters

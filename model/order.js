@@ -18,6 +18,15 @@ const Order = sequelize.define(
         key: "user_id",
       },
     },
+    addressId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "addresses",
+        key: "address_id",
+      },
+      comment: "Delivery address for the order",
+    },
     razorpayOrderId: {
       type: DataTypes.STRING,
       allowNull: false,

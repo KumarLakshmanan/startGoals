@@ -5,6 +5,7 @@ import { Order, Cart, User, Course, Project, ProjectPurchase, OrderItem } from '
 import DiscountCode from '../model/discountCode.js';
 import DiscountUsage from '../model/discountUsage.js';
 import Enrollment from '../model/enrollment.js';
+import Address from '../model/address.js';
 import sequelize from '../config/db.js';
 import { sendResponse } from '../utils/responseHelper.js';
 import {
@@ -13,6 +14,7 @@ import {
   sendValidationError,
   sendNotFound,
   sendServerError,
+  sendConflict,
 } from "../utils/responseHelper.js";
 
 // Initialize Razorpay instance
@@ -476,7 +478,7 @@ export const verifyPaymentAndEnroll = async (req, res) => {
 export const getUserPurchases = async (req, res) => {
   try {
     const userId = req.user?.userId;
-    const { page = 1, limit = 10, status, type } = req.query;
+    const { page = 1, limit = 10, status, type: _type } = req.query;
 
     if (!userId) {
       return sendError(res, 401, "Authentication required");
@@ -581,9 +583,20 @@ export const getUserPurchases = async (req, res) => {
 export const createSimpleOrder = async (req, res) => {
   try {
     const { userId } = req.user;
-    const { discountCode } = req.body;
+    const { discountCode, addressId } = req.body;
 
     console.log('Creating simple order for user:', userId);
+
+    // Validate addressId if provided
+    if (addressId) {
+      const address = await Address.default.findOne({
+        where: { addressId, userId }
+      });
+
+      if (!address) {
+        return sendResponse(res, 400, false, 'Invalid address ID', null);
+      }
+    }
 
     // Get cart items for the user
     const cartItems = await Cart.findAll({
@@ -722,6 +735,7 @@ export const createSimpleOrder = async (req, res) => {
     // Create order in database
     const order = await Order.create({
       userId: userId,
+      addressId: addressId || null,
       razorpayOrderId: razorpayOrder.id,
       totalAmount: totalAmount,
       discountAmount: discountAmount,

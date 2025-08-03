@@ -5,7 +5,7 @@ import ProjectRating from "../model/projectRating.js";
 import ProjectSettings from "../model/projectSettings.js";
 import User from "../model/user.js";
 import Category from "../model/category.js";
-import CourseTag from "../model/courseTag.js";
+
 import CourseLevel from "../model/courseLevel.js";
 import Goal from "../model/goal.js";
 import Skill from "../model/skill.js";
@@ -14,17 +14,15 @@ import DiscountCode from "../model/discountCode.js";
 import DiscountUsage from "../model/discountUsage.js";
 import ProjectGoal from "../model/projectGoal.js";
 import ProjectTechStack from "../model/projectTechStack.js";
-import ProjectProgrammingLanguage from "../model/projectProgrammingLanguage.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
-import path from "path";
-import fs from "fs";
 import {
   sendSuccess,
   sendError,
   sendValidationError,
   sendNotFound,
   sendServerError,
+  sendConflict,
 } from "../utils/responseHelper.js";
 
 // ===================== COMPREHENSIVE PROJECT MANAGEMENT =====================
@@ -42,9 +40,7 @@ export const createProject = async (req, res) => {
       categoryId,
       levelId,
       languageId,
-      tags = [],
       techStack = [],
-      programmingLanguages = [],
       goals = [],
       requirements,
       features,
@@ -192,23 +188,6 @@ export const createProject = async (req, res) => {
       },
       { transaction }
     );
-
-    // Add tags if provided
-    if (tags && tags.length > 0) {
-      const tagPromises = tags.map(async (tagId) => {
-        try {
-          validateUUID(tagId, "tagId");
-          const tag = await CourseTag.findByPk(tagId);
-          if (tag) {
-            await project.addProjectTag(tag, { transaction });
-          }
-        } catch (error) {
-          console.warn(`Error adding tag ${tagId}: ${error.message}`);
-        }
-      });
-      await Promise.all(tagPromises);
-    }
-
     // Add tech stack if provided
     if (techStack && techStack.length > 0) {
       const techStackPromises = techStack.map(async (skillId) => {
@@ -226,25 +205,6 @@ export const createProject = async (req, res) => {
         }
       });
       await Promise.all(techStackPromises);
-    }
-
-    // Add programming languages if provided
-    if (programmingLanguages && programmingLanguages.length > 0) {
-      const programmingLanguagePromises = programmingLanguages.map(async (skillId) => {
-        try {
-          validateUUID(skillId, "skillId");
-          const skill = await Skill.findByPk(skillId);
-          if (skill) {
-            await ProjectProgrammingLanguage.create({
-              projectId: project.projectId,
-              skillId
-            }, { transaction });
-          }
-        } catch (error) {
-          console.warn(`Error adding programming language skill ${skillId}: ${error.message}`);
-        }
-      });
-      await Promise.all(programmingLanguagePromises);
     }
 
     // Add goals if provided
@@ -265,13 +225,6 @@ export const createProject = async (req, res) => {
       });
       await Promise.all(goalPromises);
     }
-    if (tags && Array.isArray(tags) && tags.length > 0) {
-      const tagObjects = await CourseTag.findAll({
-        where: { id: { [Op.in]: tags } },
-      });
-      await project.setProjectTags(tagObjects, { transaction });
-    }
-
     await transaction.commit();
 
     // Fetch complete project with associations
@@ -288,26 +241,8 @@ export const createProject = async (req, res) => {
           attributes: ["categoryId", "categoryName"],
         },
         {
-          model: CourseTag,
-          as: "tags",
-          attributes: ["courseTagId", "tag"],
-          through: { attributes: [] },
-        },
-        {
           model: ProjectTechStack,
           as: "techStack",
-          attributes: ["skillId"],
-          include: [
-            {
-              model: Skill,
-              as: "skill",
-              attributes: ["skillId", "skillName"],
-            },
-          ],
-        },
-        {
-          model: ProjectProgrammingLanguage,
-          as: "programmingLanguages",
           attributes: ["skillId"],
           include: [
             {
@@ -342,8 +277,6 @@ export const getAllProjects = async (req, res) => {
       sortOrder = "DESC",
       status,
       difficulty,
-      tags,
-      programmingLanguages,
     } = req.query;
 
     const userId = req.user?.userId; // Get user ID from auth token if available
@@ -377,15 +310,6 @@ export const getAllProjects = async (req, res) => {
       whereConditions.difficulty = difficulty;
     }
 
-    if (programmingLanguages) {
-      const languages = Array.isArray(programmingLanguages)
-        ? programmingLanguages
-        : [programmingLanguages];
-      whereConditions.programmingLanguages = {
-        [Op.overlap]: languages,
-      };
-    }
-
     // Include conditions
     const includeOptions = [
       {
@@ -397,12 +321,6 @@ export const getAllProjects = async (req, res) => {
         model: Category,
         as: "category",
         attributes: ["categoryId", "categoryName"],
-      },
-      {
-        model: CourseTag,
-        as: "tags",
-        attributes: ["courseTagId", "tag"],
-        through: { attributes: [] },
       },
       {
         model: ProjectRating,
@@ -425,26 +343,10 @@ export const getAllProjects = async (req, res) => {
         required: false,
       },
       {
-        model: ProjectProgrammingLanguage,
-        as: "programmingLanguages",
-        attributes: ["skillId"],
-        include: [
-          {
-            model: Skill,
-            as: "skill",
-            attributes: ["skillId", "skillName"],
-          },
-        ],
-        required: false,
-      },
+        model: ProjectGoal,
+        as: "goals",
+      }
     ];
-
-    // Add tag filtering
-    if (tags) {
-      const tagIds = Array.isArray(tags) ? tags : [tags];
-      includeOptions[2].where = { id: { [Op.in]: tagIds } };
-      includeOptions[2].required = true;
-    }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -537,12 +439,6 @@ export const getProjectById = async (req, res) => {
           attributes: ["categoryId", "categoryName"],
         },
         {
-          model: CourseTag,
-          as: "tags",
-          attributes: ["courseTagId", "tag"],
-          through: { attributes: [] },
-        },
-        {
           model: ProjectFile,
           as: "files",
           attributes: ["fileId", "fileName", "fileType", "fileSize"],
@@ -564,18 +460,6 @@ export const getProjectById = async (req, res) => {
         {
           model: ProjectTechStack,
           as: "techStack",
-          attributes: ["skillId"],
-          include: [
-            {
-              model: Skill,
-              as: "skill",
-              attributes: ["skillId", "skillName"],
-            },
-          ],
-        },
-        {
-          model: ProjectProgrammingLanguage,
-          as: "programmingLanguages",
           attributes: ["skillId"],
           include: [
             {
@@ -678,14 +562,6 @@ export const updateProject = async (req, res) => {
     // Update project
     await project.update(updateData, { transaction });
 
-    // Update tags if provided
-    if (updateData.tags && Array.isArray(updateData.tags)) {
-      const tagObjects = await CourseTag.findAll({
-        where: { id: { [Op.in]: updateData.tags } },
-      });
-      await project.setProjectTags(tagObjects, { transaction });
-    }
-
     await transaction.commit();
 
     // Fetch updated project with associations
@@ -702,26 +578,8 @@ export const updateProject = async (req, res) => {
           attributes: ["categoryId", "categoryName"],
         },
         {
-          model: CourseTag,
-          as: "tags",
-          attributes: ["courseTagId", "tag"],
-          through: { attributes: [] },
-        },
-        {
           model: ProjectTechStack,
           as: "techStack",
-          attributes: ["skillId"],
-          include: [
-            {
-              model: Skill,
-              as: "skill",
-              attributes: ["skillId", "skillName"],
-            },
-          ],
-        },
-        {
-          model: ProjectProgrammingLanguage,
-          as: "programmingLanguages",
           attributes: ["skillId"],
           include: [
             {
@@ -1687,10 +1545,6 @@ export const bulkDeleteProjects = async (req, res) => {
         transaction
       }),
       ProjectTechStack.destroy({
-        where: { projectId: { [Op.in]: ids } },
-        transaction
-      }),
-      ProjectProgrammingLanguage.destroy({
         where: { projectId: { [Op.in]: ids } },
         transaction
       }),

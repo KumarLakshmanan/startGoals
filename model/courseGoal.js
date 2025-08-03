@@ -19,15 +19,6 @@ const CourseGoal = sequelize.define(
         key: "course_id",
       },
     },
-    goalText: {
-      type: DataTypes.TEXT,
-      allowNull: false,
-    },
-    order: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      defaultValue: 0,
-    },
     ...commonFields,
   },
   {

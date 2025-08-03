@@ -139,6 +139,8 @@ export const optionalAuth = async (req, res, next) => {
     }
     next();
   } catch (error) {
+    console.error("Optional auth error:", error);
+    // Token is invalid or expired, but don't fail - just continue without user
     // Invalid token, but don't fail - just continue without user
     req.user = null;
     next();

@@ -18,11 +18,9 @@ import {
   optionalAuth,
   isAdmin,
 } from "../middleware/authMiddleware.js";
-import { body, query } from "express-validator";
-import { validateInput } from "../middleware/validationMiddleware.js";
+import { query } from "express-validator";
 import SearchAnalytics from "../model/searchAnalytics.js";
 import { Op } from "sequelize";
-import sequelize from "../config/db.js";
 
 const router = express.Router();
 
@@ -51,7 +49,6 @@ router.get(
       .withMessage("Include recent must be a boolean"),
   ],
   optionalAuth, // Optional authentication to show recent searches
-  validateInput,
   getSearchSuggestions,
 );
 
@@ -147,22 +144,6 @@ router.get(
       .isInt({ min: 0 })
       .withMessage("Duration maximum must be a positive integer (hours)"),
 
-    query("tags")
-      .optional()
-      .custom((value) => {
-        if (typeof value === "string") {
-          // Comma-separated string or single tag
-          return value.split(",").every((tag) => tag.trim().length > 0);
-        }
-        if (Array.isArray(value)) {
-          return value.every(
-            (tag) => typeof tag === "string" && tag.trim().length > 0,
-          );
-        }
-        return false;
-      })
-      .withMessage("Tags must be comma-separated string or array of strings"),
-
     query("instructor")
       .optional()
       .custom((value) => {
@@ -238,7 +219,6 @@ router.get(
       .withMessage("View mode must be one of: grid, list"),
   ],
   optionalAuth, // Optional authentication for personalized results
-  validateInput,
   comprehensiveSearch,
 );
 
@@ -276,7 +256,6 @@ router.get(
       .isInt({ min: 1 })
       .withMessage("Page must be a positive integer"),
   ],
-  validateInput,
   async (req, res) => {
     try {
       const { limit = 20, page = 1 } = req.query;

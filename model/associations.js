@@ -4,11 +4,11 @@ import Language from "./language.js";
 import Otp from "./otp.js";
 import Course from "./course.js";
 import Category from "./category.js";
-import CourseTag from "./courseTag.js";
 import Banner from "./banner.js";
 import Goal from "./goal.js";
 import Skill from "./skill.js";
 import CourseGoal from "./courseGoal.js";
+import ProjectGoal from "./projectGoal.js";
 import CourseLevel from "./courseLevel.js";
 import Section from "./section.js";
 import UserGoals from "./userGoals.js";
@@ -48,8 +48,7 @@ import Order from "./order.js";
 import OrderItem from "./orderItem.js";
 import CourseFile from "./courseFile.js";
 import ProjectTechStack from "./projectTechStack.js";
-import ProjectProgrammingLanguage from "./projectProgrammingLanguage.js";
-import CourseProgrammingLanguage from "./courseProgrammingLanguage.js";
+import Address from "./address.js";
 import CourseTechStack from "./courseTechStack.js";
 
 // All models must be defined before we associate them
@@ -59,7 +58,6 @@ const models = {
   Language,
   Otp,
   Category,
-  CourseTag,
   Banner,
   Goal,
   Skill,
@@ -67,6 +65,7 @@ const models = {
   UserSkills,
   UserLanguages,
   CourseGoal,
+  ProjectGoal,
   CourseLevel,
   Section,
   Lesson,
@@ -94,7 +93,6 @@ const models = {
   CourseTest,
   BatchTeacher,
   BatchSchedule,
-  Enrollment,
   CourseCertificate,
   Wishlist,
   Cart,
@@ -225,17 +223,6 @@ CourseLevel.hasMany(Skill, {
   onUpdate: "CASCADE",
 });
 
-// course to courseTag
-// Course has many CourseTags
-Course.hasMany(CourseTag, {
-  foreignKey: "courseId",
-  as: "tags",
-});
-CourseTag.belongsTo(Course, {
-  foreignKey: "courseId",
-  as: "course",
-});
-
 //cours with Category
 // One category has many courses
 Category.hasMany(Course, {
@@ -278,8 +265,6 @@ Course.belongsTo(CourseLevel, {
 });
 
 // Removed Course-Language association - no languageId column exists in courses table
-// Courses use programmingLanguages JSON field instead
-
 // Batch belongs to Course
 Batch.belongsTo(Course, {
   foreignKey: "courseId", // foreignKey in the Batch model
@@ -487,24 +472,6 @@ Category.hasMany(Project, {
   foreignKey: "categoryId",
   as: "projects",
 });
-
-// Project has many Tags (using existing CourseTag many-to-many)
-Project.belongsToMany(CourseTag, {
-  through: "project_tags",
-  foreignKey: "project_id",
-  otherKey: "tag_id",
-  as: "tags",
-  onDelete: "CASCADE",
-});
-
-CourseTag.belongsToMany(Project, {
-  through: "project_tags",
-  foreignKey: "tag_id",
-  otherKey: "project_id",
-  as: "projects",
-  onDelete: "CASCADE",
-});
-
 // ProjectFile associations
 Project.hasMany(ProjectFile, {
   foreignKey: "projectId",
@@ -604,6 +571,19 @@ ProjectRating.belongsTo(User, {
 User.hasMany(ProjectRating, {
   foreignKey: "moderatedBy",
   as: "moderatedProjectRatings",
+});
+
+// project to ProjectGoal
+// A project can have many project goals
+Project.hasMany(ProjectGoal, {
+  foreignKey: "projectId",
+  as: "goals",
+  onDelete: "CASCADE",
+});
+// Each project goal belongs to a single project
+ProjectGoal.belongsTo(Project, {
+  foreignKey: "projectId",
+  as: "project",
 });
 
 // DiscountCode associations
@@ -776,6 +756,29 @@ Order.belongsTo(User, {
   as: "user",
 });
 
+// ===================== ADDRESS ASSOCIATIONS =====================
+User.hasMany(Address, {
+  foreignKey: "userId",
+  as: "addresses",
+  onDelete: "CASCADE",
+});
+
+Address.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
+
+// Order-Address associations
+Order.belongsTo(Address, {
+  foreignKey: "addressId",
+  as: "deliveryAddress",
+});
+
+Address.hasMany(Order, {
+  foreignKey: "addressId",
+  as: "orders",
+});
+
 // Order-OrderItem associations
 Order.hasMany(OrderItem, {
   foreignKey: "orderId",
@@ -799,7 +802,8 @@ export {
   Wishlist,
   Order,
   OrderItem,
-  ProjectPurchase
+  ProjectPurchase,
+  Address
 };
 
 // CourseFile associations
@@ -857,18 +861,10 @@ RatingHelpful.belongsTo(User, {
 Project.hasMany(ProjectTechStack, { as: "techStack", foreignKey: "projectId" });
 ProjectTechStack.belongsTo(Project, { foreignKey: "projectId" });
 
-Project.hasMany(ProjectProgrammingLanguage, { as: "programmingLanguages", foreignKey: "projectId" });
-ProjectProgrammingLanguage.belongsTo(Project, { foreignKey: "projectId" });
-
 Course.hasMany(CourseTechStack, { as: "techStack", foreignKey: "courseId" });
 CourseTechStack.belongsTo(Course, { foreignKey: "courseId" });
 
-Course.hasMany(CourseProgrammingLanguage, { as: "programmingLanguages", foreignKey: "courseId" });
-CourseProgrammingLanguage.belongsTo(Course, { foreignKey: "courseId" });
-
 ProjectTechStack.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
 CourseTechStack.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
-ProjectProgrammingLanguage.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
-CourseProgrammingLanguage.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
 
 export default models;
