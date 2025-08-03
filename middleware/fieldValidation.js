@@ -624,21 +624,65 @@ export const searchValidation = {
 
 // Discount validation schemas
 export const discountValidation = {
-  create: Joi.object({
-    code: Joi.string().uppercase().min(3).max(20).required(),
-    description: Joi.string().max(200),
-    discountType: Joi.string().valid("percentage", "fixed").required(),
-    discountValue: Joi.number().min(0).required(),
-    applicableType: Joi.string().valid("course", "project", "all").required(),
-    applicableItems: Joi.array().items(commonSchemas.id),
-    minOrderValue: Joi.number().min(0),
-    maxUses: Joi.number().min(1),
-    maxUsesPerUser: Joi.number().min(1),
-    validFrom: Joi.date().required(),
-    validUntil: Joi.date().min(Joi.ref("validFrom")).required(),
-    isActive: Joi.boolean().default(true),
-    geoRestrictions: Joi.array().items(Joi.string().length(2)),
+  validate: Joi.object({
+    code: Joi.string().min(1).required().messages({
+      "string.empty": "Discount code is required"
+    }),
+    amount: Joi.number().min(0.01).required().messages({
+      "number.base": "Valid amount is required",
+      "number.min": "Valid amount is required"
+    })
   }),
+  create: Joi.object({
+    code: Joi.string().min(3).max(20).required(),
+    description: Joi.string().max(500).optional(),
+    discountType: Joi.string().valid("percentage", "fixed").required(),
+    discountValue: Joi.number().min(0.01).required(),
+    applicableType: Joi.string().valid("course", "project", "both").required(),
+    minPurchaseAmount: Joi.number().min(0).optional(),
+    maxUses: Joi.number().integer().min(1).optional(),
+    maxUsesPerUser: Joi.number().integer().min(1).optional(),
+    validFrom: Joi.date().iso().required(),
+    validUntil: Joi.date().iso().required(),
+    isActive: Joi.boolean().optional(),
+  }),
+  update: Joi.object({
+    code: Joi.string().min(3).max(20).optional(),
+    description: Joi.string().max(500).optional(),
+    discountType: Joi.string().valid("percentage", "fixed").optional(),
+    discountValue: Joi.number().min(0.01).optional(),
+    applicableType: Joi.string().valid("course", "project", "both").optional(),
+    minPurchaseAmount: Joi.number().min(0).optional(),
+    maxUses: Joi.number().integer().min(1).optional(),
+    maxUsesPerUser: Joi.number().integer().min(1).optional(),
+    validFrom: Joi.date().iso().optional(),
+    validUntil: Joi.date().iso().optional(),
+    isActive: Joi.boolean().optional(),
+  }),
+  filter: Joi.object({
+    page: Joi.number().integer().min(1).optional(),
+    limit: Joi.number().integer().min(1).max(100).optional(),
+    status: Joi.string().valid("active", "inactive", "expired", "scheduled", "usage_exhausted").optional(),
+    discountType: Joi.string().valid("percentage", "fixed").optional(),
+    search: Joi.string().max(100).optional(),
+    dateRange: Joi.string().optional(), // Could be JSON, handle in controller
+    applicableType: Joi.string().valid("course", "project", "both").optional(),
+    sortBy: Joi.string().valid("createdAt", "code", "validFrom", "validUntil", "currentUses").optional(),
+    sortOrder: Joi.string().valid("ASC", "DESC").optional(),
+  }),
+  analytics: Joi.object({
+    period: Joi.string().valid("7d", "30d", "90d", "1y").optional(),
+    discountCodeId: Joi.number().integer().optional(),
+    groupBy: Joi.string().valid("day", "week", "month").optional(),
+  }),
+  params: Joi.object({
+    id: Joi.number().integer().required().messages({
+      "number.base": "Valid discount code ID is required"
+    }),
+    discountId: Joi.number().integer().required().messages({
+      "number.base": "Valid discount ID is required"
+    })
+  })
 };
 
 // Generic validation middleware factory

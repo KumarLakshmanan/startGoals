@@ -2,10 +2,7 @@ import DiscountCode from "../model/discountCode.js";
 import DiscountUsage from "../model/discountUsage.js";
 import Course from "../model/course.js";
 import Project from "../model/project.js";
-import Category from "../model/category.js";
 import User from "../model/user.js";
-import Enrollment from "../model/enrollment.js";
-import ProjectPurchase from "../model/projectPurchase.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import {
@@ -14,6 +11,7 @@ import {
   sendValidationError,
   sendNotFound,
   sendServerError,
+  sendConflict,
 } from "../utils/responseHelper.js";
 import Cart from "../model/cart.js";
 
@@ -666,7 +664,6 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
       limit = 20,
       status,
       discountType,
-      campaignName,
       search,
       sortBy = "createdAt",
       sortOrder = "DESC",
@@ -864,7 +861,7 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
 export const getDiscountAnalytics = async (req, res) => {
   try {
     const { discountId } = req.params;
-    const { period = "30d", groupBy = "day" } = req.query;
+    const { period = "30d" } = req.query;
 
     // Validate discount code exists
     const discountCode = await DiscountCode.findByPk(discountId);

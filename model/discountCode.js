@@ -83,19 +83,6 @@ const DiscountCode = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
-    createdBy: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: "users",
-        key: "user_id",
-      },
-    },
-    campaignName: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      comment: "Marketing campaign name (e.g., 'Diwali Sale 2025')",
-    },
     notes: {
       type: DataTypes.TEXT,
       allowNull: true,
