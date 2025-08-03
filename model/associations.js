@@ -71,6 +71,7 @@ const models = {
   Lesson,
   Resource,
   Batch,
+  Address,
   BatchStudents,
   Enrollment,
   LiveSession,

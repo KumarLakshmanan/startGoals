@@ -114,11 +114,7 @@ const DiscountCode = sequelize.define(
       {
         fields: ["created_by"], // Fixed: use snake_case column name
         type: "BTREE",
-      },
-      {
-        fields: ["campaign_name"], // Fixed: use snake_case column name
-        type: "BTREE",
-      },
+      }
     ],
   },
 );

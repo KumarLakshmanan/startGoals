@@ -58,7 +58,7 @@ const sortModelsByDependencies = (modelsArray) => {
     'goal',           // Goal model (lowercase!)
     'Settings',       // Settings model
     'otp',           // OTP model (lowercase!)
-    
+    'Address',       // Address model (capitalized to match Sequelize)
     // Models that depend on base models
     'Course',         // Depends on User, Category, CourseLevel
     'skill',          // Depends on Goal, Category, CourseLevel (lowercase!)
