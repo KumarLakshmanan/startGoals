@@ -5,11 +5,8 @@ import { validateSkillInput } from "../utils/commonUtils.js";
 import { Op } from "sequelize";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
   sendConflict
 } from "../utils/responseHelper.js";
@@ -133,7 +130,7 @@ export const getAllSkills = async (req, res) => {
       };
     }
 
-    const { count, rows: skills } = await Skill.findAndCountAll({
+    const {  rows: skills } = await Skill.findAndCountAll({
       where: whereClause,
       attributes: [
         "skillId",

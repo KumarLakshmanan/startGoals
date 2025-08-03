@@ -25,7 +25,6 @@ import {
   sendValidationError,
   sendNotFound,
   sendServerError,
-  sendConflict,
 } from "../utils/responseHelper.js";
 
 // ===================== COMPREHENSIVE PROJECT MANAGEMENT =====================

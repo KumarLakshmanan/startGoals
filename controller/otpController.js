@@ -1,4 +1,5 @@
 import Otp from "../model/otp.js";
+import { v4 as uuidv4 } from 'uuid';
 import { generateToken } from "../utils/jwtToken.js";
 import {
   sendEmailOtp,
@@ -13,10 +14,7 @@ import {
   sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
-  sendConflict
 } from "../utils/responseHelper.js";
 import { Op } from "sequelize";
 import bcrypt from "bcryptjs";
@@ -74,7 +72,7 @@ export const sendOtpApi = async (req, res) => {
     if (deliveryMethod === "email") await sendEmailOtp(identifier, otp);
     else await sendSmsOtp(identifier, otp);
 
-    return sendSuccess(res,  `OTP sent via ${method}`);
+    return sendSuccess(res,  `OTP sent via ${deliveryMethod}`);
   } catch (err) {
     console.error("Error sending OTP:", err);
     return sendServerError(res, err);
@@ -82,7 +80,7 @@ export const sendOtpApi = async (req, res) => {
 };
 // ✅ Resend OTP
 export async function resendOtp(req, res) {
-  const { identifier, method } = req.body;
+  const { identifier } = req.body;
 
   try {
     const lastSent = await getLastSentTime(identifier);
@@ -127,7 +125,26 @@ export async function sendResetOtp(req, res) {
     }
 
     const otp = generateOtp();
-    await createOtpEntry(identifier, otp);
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000);
+    
+    // Delete any existing OTPs for this identifier
+    await Otp.destroy({
+      where: {
+        identifier,
+        status: {
+          [Op.in]: ["expired", "used"],
+        },
+      },
+    });
+    
+    await Otp.create({
+      id: uuidv4(),
+      identifier,
+      otp: hashedOtp,
+      expiresAt,
+      deliveryMethod: method,
+    });
 
     if (method === "email") await sendEmailOtp(identifier, otp);
     else await sendSmsOtp(identifier, otp);
@@ -249,6 +266,7 @@ export async function validateOtp(req, res) {
       role: user.role,
       isVerified: user.isVerified,
       firstTimeLogin: user.firstLogin,
+      isOnboarded: user.isOnboarded,
       token,
     };
     if (user.firstLogin) {

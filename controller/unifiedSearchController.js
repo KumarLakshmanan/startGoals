@@ -4,20 +4,13 @@ import User from "../model/user.js";
 import Category from "../model/category.js";
 import CourseLevel from "../model/courseLevel.js";
 import CourseTag from "../model/courseTag.js";
-import CourseGoal from "../model/courseGoal.js";
 import Language from "../model/language.js";
 import SearchAnalytics from "../model/searchAnalytics.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import {
   sendSuccess,
-  sendError,
-  sendValidationError,
-  sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
-  sendConflict
 } from "../utils/responseHelper.js";
 
 // ===================== UNIFIED SEARCH WITH PROJECTS =====================

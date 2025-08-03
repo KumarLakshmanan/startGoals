@@ -20,15 +20,13 @@ import { Op } from "sequelize";
 import Exam from "../model/exam.js";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
-  sendConflict
+  sendConflict,
+  sendUnauthorized,
+  sendForbidden
 } from "../utils/responseHelper.js";
-import CourseLevel from "../model/courseLevel.js";
 import UserExams from "../model/userExams.js";
 
 export const userRegistration = async (req, res) => {
@@ -84,7 +82,7 @@ export const userRegistration = async (req, res) => {
     }
     const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
-    const newUser = await User.create(
+    const _newUser = await User.create(
       {
         username,
         email: email || null,
@@ -209,6 +207,7 @@ export const userLogin = async (req, res) => {
         token,
         isVerified: user.isVerified,
         firstTimeLogin: isFirstLogin,
+        isOnboarded: user.isOnboarded,
       });
     }
   } catch (error) {
@@ -241,6 +240,7 @@ export const googleCallback = async (req, res) => {
         isVerified: true,
         role: "student",
         firstLogin: true,
+        isOnboarded: false,
       });
       const token = generateToken(user);
 
@@ -374,7 +374,7 @@ export const getHomePage = async (req, res) => {
 
     try {
       const { userId } = req.user;
-      user = await User.findByPk(userId);
+      const user = await User.findByPk(userId); // Fixed: added const declaration
       if (user) {
         const enrollments = await Enrollment.findAll({
           where: { userId: userId },
@@ -500,7 +500,7 @@ export const getAllStudents = async (req, res) => {
       sortBy = "createdAt",
       sortOrder = "DESC",
       includeStats = true,
-      enrollmentStatus,
+      enrollmentStatus: _enrollmentStatus // Fixed: prefixed with underscore
     } = req.query;
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -719,8 +719,6 @@ export const createStudent = async (req, res) => {
 
   try {
     const {
-      firstName,
-      lastName,
       username,
       email,
       mobile,
@@ -735,9 +733,9 @@ export const createStudent = async (req, res) => {
       isVerified = false,
     } = req.body;
 
-    if (!firstName || !lastName || !email) {
+    if (!username || !email) {
       await transaction.rollback();
-      return sendValidationError(res, "First name, last name, and email are required");
+      return sendValidationError(res, "Name, and email are required");
     }
 
     if (!validateEmail(email)) {
@@ -772,8 +770,6 @@ export const createStudent = async (req, res) => {
 
     const student = await User.create(
       {
-        firstName,
-        lastName,
         username: username || `student_${Date.now()}`,
         email,
         mobile,
@@ -1183,6 +1179,223 @@ export const getStudentAnalytics = async (req, res) => {
     return sendSuccess(res,  "Student analytics fetched successfully", analytics);
   } catch (error) {
     console.error("Get student analytics error:", error);
+    return sendServerError(res, error);
+  }
+};
+
+export const updateUserProfile = async (req, res) => {
+  const trans = await sequelize.transaction();
+
+  try {
+    const { userId } = req.user;
+    const {
+      dob,
+      bio,
+      linkedin,
+      github,
+      website,
+      twitter,
+      doorNo,
+      street,
+      city,
+      state,
+      zipCode,
+      country,
+      qualification,
+      occupation,
+      experience,
+      experienceDescription,
+      profileImage,
+      mobile,
+    } = req.body;
+
+    // Find the user
+    const user = await User.findByPk(userId, { transaction: trans });
+    if (!user) {
+      await trans.rollback();
+      return sendNotFound(res, "User not found");
+    }
+
+    // Field validations
+    if (dob !== undefined) {
+      if (typeof dob !== "string" || isNaN(Date.parse(dob))) {
+        await trans.rollback();
+        return sendValidationError(res, "Invalid date of birth");
+      }
+    }
+    if (bio !== undefined) {
+      if (typeof bio !== "string" || bio.length > 500) {
+        await trans.rollback();
+        return sendValidationError(res, "Bio must be a string up to 500 characters");
+      }
+    }
+    if (linkedin !== undefined) {
+      if (typeof linkedin !== "string" || !/^https?:\/\//.test(linkedin)) {
+        await trans.rollback();
+        return sendValidationError(res, "Invalid LinkedIn URL");
+      }
+    }
+    if (github !== undefined) {
+      if (typeof github !== "string" || !/^https?:\/\//.test(github)) {
+        await trans.rollback();
+        return sendValidationError(res, "Invalid GitHub URL");
+      }
+    }
+    if (website !== undefined) {
+      if (typeof website !== "string" || !/^https?:\/\//.test(website)) {
+        await trans.rollback();
+        return sendValidationError(res, "Invalid website URL");
+      }
+    }
+    if (twitter !== undefined) {
+      if (typeof twitter !== "string" || !/^https?:\/\//.test(twitter)) {
+        await trans.rollback();
+        return sendValidationError(res, "Invalid Twitter URL");
+      }
+    }
+    if (doorNo !== undefined) {
+      if (typeof doorNo !== "string" || doorNo.length > 100) {
+        await trans.rollback();
+        return sendValidationError(res, "doorNo must be a string up to 100 characters");
+      }
+    }
+    if (street !== undefined) {
+      if (typeof street !== "string" || street.length > 100) {
+        await trans.rollback();
+        return sendValidationError(res, "street must be a string up to 100 characters");
+      }
+    }
+    if (city !== undefined) {
+      if (typeof city !== "string" || city.length > 100) {
+        await trans.rollback();
+        return sendValidationError(res, "city must be a string up to 100 characters");
+      }
+    }
+    if (state !== undefined) {
+      if (typeof state !== "string" || state.length > 100) {
+        await trans.rollback();
+        return sendValidationError(res, "state must be a string up to 100 characters");
+      }
+    }
+    if (zipCode !== undefined) {
+      if (typeof zipCode !== "string" || zipCode.length > 10) {
+        await trans.rollback();
+        return sendValidationError(res, "zipCode must be a string up to 10 characters");
+      }
+    }
+    if (country !== undefined) {
+      if (typeof country !== "string" || country.length > 100) {
+        await trans.rollback();
+        return sendValidationError(res, "country must be a string up to 100 characters");
+      }
+    }
+    if (qualification !== undefined) {
+      if (typeof qualification !== "string" || qualification.length > 100) {
+        await trans.rollback();
+        return sendValidationError(res, "qualification must be a string up to 100 characters");
+      }
+    }
+    if (occupation !== undefined) {
+      if (typeof occupation !== "string" || occupation.length > 100) {
+        await trans.rollback();
+        return sendValidationError(res, "occupation must be a string up to 100 characters");
+      }
+    }
+    if (experience !== undefined) {
+      if (typeof experience !== "number" || experience < 0) {
+        await trans.rollback();
+        return sendValidationError(res, "experience must be a non-negative number");
+      }
+    }
+    if (experienceDescription !== undefined) {
+      if (typeof experienceDescription !== "string" || experienceDescription.length > 1000) {
+        await trans.rollback();
+        return sendValidationError(res, "experienceDescription must be a string up to 1000 characters");
+      }
+    }
+    if (profileImage !== undefined) {
+      if (typeof profileImage !== "string" || profileImage.length > 2048) {
+        await trans.rollback();
+        return sendValidationError(res, "profileImage must be a valid URL string");
+      }
+    }
+    if (mobile !== undefined) {
+      if (!validateMobile(mobile)) {
+        await trans.rollback();
+        return sendValidationError(res, "Invalid mobile number");
+      }
+    }
+
+    // Build updateData with only provided fields
+    const updateData = {};
+    if (dob !== undefined) updateData.dob = dob;
+    if (bio !== undefined) updateData.bio = bio;
+    if (experience !== undefined) updateData.experience = experience;
+    if (experienceDescription !== undefined) updateData.experienceDescription = experienceDescription;
+    if (linkedin !== undefined) updateData.linkedin = linkedin;
+    if (github !== undefined) updateData.github = github;
+    if (website !== undefined) updateData.website = website;
+    if (twitter !== undefined) updateData.twitter = twitter;
+    if (doorNo !== undefined) updateData.doorNo = doorNo;
+    if (street !== undefined) updateData.street = street;
+    if (city !== undefined) updateData.city = city;
+    if (state !== undefined) updateData.state = state;
+    if (zipCode !== undefined) updateData.zipCode = zipCode;
+    if (country !== undefined) updateData.country = country;
+    if (qualification !== undefined) updateData.qualification = qualification;
+    if (profileImage !== undefined) updateData.profileImage = profileImage;
+    if (mobile !== undefined) updateData.mobile = mobile;
+    if (occupation !== undefined) updateData.occupation = occupation;
+
+    await user.update(updateData, { transaction: trans });
+
+    // For now, skip associations (skills, languages, goals)
+
+    await trans.commit();
+
+    // Fetch updated user
+    const updatedUser = await User.findByPk(userId);
+
+    return sendSuccess(res, "Profile updated successfully", {
+      userId: updatedUser.userId,
+      username: updatedUser.username,
+      dob: updatedUser.dob,
+      bio: updatedUser.bio,
+      experience: updatedUser.experience,
+      experienceDescription: updatedUser.experienceDescription,
+      linkedin: updatedUser.linkedin,
+      github: updatedUser.github,
+      website: updatedUser.website,
+      twitter: updatedUser.twitter,
+      status: updatedUser.status,
+      doorNo: updatedUser.doorNo,
+      street: updatedUser.street,
+      city: updatedUser.city,
+      state: updatedUser.state,
+      zipCode: updatedUser.zipCode,
+      country: updatedUser.country,
+      qualification: updatedUser.qualification,
+      email: updatedUser.email,
+      profileImage: updatedUser.profileImage,
+      role: updatedUser.role,
+      provider: updatedUser.provider,
+      googleId: updatedUser.googleId,
+      mobile: updatedUser.mobile,
+      isVerified: updatedUser.isVerified,
+      androidRegId: updatedUser.androidRegId,
+      iosRegId: updatedUser.iosRegId,
+      firstLogin: updatedUser.firstLogin,
+      passwordResetVerified: updatedUser.passwordResetVerified,
+      isOnboarded: updatedUser.isOnboarded,
+      averageRating: updatedUser.averageRating,
+      totalRatings: updatedUser.totalRatings,
+      skills: [], // To be populated when associations are implemented
+      languages: [],
+      goals: []
+    });
+  } catch (error) {
+    await trans.rollback();
+    console.error("Update profile error:", error);
     return sendServerError(res, error);
   }
 };

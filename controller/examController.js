@@ -4,13 +4,9 @@ import CourseLevel from "../model/courseLevel.js";
 import { Op } from "sequelize";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
-  sendServerError,
-  sendConflict
+  sendServerError
 } from "../utils/responseHelper.js";
 
 export const bulkUploadExams = async (req, res) => {

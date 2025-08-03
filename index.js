@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import sequelize from "./config/db.js";
 import router from "./routes/router.js";
 import { configurePassport } from "./utils/passport.js";
 import passport from "passport";
@@ -10,6 +9,9 @@ import { Server } from "socket.io";
 import initializeSocketIO from "./services/socketHandler.js";
 import http from "http";
 import requestLogger from "./middleware/requestLogger.js";
+// Global error handler (must be after all routes)
+import { notFoundHandler } from './middleware/globalErrorHandler.js';
+import { sendServerError, sendSuccess } from "./utils/responseHelper.js";
 
 // to use  .env file atributes
 dotenv.config();
@@ -120,10 +122,6 @@ app.post('/sync-db', syncDbMiddleware, async (req, res) => {
 });
 
 app.use("/api", router);
-
-// Global error handler (must be after all routes)
-import { globalErrorHandler, notFoundHandler } from './middleware/globalErrorHandler.js';
-import { sendSuccess, sendError } from "./utils/responseHelper.js";
 
 // 404 handler for undefined routes
 app.use(notFoundHandler);

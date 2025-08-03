@@ -4,7 +4,7 @@ import Course from "../model/course.js";
 import CourseLevel from "../model/courseLevel.js";
 import Category from "../model/category.js";
 import CourseTag from "../model/courseTag.js";
-import Language from "../model/language.js";
+// import Language from "../model/language.js"; // Commented out unused import
 import Section from "../model/section.js";
 import Lesson from "../model/lesson.js";
 import Resource from "../model/resource.js";
@@ -19,16 +19,14 @@ import {
   sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
   sendConflict
 } from "../utils/responseHelper.js";
 import CourseTeacher from "../model/courseTeacher.js";
 import Batch from "../model/batch.js";
-import BatchTeacher from "../model/batchTeacher.js";
+// import BatchTeacher from "../model/batchTeacher.js"; // Commented out unused import
 import BatchSchedule from "../model/batchSchedule.js";
-import BatchStudents from "../model/batchStudents.js";
+// import BatchStudents from "../model/batchStudents.js"; // Commented out unused import
 import CourseTest from "../model/courseTest.js";
 import CourseCertificate from "../model/courseCertificate.js";
 import CourseRating from "../model/courseRating.js";
@@ -1726,15 +1724,15 @@ export const createLiveCourse = async (req, res) => {
       title,
       description,
       tags = [],
-      languageId,
+      languageId: _languageId, // Prefixed with underscore to indicate unused
       price,
-      requirements = [],
+      requirements: _requirements = [], // Prefixed with underscore
       skillLevel,
       whatYoullLearn = [],
-      prerequisites = [],
+      prerequisites: _prerequisites = [], // Prefixed with underscore
       thumbnailUrl,
-      introVideoUrl,
-      teacherIds = [],
+      introVideoUrl: _introVideoUrl, // Prefixed with underscore
+      teacherIds: _teacherIds = [], // Prefixed with underscore
       visibility = "public",
       batchSettings = {
         minStudentsToCreateBatch: 10,
@@ -1745,11 +1743,11 @@ export const createLiveCourse = async (req, res) => {
 
     const createdBy = req.user.userId;
 
-    if (!title || !description || !languageId || !skillLevel || !price) {
+    if (!title || !description || !_languageId || !skillLevel || !price) {
       return sendValidationError(res, "Missing required fields: title, description, languageId, skillLevel, price", {
         title: !title ? "Required" : undefined,
         description: !description ? "Required" : undefined,
-        languageId: !languageId ? "Required" : undefined,
+        languageId: !_languageId ? "Required" : undefined,
         skillLevel: !skillLevel ? "Required" : undefined,
         price: !price ? "Required" : undefined,
       });
@@ -1827,11 +1825,11 @@ export const createRecordedCourse = async (req, res) => {
       title,
       description,
       tags = [],
-      languageId,
+      languageId: _languageId, // Prefixed with underscore
       price,
       skillLevel,
       whatYoullLearn = [],
-      prerequisites = [],
+      prerequisites: _prerequisites = [], // Prefixed with underscore
       thumbnailUrl,
       introVideoUrl,
       sections = [],

@@ -1,20 +1,15 @@
 // controllers/uploadController.js
 import crypto from "crypto";
+import Course from "../model/course.js";
+import Section from "../model/section.js";
+import Lesson from "../model/lesson.js";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
-  sendConflict
 } from "../utils/responseHelper.js";
 
-// Helper function to construct public S3 URL
-const constructS3PublicUrl = (bucketName, key, region = "us-east-1") => {
-  return `https://${bucketName}.s3.${region}.amazonaws.com/${key}`;
-};
 
 export const uploadFiles = async (req, res) => {
   try {

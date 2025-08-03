@@ -9,8 +9,6 @@ import {
   sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
   sendConflict
 } from "../utils/responseHelper.js";

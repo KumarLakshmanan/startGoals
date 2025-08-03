@@ -4,6 +4,7 @@ import Course from '../model/course.js';
 import Category from '../model/category.js';
 import CourseLevel from '../model/courseLevel.js';
 import Language from '../model/language.js';
+import Skill from '../model/skill.js';
 import User from '../model/user.js';
 import { faker } from '@faker-js/faker';
 import CourseTechStack from '../model/courseTechStack.js';

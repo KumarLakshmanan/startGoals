@@ -1,8 +1,9 @@
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { Op } from 'sequelize';
-import { Order, Cart, Wishlist, User, Course, Project, ProjectPurchase, OrderItem } from '../model/associations.js';
+import { Order, Cart, User, Course, Project, ProjectPurchase, OrderItem } from '../model/associations.js';
 import DiscountCode from '../model/discountCode.js';
+import DiscountUsage from '../model/discountUsage.js';
 import Enrollment from '../model/enrollment.js';
 import sequelize from '../config/db.js';
 import { sendResponse } from '../utils/responseHelper.js';
@@ -12,7 +13,6 @@ import {
   sendValidationError,
   sendNotFound,
   sendServerError,
-  sendConflict,
 } from "../utils/responseHelper.js";
 
 // Initialize Razorpay instance

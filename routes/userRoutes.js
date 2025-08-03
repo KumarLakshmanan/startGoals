@@ -11,6 +11,7 @@ import {
   googleCallback,
   getUserDetails,
   getHomePage,
+  updateUserProfile, // Added new import
   // Admin student management functions
   getAllStudents,
   getStudentById,
@@ -50,6 +51,12 @@ userRoutes.get("/auth/callback/success", authenticateToken, googleCallback);
 userRoutes.get("/usersDetailsById/:userId", authenticateToken, getUserDetails);
 userRoutes.get("/getUserDetails", authenticateToken, getUserDetails);
 userRoutes.get("/getUserData", authenticateToken, getUserDetails);
+userRoutes.put(
+  "/updateProfile",
+  authenticateToken,
+  validateSchema(userValidation.updateProfile),
+  updateUserProfile,
+);
 userRoutes.get("/homepage", authenticateToken, getHomePage);
 
 // ===================== COMPREHENSIVE ADMIN STUDENT MANAGEMENT ROUTES =====================

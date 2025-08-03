@@ -1,16 +1,13 @@
 import User from "../model/user.js";
 import { Op } from "sequelize";
-import sequelize from "../config/db.js";
+import _sequelize from "../config/db.js";
 import bcrypt from "bcryptjs";
 import {
   sendSuccess,
   sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
-  sendConflict
 } from "../utils/responseHelper.js";
 // ===================== COMPREHENSIVE ADMIN ROLE MANAGEMENT =====================
 
@@ -379,10 +376,6 @@ export const getAdminUser = async (req, res) => {
   } catch (error) {
     console.error("Get admin user details error:", error);
     return sendServerError(res, error);
-      success: false,
-      message: "Failed to retrieve admin user details",
-      error: error.message,
-    });
   }
 };
 
@@ -401,7 +394,7 @@ export const createAdminUser = async (req, res) => {
       adminRole,
       permissions = [],
       status = "active",
-      sendWelcomeEmail = true,
+      _sendWelcomeEmail = true,
     } = req.body;
 
     const createdBy = req.user.userId;
@@ -626,6 +619,12 @@ export const changeAdminPassword = async (req, res) => {
     if (isSelfChange && !forceChange) {
       if (!currentPassword) {
         return sendValidationError(res, "Current password is required", { currentPassword: "Current password is required" });
+      }
+
+      // Fetch the user to verify current password
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return sendNotFound(res, "User not found");
       }
 
       // In real implementation, verify current password

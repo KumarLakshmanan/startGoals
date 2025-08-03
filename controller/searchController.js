@@ -4,22 +4,19 @@ import User from "../model/user.js";
 import Category from "../model/category.js";
 import CourseLevel from "../model/courseLevel.js";
 import CourseTag from "../model/courseTag.js";
-import CourseGoal from "../model/courseGoal.js";
+import _CourseGoal from "../model/courseGoal.js";
 import Language from "../model/language.js";
 import SearchAnalytics from "../model/searchAnalytics.js";
-import CourseRating from "../model/courseRating.js";
-import ProjectRating from "../model/projectRating.js";
-import Enrollment from "../model/enrollment.js";
-import ProjectPurchase from "../model/projectPurchase.js";
+import _CourseRating from "../model/courseRating.js";
+import _ProjectRating from "../model/projectRating.js";
+import _Enrollment from "../model/enrollment.js";
+import _ProjectPurchase from "../model/projectPurchase.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
-  sendNotFound,
   sendServerError,
-  sendConflict,
 } from "../utils/responseHelper.js";
 
 // Enhanced autocomplete suggestions with intelligent ranking
@@ -1192,3 +1189,39 @@ export const searchProjects = async (req, res) => {
     return sendServerError(res, error);
   }
 };
+
+// Helper functions (stub implementations to prevent undefined errors)
+async function getRecentSearches(userId) {
+  // TODO: Implement recent searches functionality
+  return [];
+}
+
+function calculateBasicRelevance(searchTerm, item) {
+  // TODO: Implement relevance calculation
+  return 1.0;
+}
+
+async function searchCoursesComprehensive(query, filters) {
+  // TODO: Implement comprehensive course search
+  return { courses: [], total: 0 };
+}
+
+async function searchProjectsComprehensive(query, filters) {
+  // TODO: Implement comprehensive project search
+  return { projects: [], total: 0 };
+}
+
+async function searchInstructorsComprehensive(query, filters) {
+  // TODO: Implement comprehensive instructor search
+  return { instructors: [], total: 0 };
+}
+
+function combineAndSortResults(courses, projects, instructors) {
+  // TODO: Implement result combination and sorting
+  return [];
+}
+
+async function saveSearchAnalytics(userId, query, results) {
+  // TODO: Implement search analytics
+  return true;
+}

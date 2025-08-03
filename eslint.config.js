@@ -1,8 +1,7 @@
 import js from "@eslint/js";
 import globals from "globals";
-import { defineConfig } from "eslint/config";
 
-export default defineConfig([
+export default [
   {
     files: ["**/*.{js,mjs,cjs}"],
     ignores: [
@@ -14,9 +13,24 @@ export default defineConfig([
       ".backup/**",
       ".docs/**",
       "docs/**",
+      "web/**",
     ],
-    plugins: { js },
-    extends: ["js/recommended"],
-    languageOptions: { globals: globals.browser },
+    languageOptions: {
+      globals: {
+        ...globals.node,
+        ...globals.es2021,
+      },
+      ecmaVersion: 2021,
+      sourceType: "module",
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      "no-unused-vars": ["error", { 
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }],
+      "no-undef": "error",
+      "no-constant-binary-expression": "error"
+    },
   },
-]);
+];

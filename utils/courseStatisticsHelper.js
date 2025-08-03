@@ -2,6 +2,7 @@ import Course from "../model/course.js";
 import Section from "../model/section.js";
 import Lesson from "../model/lesson.js";
 import sequelize from "../config/db.js";
+import Enrollment from "../model/enrollment.js";
 
 /**
  * Utility to update course statistics - similar to project statistics

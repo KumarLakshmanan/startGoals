@@ -11,13 +11,9 @@ import sequelize from "../config/db.js";
 import { Op } from "sequelize";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
-  sendConflict
 } from "../utils/responseHelper.js";
 
 // Select Languages
@@ -80,7 +76,7 @@ export const selectLanguages = async (req, res) => {
       // Remove duplicate languageIds to avoid unique constraint violation
       const uniqueLanguageIds = [...new Set(languageIds)];
 
-      const languageAssociations = uniqueLanguageIds.map((languageId, index) => {
+      const languageAssociations = uniqueLanguageIds.map((languageId) => {
         const originalIndex = languageIds.indexOf(languageId);
         return {
           userId,
@@ -174,6 +170,9 @@ export const selectGoals = async (req, res) => {
         ignoreDuplicates: true
       });
 
+      user.isOnboarded = true;
+      await user.save({ transaction });
+
       await transaction.commit();
     } catch (error) {
       await transaction.rollback();
@@ -251,7 +250,7 @@ export const selectSkills = async (req, res) => {
       // Insert new associations within transaction
       let skillAssociations;
       if (proficiencyLevels) {
-        skillAssociations = uniqueSkillIds.map((skillId, index) => {
+        skillAssociations = uniqueSkillIds.map((skillId) => {
           // Find the original index to get the correct proficiency level
           const originalIndex = skillIds.indexOf(skillId);
           return {
@@ -345,6 +344,9 @@ export const selectExams = async (req, res) => {
         transaction,
         ignoreDuplicates: true
       });
+      
+      user.isOnboarded = true;
+      await user.save({ transaction });
 
       await transaction.commit();
     } catch (error) {

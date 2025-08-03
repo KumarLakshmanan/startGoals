@@ -2,13 +2,9 @@ import Banner from "../model/banner.js";
 import { Op } from "sequelize";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
-  sendConflict
 } from "../utils/responseHelper.js";
 
 // Get all banners with pagination and filtering
@@ -27,7 +23,7 @@ export const getAllBanners = async (req, res) => {
       };
     }
 
-    const { count, rows: banners } = await Banner.findAndCountAll({
+    const { count: _count, rows: banners } = await Banner.findAndCountAll({
       where: whereClause,
       attributes: [
         "id",

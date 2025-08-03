@@ -7,11 +7,9 @@ import Course from "../model/course.js";
 import { Op } from "sequelize";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
   sendServerError,
-  sendConflict,
 } from "../utils/responseHelper.js";
 
 // Add student to batch

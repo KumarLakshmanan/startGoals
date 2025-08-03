@@ -5,11 +5,8 @@ import { Op } from "sequelize";
 import Goal from "../model/goal.js";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
   sendConflict
 } from "../utils/responseHelper.js";

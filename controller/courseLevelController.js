@@ -4,13 +4,9 @@ import sequelize from "../config/db.js";
 import { Op } from "sequelize";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
-  sendConflict
 } from "../utils/responseHelper.js";
 
 // Controller for Bulk Upload of Course Levels
@@ -100,7 +96,7 @@ export const getAllCourseLevels = async (req, res) => {
     }
 
     // Get count and rows
-    const { count, rows: courseLevels } = await CourseLevel.findAndCountAll({
+    const { rows: courseLevels } = await CourseLevel.findAndCountAll({
       where: whereClause,
       order: [[sortField, order]],
     });

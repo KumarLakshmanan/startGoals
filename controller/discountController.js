@@ -14,7 +14,6 @@ import {
   sendValidationError,
   sendNotFound,
   sendServerError,
-  sendConflict,
 } from "../utils/responseHelper.js";
 import Cart from "../model/cart.js";
 

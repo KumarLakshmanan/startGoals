@@ -1,15 +1,13 @@
 // controller/goalController.js
 import Goal from "../model/goal.js";
 import CourseLevel from "../model/courseLevel.js";
+import Skill from "../model/skill.js";
 import { validateGoalInput } from "../utils/commonUtils.js";
 import { Op } from "sequelize";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
-  sendUnauthorized,
-  sendForbidden,
   sendServerError,
   sendConflict
 } from "../utils/responseHelper.js";
@@ -153,7 +151,7 @@ export const getAllGoals = async (req, res) => {
       };
     }
 
-    const { count, rows: goals } = await Goal.findAndCountAll({
+    const { rows: goals } = await Goal.findAndCountAll({
       attributes: ["goalId", "goalName", "description", "levelId"],
       include: {
         model: CourseLevel,

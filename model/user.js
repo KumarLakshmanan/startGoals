@@ -136,6 +136,13 @@ const User = sequelize.define(
         len: [0, 100],
       },
     },
+    occupation: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      validate: {
+        len: [0, 100],
+      },
+    },
     email: {
       type: DataTypes.STRING,
       allowNull: true,
