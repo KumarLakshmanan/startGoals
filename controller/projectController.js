@@ -51,7 +51,6 @@ export const createProject = async (req, res) => {
       previewVideo,
       coverImage,
       screenshots = [],
-      documentationUrl,
       supportEmail,
       supportIncluded = false,
       supportDuration,
@@ -177,7 +176,6 @@ export const createProject = async (req, res) => {
         requirements: requirements || null,
         features: features || null,
         whatYouGet: whatYouGet || null,
-        documentationUrl: documentationUrl || null,
         supportEmail: supportEmail || null,
         supportIncluded: supportIncluded || false,
         supportDuration: supportIncluded ? (supportDuration || 30) : null,
@@ -232,11 +230,6 @@ export const createProject = async (req, res) => {
     // Fetch complete project with associations
     const completeProject = await Project.findByPk(project.id, {
       include: [
-        {
-          model: User,
-          as: "creator",
-          attributes: ["userId", "username", "email"],
-        },
         {
           model: Category,
           as: "category",
@@ -315,11 +308,6 @@ export const getAllProjects = async (req, res) => {
     // Include conditions
     const includeOptions = [
       {
-        model: User,
-        as: "creator",
-        attributes: ["userId", "username", "profileImage"],
-      },
-      {
         model: Category,
         as: "category",
         attributes: ["categoryId", "categoryName"],
@@ -347,7 +335,29 @@ export const getAllProjects = async (req, res) => {
       {
         model: ProjectGoal,
         as: "goals",
-      }
+      },
+      {
+        model: ProjectLanguage,
+        as: "projectLanguages",
+        include: [
+          {
+            model: Language,
+            as: "language",
+            attributes: ["languageId", "language", "languageCode"],
+          },
+        ],
+      },
+      {
+        model: ProjectInstructor,
+        as: "projectInstructors",
+        include: [
+          {
+            model: User,
+            as: "instructor",
+            attributes: ["userId", "username", "email", "profileImage"],
+          },
+        ],
+      },
     ];
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
@@ -375,6 +385,18 @@ export const getAllProjects = async (req, res) => {
         projectData.averageRating = 0;
         projectData.totalRatings = 0;
       }
+
+      // Format instructors array
+      projectData.instructors = projectData.projectInstructors?.map(pi => ({
+        ...pi.instructor,
+        isPrimary: pi.isPrimary,
+        assignedAt: pi.createdAt
+      })) || [];
+      delete projectData.projectInstructors;
+      
+      // Format languages array
+      projectData.languages = projectData.projectLanguages?.map(pl => pl.language) || [];
+      delete projectData.projectLanguages;
 
       delete projectData.ratings; // Remove individual ratings from response
       return projectData;
@@ -426,16 +448,6 @@ export const getProjectById = async (req, res) => {
     const project = await Project.findByPk(id, {
       include: [
         {
-          model: User,
-          as: "creator",
-          attributes: [
-            "userId",
-            "username",
-            "email",
-            "profileImage",
-          ],
-        },
-        {
           model: Category,
           as: "category",
           attributes: ["categoryId", "categoryName"],
@@ -443,7 +455,7 @@ export const getProjectById = async (req, res) => {
         {
           model: ProjectFile,
           as: "files",
-          attributes: ["fileId", "fileName", "fileType", "fileSize"],
+          attributes: ["fileId", "fileName", "fileType", "fileSize", "fileUrl"],
           required: false,
         },
         {
@@ -482,7 +494,29 @@ export const getProjectById = async (req, res) => {
               attributes: ["goalId", "goalName", "description"],
             },
           ],
-        }
+        },
+        {
+          model: ProjectLanguage,
+          as: "projectLanguages",
+          include: [
+            {
+              model: Language,
+              as: "language",
+              attributes: ["languageId", "language", "languageCode"],
+            },
+          ],
+        },
+        {
+          model: ProjectInstructor,
+          as: "projectInstructors",
+          include: [
+            {
+              model: User,
+              as: "instructor",
+              attributes: ["userId", "username", "email", "profileImage"],
+            },
+          ],
+        },
       ],
     });
 
@@ -491,6 +525,18 @@ export const getProjectById = async (req, res) => {
     }
 
     const projectData = project.toJSON();
+
+    // Format instructors array
+    projectData.instructors = projectData.projectInstructors?.map(pi => ({
+      ...pi.instructor,
+      isPrimary: pi.isPrimary,
+      assignedAt: pi.createdAt
+    })) || [];
+    delete projectData.projectInstructors;
+    
+    // Format languages array
+    projectData.languages = projectData.projectLanguages?.map(pl => pl.language) || [];
+    delete projectData.projectLanguages;
 
     // Calculate average rating
     if (projectData.ratings && projectData.ratings.length > 0) {
@@ -531,11 +577,6 @@ export const getProjectById = async (req, res) => {
             as: "category",
             attributes: ["categoryId", "categoryName"],
           },
-          {
-            model: User,
-            as: "creator",
-            attributes: ["userId", "username", "profileImage"],
-          }
         ],
         limit: 5,
         order: [['createdAt', 'DESC']]
@@ -581,11 +622,6 @@ export const updateProject = async (req, res) => {
     // Fetch updated project with associations
     const updatedProject = await Project.findByPk(id, {
       include: [
-        {
-          model: User,
-          as: "creator",
-          attributes: ["userId", "username", "email"],
-        },
         {
           model: Category,
           as: "category",
@@ -873,13 +909,6 @@ export const getUserPurchases = async (req, res) => {
             "version",
             "lastUpdated",
           ],
-          include: [
-            {
-              model: User,
-              as: "creator",
-              attributes: ["userId", "username", "lastName"],
-            },
-          ],
         },
         {
           model: DiscountCode,
@@ -1002,13 +1031,6 @@ export const getProjectStatistics = async (req, res) => {
       where: { status: "published" },
       order: [["totalSales", "DESC"]],
       limit: 10,
-      include: [
-        {
-          model: User,
-          as: "creator",
-          attributes: ["username", "lastName"],
-        },
-      ],
     });
 
     // Category-wise distribution

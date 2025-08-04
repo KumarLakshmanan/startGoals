@@ -8,7 +8,7 @@ import {
   reorderCourseLevels,
   updateCourseLevel,
 } from "../controller/courseLevelController.js";
-import { isAdmin, isTeacher } from "../middleware/authMiddleware.js";
+import { isAdmin } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 

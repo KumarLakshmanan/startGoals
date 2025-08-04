@@ -22,11 +22,12 @@ const CourseFile = sequelize.define(
     fileName: {
       type: DataTypes.STRING,
       allowNull: false,
+      comment: "Original file name",
     },
-    filePath: {
+    fileUrl: {
       type: DataTypes.STRING,
       allowNull: false,
-      comment: "Path to file on server (not exposed to client)",
+      comment: "Secure download URL",
     },
     fileType: {
       type: DataTypes.ENUM(
@@ -39,7 +40,10 @@ const CourseFile = sequelize.define(
         "presentation",
         "spreadsheet",
         "resource",
-        "other"
+        "documentation",
+        "assets",
+        "demo",
+        "other",
       ),
       defaultValue: "other",
       allowNull: false,
@@ -56,16 +60,6 @@ const CourseFile = sequelize.define(
     description: {
       type: DataTypes.TEXT,
       allowNull: true,
-    },
-    isPreview: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: false,
-      comment: "Whether this file is available for preview before purchase",
-    },
-    isDownloadable: {
-      type: DataTypes.BOOLEAN,
-      defaultValue: true,
-      comment: "Whether this file can be downloaded or streamed only",
     },
     sectionId: {
       type: DataTypes.UUID,
@@ -84,6 +78,11 @@ const CourseFile = sequelize.define(
         key: "lesson_id",
       },
       comment: "Lesson this file belongs to (optional)",
+    },
+    version: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: "1.0",
     },
     uploadedBy: {
       type: DataTypes.UUID,
@@ -125,15 +124,11 @@ const CourseFile = sequelize.define(
         type: "BTREE",
       },
       {
-        fields: ["is_preview"],
-        type: "BTREE",
-      },
-      {
         fields: ["file_type"],
         type: "BTREE",
       },
     ],
-  }
+  },
 );
 
 export default CourseFile;

@@ -1,6 +1,6 @@
 // routes/onboardingRoutes.js
 import express from "express";
-import { authenticateToken, isStudent } from "../middleware/authMiddleware.js";
+import { isStudent } from "../middleware/authMiddleware.js";
 import {
   selectLanguages,
   selectGoals,

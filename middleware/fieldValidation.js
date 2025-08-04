@@ -216,7 +216,6 @@ export const projectValidation = {
     version: Joi.string().optional(),
     discountEnabled: Joi.boolean().optional(),
     demoUrl: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
-    documentation: Joi.string().optional(),
     supportEmail: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
     previewVideo: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
     featured: Joi.boolean().optional(),
@@ -295,7 +294,6 @@ export const projectValidation = {
     version: Joi.string().optional(),
     discountEnabled: Joi.boolean().optional(),
     demoUrl: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
-    documentation: Joi.string().optional(),
     supportEmail: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
     previewVideo: Joi.alternatives().try(Joi.string(), Joi.allow(null)).optional(),
     featured: Joi.boolean().optional(),
@@ -591,34 +589,62 @@ export const batchValidation = {
   }),
 };
 
-// Search validation schemas
+// ===================== SEARCH VALIDATION SCHEMAS =====================
 export const searchValidation = {
   suggestions: Joi.object({
-    query: Joi.string().min(2).max(100).required(),
-    limit: Joi.number().min(1).max(20).default(10),
-    type: Joi.string()
-      .valid("all", "courses", "projects", "instructors")
-      .default("all"),
+    query: Joi.string().min(2).max(100).optional(),
+    limit: Joi.number().integer().min(1).max(50).optional(),
+    type: Joi.string().valid("all", "courses", "projects", "instructors").optional(),
+    include_recent: Joi.boolean().optional(),
   }),
-
-  unified: Joi.object({
-    query: Joi.string().min(2).max(100),
-    type: Joi.string().valid("all", "courses", "projects").default("all"),
-    ...commonSchemas.pagination,
-    sortBy: Joi.string().valid(
+  comprehensive: Joi.object({
+    query: Joi.string().max(200).optional(),
+    type: Joi.string().valid("all", "courses", "projects", "instructors").optional(),
+    category: Joi.alternatives().try(
+      Joi.string().pattern(patterns.uuid),
+      Joi.array().items(Joi.string().pattern(patterns.uuid))
+    ).optional(),
+    skill_level: Joi.alternatives().try(
+      Joi.string().valid("beginner", "intermediate", "expert", "advanced"),
+      Joi.array().items(Joi.string().valid("beginner", "intermediate", "expert", "advanced"))
+    ).optional(),
+    price_min: Joi.number().min(0).optional(),
+    price_max: Joi.number().min(0).optional(),
+    course_type: Joi.alternatives().try(
+      Joi.string().valid("live", "recorded"),
+      Joi.array().items(Joi.string().valid("live", "recorded"))
+    ).optional(),
+    language: Joi.alternatives().try(
+      Joi.string().pattern(patterns.uuid),
+      Joi.array().items(Joi.string().pattern(patterns.uuid))
+    ).optional(),
+    duration_min: Joi.number().integer().min(0).optional(),
+    duration_max: Joi.number().integer().min(0).optional(),
+    instructor: Joi.alternatives().try(
+      Joi.string().pattern(patterns.uuid),
+      Joi.array().items(Joi.string().pattern(patterns.uuid))
+    ).optional(),
+    rating_min: Joi.number().min(0).max(5).optional(),
+    sort: Joi.string().valid(
       "relevance",
+      "popular",
+      "newest",
       "price_low",
       "price_high",
-      "newest",
       "rating",
-      "popular",
-    ),
-    category: commonSchemas.id,
-    level: commonSchemas.id,
-    price_min: Joi.number().min(0),
-    price_max: Joi.number().min(0),
-    difficulty: Joi.string().valid("beginner", "intermediate", "advanced"),
-    instructor: commonSchemas.id,
+      "title"
+    ).optional(),
+    page: Joi.number().integer().min(1).optional(),
+    limit: Joi.number().integer().min(1).max(100).optional(),
+    free_only: Joi.boolean().optional(),
+    premium_only: Joi.boolean().optional(),
+    certification: Joi.boolean().optional(),
+    include_inactive: Joi.boolean().optional(),
+    view_mode: Joi.string().valid("grid", "list").optional(),
+  }),
+  history: Joi.object({
+    limit: Joi.number().integer().min(1).max(50).optional(),
+    page: Joi.number().integer().min(1).optional(),
   }),
 };
 
@@ -997,6 +1023,33 @@ export const coursePurchaseValidation = {
   }),
 };
 
+// ===================== PROJECT FILE VALIDATION SCHEMAS =====================
+export const projectFileValidation = {
+  upload: Joi.object({
+    projectId: Joi.number().integer().positive().required(),
+    fileDescriptions: Joi.array().items(Joi.string().max(500)).optional(),
+    isPreview: Joi.array().items(Joi.boolean()).optional(),
+  }),
+  getFiles: Joi.object({
+    projectId: Joi.number().integer().positive().required(),
+    fileType: Joi.string().valid("archive", "source_code", "documentation", "image", "video", "other").optional(),
+    isPreview: Joi.boolean().optional(),
+  }),
+  fileIdParam: Joi.object({
+    fileId: Joi.number().integer().positive().required(),
+  }),
+  update: Joi.object({
+    fileId: Joi.number().integer().positive().required(),
+    description: Joi.string().max(500).optional(),
+    isPreview: Joi.boolean().optional(),
+    fileType: Joi.string().valid("archive", "source_code", "documentation", "image", "video", "other").optional(),
+  }),
+  downloadStats: Joi.object({
+    projectId: Joi.number().integer().positive().optional(),
+    period: Joi.string().valid("7d", "30d", "90d", "1y").optional(),
+  }),
+};
+
 export default {
   patterns,
   commonSchemas,
@@ -1006,12 +1059,5 @@ export default {
   otpValidation,
   batchValidation,
   searchValidation,
-  discountValidation,
-  categoryValidation,
-  languageValidation,
-  courseLevelValidation,
-  fileValidation,
-  coursePurchaseValidation,
-  validateSchema,
-  validateFileUpload,
+  projectFileValidation,
 };

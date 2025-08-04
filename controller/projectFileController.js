@@ -13,6 +13,8 @@ import {
   sendValidationError,
   sendNotFound,
   sendServerError,
+  sendUnauthorized,
+  sendForbidden,
 } from "../utils/responseHelper.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -473,6 +475,7 @@ export const getDownloadStatistics = async (req, res) => {
         };
         break;
       case "1y":
+        // eslint-disable-next-line no-unused-vars
         dateFilter = {
           [Op.gte]: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000),
         };

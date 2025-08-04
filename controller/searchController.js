@@ -1,9 +1,12 @@
+// Import models and associations
+import "../model/associations.js"; // This loads all associations
 import Course from "../model/course.js";
 import Project from "../model/project.js";
 import User from "../model/user.js";
 import Category from "../model/category.js";
 import CourseLevel from "../model/courseLevel.js";
-
+import CourseInstructor from "../model/courseInstructor.js";
+import CourseLanguage from "../model/courseLanguage.js";
 import _CourseGoal from "../model/courseGoal.js";
 import Language from "../model/language.js";
 import SearchAnalytics from "../model/searchAnalytics.js";
@@ -121,11 +124,6 @@ export const getSearchSuggestions = async (req, res) => {
         },
         include: [
           {
-            model: User,
-            as: "creator",
-            attributes: ["userId", "firstName", "lastName", "username"],
-          },
-          {
             model: Category,
             as: "category",
             attributes: ["categoryId", "categoryName"],
@@ -148,7 +146,7 @@ export const getSearchSuggestions = async (req, res) => {
           type: "project",
           id: project.id,
           title: project.title,
-          subtitle: `${project.difficulty} Project by ${project.creator?.firstName} ${project.creator?.lastName}`,
+          subtitle: `${project.difficulty}`,
           icon: "🚀",
           price: project.price,
           thumbnail: project.previewImages?.[0],
@@ -323,13 +321,7 @@ export const searchCourses = async (req, res) => {
       whereClause.levelId = { [Op.in]: levelIds };
     }
 
-    // Instructor filter
-    if (instructor) {
-      const instructorIds = Array.isArray(instructor)
-        ? instructor
-        : [instructor];
-      whereClause.createdBy = { [Op.in]: instructorIds };
-    }
+    // Note: Instructor filter is now handled via include condition with CourseInstructor
 
     // Availability filter
     if (availability) {
@@ -362,20 +354,37 @@ export const searchCourses = async (req, res) => {
       },
       {
         model: User,
-        as: "instructor",
+        as: "instructors",
+        through: { 
+          model: CourseInstructor,
+          attributes: [] 
+        },
         attributes: ["userId", "username", "profileImage"],
-      },
-      {
-        model: Language,
-        through: { attributes: [] },
-        attributes: ["languageId", "language"],
-        ...(language && {
+        ...(instructor && {
           where: {
-            languageId: {
-              [Op.in]: Array.isArray(language) ? language : [language],
+            userId: {
+              [Op.in]: Array.isArray(instructor) ? instructor : [instructor],
             },
           },
         }),
+      },
+      {
+        model: CourseLanguage,
+        as: "courseLanguages",
+        include: [
+          {
+            model: Language,
+            as: "language",
+            attributes: ["languageId", "language"],
+            ...(language && {
+              where: {
+                languageId: {
+                  [Op.in]: Array.isArray(language) ? language : [language],
+                },
+              },
+            }),
+          },
+        ],
       },
     ];
 
@@ -733,6 +742,7 @@ export const searchInstructors = async (req, res) => {
     if (language) {
       includeConditions.push({
         model: Language,
+        as: "languages",
         through: { attributes: [] },
         attributes: ["languageId", "language"],
         where: {
@@ -749,7 +759,7 @@ export const searchInstructors = async (req, res) => {
         orderClause = [
           [
             sequelize.literal(
-              '(SELECT COUNT(*) FROM courses WHERE courses.created_by = "User".user_id)'
+              '(SELECT COUNT(*) FROM course_instructors WHERE course_instructors.instructor_id = "User".user_id)'
             ),
             sortOrder.toUpperCase(),
           ],
@@ -1154,6 +1164,86 @@ export const searchProjects = async (req, res) => {
   } catch (error) {
     console.error("Search projects error:", error);
     return sendServerError(res, error);
+  }
+};
+
+// ===================== SEARCH HISTORY HANDLERS =====================
+
+export const getSearchHistory = async (req, res) => {
+  try {
+    const { limit = 20, page = 1 } = req.query;
+    const userId = req.user.userId;
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    const searchHistory = await SearchAnalytics.findAndCountAll({
+      where: {
+        userId,
+        searchQuery: { [Op.ne]: null },
+      },
+      attributes: [
+        "searchQuery",
+        "searchType",
+        "filters",
+        "resultsCount",
+        "createdAt",
+        "metadata",
+      ],
+      order: [["createdAt", "DESC"]],
+      limit: parseInt(limit),
+      offset,
+      distinct: true,
+    });
+
+    const formattedHistory = searchHistory.rows.map((search) => ({
+      query: search.searchQuery,
+      type: search.searchType,
+      filters: search.filters ? JSON.parse(search.filters) : {},
+      results_count: search.resultsCount,
+      timestamp: search.createdAt,
+      metadata: search.metadata ? JSON.parse(search.metadata) : {},
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        history: formattedHistory,
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: Math.ceil(searchHistory.count / parseInt(limit)),
+          total_items: searchHistory.count,
+          per_page: parseInt(limit),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Get search history error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch search history",
+      error: error.message,
+    });
+  }
+};
+
+export const clearSearchHistory = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    await SearchAnalytics.destroy({
+      where: { userId },
+    });
+
+    res.json({
+      success: true,
+      message: "Search history cleared successfully",
+    });
+  } catch (error) {
+    console.error("Clear search history error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to clear search history",
+      error: error.message,
+    });
   }
 };
 

@@ -31,13 +31,21 @@ const Lesson = sequelize.define(
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    streamStartDateTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    streamEndDateTime: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
     videoUrl: {
       type: DataTypes.STRING,
       allowNull: true,
     },
     duration: {
       type: DataTypes.INTEGER,
-      allowNull: true, // in seconds
+      allowNull: true,
     },
     order: {
       type: DataTypes.INTEGER,

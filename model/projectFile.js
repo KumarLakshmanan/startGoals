@@ -30,7 +30,15 @@ const ProjectFile = sequelize.define(
     },
     fileType: {
       type: DataTypes.ENUM(
+        "video",
+        "document",
+        "image",
+        "audio",
+        "archive",
         "source_code",
+        "presentation",
+        "spreadsheet",
+        "resource",
         "documentation",
         "assets",
         "demo",

@@ -238,11 +238,6 @@ export const getCourseById = async (req, res) => {
           attributes: ["categoryId", "categoryName"],
         },
         {
-          model: User,
-          as: "instructor",
-          attributes: ["userId", "username", "email", "mobile", "profileImage"],
-        },
-        {
           model: CourseGoal,
           as: "goals",
         },
@@ -254,6 +249,28 @@ export const getCourseById = async (req, res) => {
               model: Skill,
               as: "skill",
               attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
+        {
+          model: CourseLanguage,
+          as: "courseLanguages",
+          include: [
+            {
+              model: Language,
+              as: "language",
+              attributes: ["languageId", "language", "languageCode"],
+            },
+          ],
+        },
+        {
+          model: CourseInstructor,
+          as: "courseInstructors",
+          include: [
+            {
+              model: User,
+              as: "instructor",
+              attributes: ["userId", "username", "email", "mobile", "profileImage"],
             },
           ],
         },
@@ -275,6 +292,8 @@ export const getCourseById = async (req, res) => {
                 "lessonId",
                 "title",
                 "videoUrl",
+                "streamStartDateTime",
+                "streamEndDateTime",
                 "duration",
                 "content",
                 "type",
@@ -303,6 +322,18 @@ export const getCourseById = async (req, res) => {
 
     const userId = req.user?.userId; // Get user ID from auth token if available
     let courseWithExtras = course.toJSON();
+
+    // Format instructors array
+    courseWithExtras.instructors = courseWithExtras.courseInstructors?.map(ci => ({
+      ...ci.instructor,
+      isPrimary: ci.isPrimary,
+      assignedAt: ci.createdAt
+    })) || [];
+    delete courseWithExtras.courseInstructors;
+    
+    // Format languages array
+    courseWithExtras.languages = courseWithExtras.courseLanguages?.map(cl => cl.language) || [];
+    delete courseWithExtras.courseLanguages;
 
     // Add purchase status
     // TODO: Implement when order_items table is available
@@ -403,8 +434,7 @@ export const createCourse = async (req, res) => {
       supportIncluded = false,
       supportDuration,
       supportEmail,
-      featured = false,
-      sections = []
+      featured = false
     } = req.body;
 
     const userId = req.user?.userId || req.body.createdBy;
@@ -496,43 +526,12 @@ export const createCourse = async (req, res) => {
       await Promise.all(techStackPromises);
     }
 
-
-    // Create sections and lessons
-    if (sections && sections.length > 0) {
-      for (let i = 0; i < sections.length; i++) {
-        const sectionData = sections[i];
-        const section = await Section.create({
-          courseId: course.courseId,
-          title: sectionData.title,
-          description: sectionData.description,
-          order: sectionData.order || i + 1
-        }, { transaction });
-
-        // Create lessons for this section
-        if (sectionData.lessons && sectionData.lessons.length > 0) {
-          for (let j = 0; j < sectionData.lessons.length; j++) {
-            const lessonData = sectionData.lessons[j];
-            await Lesson.create({
-              sectionId: section.sectionId,
-              title: lessonData.title,
-              type: lessonData.type || 'video',
-              content: lessonData.content,
-              videoUrl: lessonData.videoUrl,
-              duration: lessonData.duration,
-              order: lessonData.order || j + 1,
-              isPreview: lessonData.isPreview || false
-            }, { transaction });
-          }
-        }
-      }
-    }
-
-    // Update course stats
-    await updateCourseStats(course.courseId, transaction);
+    // Update course stats (will be updated when sections/lessons are added separately)
+    // await updateCourseStats(course.courseId, transaction);
 
     await transaction.commit();
 
-    // Fetch the complete course with sections and lessons
+    // Fetch the complete course
     const completeCourse = await Course.findOne({
       where: { courseId: course.courseId },
       include: [
@@ -611,8 +610,7 @@ export const updateCourse = async (req, res) => {
       supportIncluded,
       supportDuration,
       supportEmail,
-      featured,
-      sections = []
+      featured
     } = req.body;
 
     // Update course data
@@ -662,43 +660,8 @@ export const updateCourse = async (req, res) => {
       transaction
     });
 
-    // Update sections and lessons if provided
-    if (sections.length > 0) {
-      // Delete existing sections and their lessons (cascade)
-      await Section.destroy({
-        where: { courseId },
-        transaction
-      });
-
-      // Create new sections and lessons
-      for (let i = 0; i < sections.length; i++) {
-        const sectionData = sections[i];
-        const section = await Section.create({
-          courseId,
-          title: sectionData.title,
-          description: sectionData.description,
-          order: sectionData.order || i + 1
-        }, { transaction });
-
-        if (sectionData.lessons && sectionData.lessons.length > 0) {
-          for (let j = 0; j < sectionData.lessons.length; j++) {
-            const lessonData = sectionData.lessons[j];
-            await Lesson.create({
-              sectionId: section.sectionId,
-              title: lessonData.title,
-              type: lessonData.type || 'video',
-              content: lessonData.content,
-              videoUrl: lessonData.videoUrl,
-              duration: lessonData.duration,
-              order: lessonData.order || j + 1,
-              isPreview: lessonData.isPreview || false
-            }, { transaction });
-          }
-        }
-      }
-    }
-
-    // Update course stats
+    // Update course stats (will be updated when sections/lessons are managed separately)
+    // await updateCourseStats(courseId, transaction);
     await updateCourseStats(courseId, transaction);
 
     await transaction.commit();
@@ -803,11 +766,6 @@ export const getAllCourses = async (req, res) => {
           attributes: ["categoryId", "categoryName"],
         },
         {
-          model: User,
-          as: "instructor",
-          attributes: ["userId", "username", "email", "profileImage"],
-        },
-        {
           model: CourseTechStack,
           as: "techStack",
           include: [
@@ -815,6 +773,28 @@ export const getAllCourses = async (req, res) => {
               model: Skill,
               as: "skill",
               attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
+        {
+          model: CourseLanguage,
+          as: "courseLanguages",
+          include: [
+            {
+              model: Language,
+              as: "language",
+              attributes: ["languageId", "language", "languageCode"],
+            },
+          ],
+        },
+        {
+          model: CourseInstructor,
+          as: "courseInstructors",
+          include: [
+            {
+              model: User,
+              as: "instructor",
+              attributes: ["userId", "username", "email", "profileImage"],
             },
           ],
         },
@@ -850,6 +830,19 @@ export const getAllCourses = async (req, res) => {
     const coursesWithPurchaseStatus = courses.map(course => {
       const courseJson = course.toJSON();
       courseJson.purchaseStatus = userPurchases.includes(course.courseId);
+      
+      // Format instructors array
+      courseJson.instructors = courseJson.courseInstructors?.map(ci => ({
+        ...ci.instructor,
+        isPrimary: ci.isPrimary,
+        assignedAt: ci.createdAt
+      })) || [];
+      delete courseJson.courseInstructors;
+      
+      // Format languages array
+      courseJson.languages = courseJson.courseLanguages?.map(cl => cl.language) || [];
+      delete courseJson.courseLanguages;
+      
       return courseJson;
     });
 
@@ -1880,7 +1873,6 @@ export const getCourseBatches = async (req, res) => {
       include: [
         { model: BatchSchedule, as: "schedules" },
         { model: Course, as: "course", attributes: ["courseId", "title"] },
-        { model: User, as: "creator", attributes: ["userId", "username"] }
       ],
       order: [["createdAt", "DESC"]],
       limit: parseInt(limit),
@@ -2811,16 +2803,21 @@ export const addCourseLanguages = async (req, res) => {
     }
 
     // Create course language associations
+    console.log(`Adding languages ${languageIds} to course ${courseId}`);
     const courseLanguages = await Promise.all(
-      languageIds.map(languageId =>
-        CourseLanguage.findOrCreate({
+      languageIds.map(async languageId => {
+        console.log(`Processing language ${languageId}`);
+        const result = await CourseLanguage.findOrCreate({
           where: { courseId, languageId },
           defaults: { courseId, languageId }
-        })
-      )
+        });
+        console.log(`Language ${languageId} result:`, result[1] ? 'created' : 'exists');
+        return result;
+      })
     );
 
-    const newlyAdded = courseLanguages.filter(([courseLanguage, created]) => created);
+    const newlyAdded = courseLanguages.filter(([_courseLanguage, created]) => created);
+    console.log(`Successfully added ${newlyAdded.length} new languages`);
     
     return sendSuccess(res, `Added ${newlyAdded.length} new language(s) to course`, {
       added: newlyAdded.length,
@@ -2828,6 +2825,8 @@ export const addCourseLanguages = async (req, res) => {
     });
   } catch (error) {
     console.error("Error adding course languages:", error);
+    console.error("Error details:", error.message);
+    console.error("Error stack:", error.stack);
     return sendServerError(res, error);
   }
 };
@@ -2921,7 +2920,7 @@ export const addCourseInstructors = async (req, res) => {
       )
     );
 
-    const newlyAdded = courseInstructors.filter(([courseInstructor, created]) => created);
+    const newlyAdded = courseInstructors.filter(([_courseInstructor, created]) => created);
     
     return sendSuccess(res, `Added ${newlyAdded.length} new instructor(s) to course`, {
       added: newlyAdded.length,

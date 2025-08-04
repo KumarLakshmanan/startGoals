@@ -274,8 +274,6 @@ export const searchCoursesAndProjects = async (req, res) => {
           { title: { [Op.iLike]: `%${query}%` } },
           { description: { [Op.iLike]: `%${query}%` } },
           { shortDescription: { [Op.iLike]: `%${query}%` } },
-          { "$creator.firstName$": { [Op.iLike]: `%${query}%` } },
-          { "$creator.lastName$": { [Op.iLike]: `%${query}%` } },
         ];
       }
 
@@ -289,11 +287,6 @@ export const searchCoursesAndProjects = async (req, res) => {
       }
 
       const projectInclude = [
-        {
-          model: User,
-          as: "creator",
-          attributes: ["id", "firstName", "lastName", "profileImage"],
-        },
         {
           model: Category,
           as: "category",

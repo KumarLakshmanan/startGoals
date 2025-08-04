@@ -1,8 +1,6 @@
 import express from "express";
 import {
   isStudent,
-  isTeacher,
-  isAdmin,
   isSessionInstructor,
 } from "../middleware/authMiddleware.js";
 import {

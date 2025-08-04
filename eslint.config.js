@@ -5,7 +5,6 @@ export default [
   {
     files: ["**/*.{js,mjs,cjs}"],
     ignores: [
-      "frontend/**",
       "dist/**",
       "node_modules/**",
       "scripts/node_modules/**",
@@ -25,7 +24,7 @@ export default [
     },
     rules: {
       ...js.configs.recommended.rules,
-      "no-unused-vars": ["error", { 
+      "no-unused-vars": ["error", {
         "argsIgnorePattern": "^_",
         "varsIgnorePattern": "^_"
       }],

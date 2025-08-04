@@ -48,15 +48,6 @@ const Project = sequelize.define(
       },
       comment: "Level of difficulty (beginner, intermediate, advanced)",
     },
-    languageId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      references: {
-        model: "languages",
-        key: "language_id",
-      },
-      comment: "Language used English, Spanish, etc.",
-    },
     price: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
@@ -148,14 +139,6 @@ const Project = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
-    createdBy: {
-      type: DataTypes.UUID,
-      allowNull: false,
-      references: {
-        model: "users",
-        key: "user_id",
-      },
-    },
     totalSales: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
@@ -184,11 +167,6 @@ const Project = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
       comment: "Featured project for promotion",
-    },
-    documentationUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
-      comment: "URL to project documentation",
     },
     supportEmail: {
       type: DataTypes.STRING,
@@ -235,10 +213,6 @@ const Project = sequelize.define(
       },
       {
         fields: ["published_at"],
-        type: "BTREE",
-      },
-      {
-        fields: ["language_id"],
         type: "BTREE",
       },
     ],

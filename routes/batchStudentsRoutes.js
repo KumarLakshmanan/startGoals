@@ -2,7 +2,6 @@ import express from "express";
 import {
   addStudentToBatch,
   removeStudentFromBatch,
-  getStudentsInBatch,
   getBatchesForStudent,
   updateStudentStatusInBatch,
   bulkAddStudentsToBatch,

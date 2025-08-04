@@ -17,7 +17,6 @@ router.use("/assets", express.static(path.join(__dirname, "../web/assets")));
 
 // Teacher dashboard route
 router.get("/live-session/teacher/:sessionId", (req, res) => {
-  const sessionId = req.params.sessionId;
   res.sendFile(path.join(__dirname, "../web/teacher.html"));
 });
 
@@ -27,7 +26,6 @@ router.get("/live-session/teacher", (req, res) => {
 
 // Student session route
 router.get("/live-session/student/:sessionId", (req, res) => {
-  const sessionId = req.params.sessionId;
   res.sendFile(path.join(__dirname, "../web/student.html"));
 });
 
@@ -74,6 +72,7 @@ router.get("/api/session-config/:sessionId", async (req, res) => {
 
     res.json(config);
   } catch (error) {
+    console.error("Get session config error:", error);
     res.status(500).json({ error: "Failed to get session configuration" });
   }
 });

@@ -111,18 +111,6 @@ const models = {
   ProjectInstructor,
 };
 
-//user to course
-// course to user (creator)
-Course.belongsTo(User, {
-  foreignKey: "createdBy",
-  as: "instructor",
-});
-
-User.hasMany(Course, {
-  foreignKey: "createdBy",
-  as: "courses",
-});
-
 //User to language
 // Associations (✅ define them after all models are loaded)
 User.belongsToMany(Language, {
@@ -316,11 +304,6 @@ User.hasMany(BatchStudents, {
   as: "studentBatches",
 });
 
-// Batch creator association
-Batch.belongsTo(User, {
-  foreignKey: "createdBy",
-  as: "creator",
-});
 
 // enrolement Associations with User and Course models
 Enrollment.belongsTo(User, { foreignKey: "user_id" });
@@ -459,18 +442,6 @@ User.hasMany(InstructorRating, {
 
 // ===================== PROJECT MARKETPLACE ASSOCIATIONS =====================
 
-// Project associations
-// Project belongs to User (creator/admin)
-Project.belongsTo(User, {
-  foreignKey: "createdBy",
-  as: "creator",
-});
-
-User.hasMany(Project, {
-  foreignKey: "createdBy",
-  as: "projects",
-});
-
 // Project belongs to Category (using existing Category)
 Project.belongsTo(Category, {
   foreignKey: "categoryId",
@@ -595,10 +566,15 @@ ProjectGoal.belongsTo(Project, {
   as: "project",
 });
 
-// DiscountCode associations
-DiscountCode.belongsTo(User, {
-  foreignKey: "createdBy",
-  as: "creator",
+// Goal to ProjectGoal association
+Goal.hasMany(ProjectGoal, {
+  foreignKey: "goalId",
+  as: "projectGoals",
+  onDelete: "CASCADE",
+});
+ProjectGoal.belongsTo(Goal, {
+  foreignKey: "goalId",
+  as: "goal",
 });
 
 User.hasMany(DiscountCode, {

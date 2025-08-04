@@ -244,7 +244,6 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
         coverImage: `https://picsum.photos/seed/${i + 50}/1200/600`,
         levelId: level.levelId,
         categoryId: category.categoryId,
-        createdBy: teacher.userId,
         isPublished: true,
         type: 'live',
         isPaid: true,
@@ -263,12 +262,7 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
         ],
         features: faker.lorem.paragraphs(1),
         prerequisites: faker.lorem.paragraphs(1),
-        whatYouGet: [
-          'Live sessions with experts',
-          'Course materials',
-          'Project templates',
-          'Support from instructors',
-        ].join('\n• '),
+        whatYouGet: faker.lorem.paragraphs(1),
         hasCertificate: true,
         certificateTemplateUrl: `https://storage.example.com/certificates/template_${i + 1}.pdf`,
         supportIncluded: faker.datatype.boolean(),
@@ -311,6 +305,25 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
         currentEnrollment: faker.number.int({ min: 0, max: 15 }),
         hasChatEnabled: true,
       });
+
+      // Assign instructors to the course via junction table
+      const courseInstructors = faker.helpers.arrayElements(teachers, { min: 1, max: 2 });
+      for (const instructor of courseInstructors) {
+        await CourseInstructor.create({
+          courseId: course.courseId,
+          instructorId: instructor.userId,
+          assignedBy: teacher.userId
+        });
+      }
+
+      // Assign languages to the course via junction table
+      const courseLanguages = faker.helpers.arrayElements(languages, { min: 1, max: 2 });
+      for (const lang of courseLanguages) {
+        await CourseLanguage.create({
+          courseId: course.courseId,
+          languageId: lang.languageId
+        });
+      }
 
       // Create 5-10 live sessions for each course
       const numSessions = faker.number.int({ min: 5, max: 10 });
@@ -387,7 +400,6 @@ async function createRecordedCourses(teachers, categories, goals, languages, lev
         coverImage: `https://picsum.photos/seed/${i + 150}/1200/600`,
         levelId: level.levelId,
         categoryId: category.categoryId,
-        createdBy: teacher.userId,
         isPublished: true,
         type: 'recorded',
         isPaid: faker.datatype.boolean(),
@@ -402,12 +414,7 @@ async function createRecordedCourses(teachers, categories, goals, languages, lev
         ],
         features: faker.lorem.paragraphs(1),
         prerequisites: faker.lorem.paragraphs(1),
-        whatYouGet: [
-          'Full lifetime access',
-          'Downloadable resources',
-          'Projects and exercises',
-          'Certificate of completion',
-        ].join('\n• '),
+        whatYouGet: faker.lorem.paragraphs(1),
         hasCertificate: faker.datatype.boolean(),
         certificateTemplateUrl: faker.datatype.boolean() ? `https://storage.example.com/certificates/template_${i + 100}.pdf` : null,
         supportIncluded: faker.datatype.boolean(),
@@ -429,6 +436,25 @@ async function createRecordedCourses(teachers, categories, goals, languages, lev
       });
 
       recordedCourses.push(course);
+
+      // Assign instructors to the course via junction table
+      const courseInstructors = faker.helpers.arrayElements(teachers, { min: 1, max: 2 });
+      for (const instructor of courseInstructors) {
+        await CourseInstructor.create({
+          courseId: course.courseId,
+          instructorId: instructor.userId,
+          assignedBy: teacher.userId
+        });
+      }
+
+      // Assign languages to the course via junction table
+      const courseLanguages = faker.helpers.arrayElements(languages, { min: 1, max: 2 });
+      for (const lang of courseLanguages) {
+        await CourseLanguage.create({
+          courseId: course.courseId,
+          languageId: lang.languageId
+        });
+      }
 
       // add random tech stack (2-5 skills) using junction table
       if (skills && skills.length > 0) {
@@ -468,19 +494,37 @@ async function createRecordedCourses(teachers, categories, goals, languages, lev
               const lessonDuration = faker.number.int({ min: 5, max: 45 });
               totalDuration += lessonDuration;
 
-              await Lesson.create({
+              // Determine lesson type based on course type and randomness
+              const lessonType = course.type === 'live' 
+                ? faker.helpers.arrayElement(['video', 'live', 'document', 'assignment'])
+                : faker.helpers.arrayElement(['video', 'document', 'assignment']);
+
+              const lessonData = {
                 lessonId: uuidv4(),
                 sectionId: section.sectionId,
-                courseId: course.courseId,
                 title: `Lesson ${k + 1}: ${faker.company.buzzVerb()}`,
-                description: faker.lorem.sentence(),
-                durationMinutes: lessonDuration,
-                videoUrl: `https://storage.example.com/videos/course_${i}_section_${j}_lesson_${k}.mp4`,
-                order: k,
-                isFree: k === 0, // First lesson is free
-                type: faker.helpers.arrayElement(['video', 'article', 'quiz']), // Required type field
                 content: faker.lorem.paragraphs(2),
-              });
+                duration: lessonDuration,
+                order: k,
+                type: lessonType,
+                isPreview: k === 0, // First lesson is preview
+              };
+
+              // Add type-specific fields
+              if (lessonType === 'live') {
+                const startDateTime = faker.date.future();
+                lessonData.streamStartDateTime = startDateTime;
+                lessonData.streamEndDateTime = new Date(startDateTime.getTime() + lessonDuration * 60000);
+              } else if (lessonType === 'video') {
+                lessonData.videoUrl = `https://storage.example.com/videos/course_${i}_section_${j}_lesson_${k}.mp4`;
+              } else if (lessonType === 'document' || lessonType === 'assignment') {
+                // For document/assignment lessons, we would typically have fileUrl and fileName
+                // These would be populated when files are actually uploaded via courseFile model
+                lessonData.fileUrl = `https://storage.example.com/files/course_${i}_section_${j}_lesson_${k}.pdf`;
+                lessonData.fileName = `${lessonType}_${k + 1}.pdf`;
+              }
+
+              await Lesson.create(lessonData);
             } catch (error) {
               console.error(`Error creating lesson ${k + 1} for section ${j + 1} of course ${i + 1}:`, error.message);
               // Continue with the next lesson
@@ -547,10 +591,9 @@ async function createProjects(teachers, categories, goals, languages, levels, sk
 
   for (let i = 0; i < NUM_PROJECTS; i++) {
     try {
-      // Select random teacher, category, language and level
+      // Select random teacher, category and level
       const teacher = teachers[Math.floor(Math.random() * teachers.length)];
       const category = categories[Math.floor(Math.random() * categories.length)];
-      const language = languages[Math.floor(Math.random() * languages.length)];
       const level = levels[Math.floor(Math.random() * levels.length)];
 
       // Create project
@@ -562,8 +605,6 @@ async function createProjects(teachers, categories, goals, languages, levels, sk
         shortDescription: faker.lorem.paragraph(),
         categoryId: category.categoryId,
         levelId: level.levelId,
-        languageId: language.languageId,
-        createdBy: teacher.userId,
         price: faker.number.float({ min: 99, max: 2999, multipleOf: 0.01 }),
         discountEnabled: faker.datatype.boolean(),
         coverImage: `https://picsum.photos/seed/${i + 200}/800/600`,
@@ -586,6 +627,25 @@ async function createProjects(teachers, categories, goals, languages, levels, sk
         featured: faker.datatype.boolean({ probability: 0.2 }),
       });
       projects.push(project);
+
+      // Assign instructors to the project via junction table
+      const projectInstructors = faker.helpers.arrayElements(teachers, { min: 1, max: 2 });
+      for (const instructor of projectInstructors) {
+        await ProjectInstructor.create({
+          projectId: project.projectId,
+          instructorId: instructor.userId,
+          assignedBy: teacher.userId
+        });
+      }
+
+      // Assign languages to the project via junction table
+      const projectLanguages = faker.helpers.arrayElements(languages, { min: 1, max: 2 });
+      for (const lang of projectLanguages) {
+        await ProjectLanguage.create({
+          projectId: project.projectId,
+          languageId: lang.languageId
+        });
+      }
 
       // Add random tech stack (2-5 skills) using junction table
       if (skills && skills.length > 0) {
@@ -993,61 +1053,6 @@ async function createLanguageAssociations(courses, projects, languages) {
 }
 
 /**
- * Create instructor associations for courses and projects
- */
-async function createInstructorAssociations(courses, projects, teachers) {
-  console.log('Creating instructor associations...');
-  
-  try {
-    // Add 1-3 instructors to each course
-    for (const course of courses) {
-      const numInstructors = faker.number.int({ min: 1, max: 3 });
-      const selectedInstructors = faker.helpers.arrayElements(teachers, numInstructors);
-      
-      for (let i = 0; i < selectedInstructors.length; i++) {
-        const instructor = selectedInstructors[i];
-        const isPrimary = i === 0; // First instructor is primary
-        
-        await CourseInstructor.findOrCreate({
-          where: { courseId: course.courseId, instructorId: instructor.userId },
-          defaults: {
-            courseId: course.courseId,
-            instructorId: instructor.userId,
-            isPrimary,
-            assignedBy: course.createdBy
-          }
-        });
-      }
-    }
-
-    // Add 1-2 instructors to each project
-    for (const project of projects) {
-      const numInstructors = faker.number.int({ min: 1, max: 2 });
-      const selectedInstructors = faker.helpers.arrayElements(teachers, numInstructors);
-      
-      for (let i = 0; i < selectedInstructors.length; i++) {
-        const instructor = selectedInstructors[i];
-        const isPrimary = i === 0; // First instructor is primary
-        
-        await ProjectInstructor.findOrCreate({
-          where: { projectId: project.projectId, instructorId: instructor.userId },
-          defaults: {
-            projectId: project.projectId,
-            instructorId: instructor.userId,
-            isPrimary,
-            assignedBy: project.createdBy
-          }
-        });
-      }
-    }
-    
-    console.log('Instructor associations created successfully');
-  } catch (error) {
-    console.error('Error creating instructor associations:', error);
-  }
-}
-
-/**
  * Main function to seed the database
  */
 async function seedDatabase() {
@@ -1097,10 +1102,6 @@ async function seedDatabase() {
     // Create course and project language associations
     console.log('Step 11: Creating course and project language associations...');
     await createLanguageAssociations([...liveCourses, ...recordedCourses], projects, languages);
-
-    // Create course and project instructor associations
-    console.log('Step 12: Creating course and project instructor associations...');
-    await createInstructorAssociations([...liveCourses, ...recordedCourses], projects, teachers);
 
     console.log('Database seeding completed successfully!');
     console.log(`Created ${liveCourses.length} live courses`);

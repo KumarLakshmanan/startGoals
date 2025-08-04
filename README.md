@@ -303,3 +303,36 @@ A flexible, robust discount system for all course/project types, with full admin
 
 
 Create a profile update api for student and use the userControllers and userRoutes to handle the profile update functionality.
+
+
+
+
+Remove the createdBy in the project & course controllers and models. because we have home seperate projectInstructor and courseInstructor tables now.
+
+and also remove the languageId in the course model and controller. because we have a separate courseLanguage, projectLanguage tables now.
+
+and also in the getAll and get by id endpoints, remove the createdBy and languageId from the response. and add the instructors and languages array got from the courseLanguage & projectLanguage and courseInstructor & projectInstructor tables.
+
+and in the course and project models on get the item by id endpoints, include the course lessons, sections and the project files in the response.
+
+and also add the sections and lessons in the seedData
+if the lesson type is live, then add the streamStartDateTime and streamEndDateTime fields in the lesson model and controller. and it is for live courses only.
+if the lesson type is video, then add the videoUrl field in the lesson model and controller. and it is for both live & recorded courses.
+if the lesson type is document or assignment, then use the courseFile model and controller to upload the document file and get the fileUrl and fileName fields in the lesson model and controller. and it is for both live & recorded courses.
+
+
+
+
+
+
+remove the fileUrl & filename fields from the lesson model and controller. because we are using the courseFile model and controller to handle the document files.
+
+and remove the lessons, sections, files creation on create/edit course & projects api endpoint.
+and create a new endpoints for managing course (lessons and sections and files) project (files) separately.
+
+and also fix this error on db sync
+Error syncing model Project: column "language_id" does not exist
+SQL that failed: CREATE INDEX "projects_language_id" ON "projects" ("language_id")
+Parent error: column "language_id" does not exist
+
+and after that test the sync db and seedData with the new changes. and fix any issues that arise during the sync and seedData execution.
