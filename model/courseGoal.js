@@ -43,6 +43,13 @@ const CourseGoal = sequelize.define(
   {
     tableName: "course_goals",
     ...commonOptions,
+    indexes: [
+      {
+        unique: true,
+        fields: ["course_id", "goal_id"],
+        name: "unique_course_goal",
+      },
+    ],
   },
 );
 

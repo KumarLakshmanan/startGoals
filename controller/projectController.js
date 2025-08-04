@@ -14,6 +14,8 @@ import DiscountCode from "../model/discountCode.js";
 import DiscountUsage from "../model/discountUsage.js";
 import ProjectGoal from "../model/projectGoal.js";
 import ProjectTechStack from "../model/projectTechStack.js";
+import ProjectLanguage from "../model/projectLanguage.js";
+import ProjectInstructor from "../model/projectInstructor.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import {
@@ -1598,18 +1600,195 @@ export const bulkDeleteProjects = async (req, res) => {
     return sendServerError(res, "Failed to delete projects", error);
   }
 };
+// ===================== PROJECT LANGUAGE MANAGEMENT =====================
 
-export default {
-  createProject,
-  getAllProjects,
-  getProjectById,
-  updateProject,
-  deleteProject,
-  initiateProjectPurchase,
-  completeProjectPurchase,
-  getUserPurchases,
-  getProjectStatistics,
-  getProjectBuyers,
-  getProjectDownloads,
-  bulkDeleteProjects,
+// Get languages for a project
+export const getProjectLanguages = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const projectLanguages = await ProjectLanguage.findAll({
+      where: { projectId },
+      include: [
+        {
+          model: Language,
+          as: "language",
+          attributes: ["languageId", "language", "languageCode"]
+        }
+      ]
+    });
+
+    return sendSuccess(res, "Project languages retrieved successfully", projectLanguages);
+  } catch (error) {
+    console.error("Error getting project languages:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Add languages to a project
+export const addProjectLanguages = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { languageIds } = req.body;
+
+    if (!Array.isArray(languageIds) || languageIds.length === 0) {
+      return sendValidationError(res, "Language IDs array is required");
+    }
+
+    // Check if project exists
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return sendNotFound(res, "Project not found");
+    }
+
+    // Check if languages exist
+    const languages = await Language.findAll({
+      where: { languageId: languageIds }
+    });
+    
+    if (languages.length !== languageIds.length) {
+      return sendValidationError(res, "One or more languages not found");
+    }
+
+    // Create project language associations
+    const projectLanguages = await Promise.all(
+      languageIds.map(languageId =>
+        ProjectLanguage.findOrCreate({
+          where: { projectId, languageId },
+          defaults: { projectId, languageId }
+        })
+      )
+    );
+
+    const newlyAdded = projectLanguages.filter(([, created]) => created);
+    
+    return sendSuccess(res, `Added ${newlyAdded.length} new language(s) to project`, {
+      added: newlyAdded.length,
+      total: projectLanguages.length
+    });
+  } catch (error) {
+    console.error("Error adding project languages:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Remove language from project
+export const removeProjectLanguage = async (req, res) => {
+  try {
+    const { projectId, languageId } = req.params;
+
+    const deleted = await ProjectLanguage.destroy({
+      where: { projectId, languageId }
+    });
+
+    if (deleted === 0) {
+      return sendNotFound(res, "Project language association not found");
+    }
+
+    return sendSuccess(res, "Language removed from project successfully");
+  } catch (error) {
+    console.error("Error removing project language:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// ===================== PROJECT INSTRUCTOR MANAGEMENT =====================
+
+// Get instructors for a project
+export const getProjectInstructors = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+
+    const projectInstructors = await ProjectInstructor.findAll({
+      where: { projectId },
+      include: [
+        {
+          model: User,
+          as: "instructor",
+          attributes: ["userId", "username", "email", "profileImage", "bio"]
+        },
+        {
+          model: User,
+          as: "assigner",
+          attributes: ["userId", "username"]
+        }
+      ]
+    });
+
+    return sendSuccess(res, "Project instructors retrieved successfully", projectInstructors);
+  } catch (error) {
+    console.error("Error getting project instructors:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Add instructors to a project
+export const addProjectInstructors = async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { instructorIds, isPrimary = false } = req.body;
+    const assignedBy = req.user.userId;
+
+    if (!Array.isArray(instructorIds) || instructorIds.length === 0) {
+      return sendValidationError(res, "Instructor IDs array is required");
+    }
+
+    // Check if project exists
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      return sendNotFound(res, "Project not found");
+    }
+
+    // Check if instructors exist and have teacher/admin role
+    const instructors = await User.findAll({
+      where: { 
+        userId: instructorIds,
+        role: { [Op.in]: ['teacher', 'admin'] }
+      }
+    });
+    
+    if (instructors.length !== instructorIds.length) {
+      return sendValidationError(res, "One or more instructors not found or don't have appropriate role");
+    }
+
+    // Create project instructor associations
+    const projectInstructors = await Promise.all(
+      instructorIds.map(instructorId =>
+        ProjectInstructor.findOrCreate({
+          where: { projectId, instructorId },
+          defaults: { projectId, instructorId, isPrimary, assignedBy }
+        })
+      )
+    );
+
+    const newlyAdded = projectInstructors.filter(([, created]) => created);
+    
+    return sendSuccess(res, `Added ${newlyAdded.length} new instructor(s) to project`, {
+      added: newlyAdded.length,
+      total: projectInstructors.length
+    });
+  } catch (error) {
+    console.error("Error adding project instructors:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Remove instructor from project
+export const removeProjectInstructor = async (req, res) => {
+  try {
+    const { projectId, instructorId } = req.params;
+
+    const deleted = await ProjectInstructor.destroy({
+      where: { projectId, instructorId }
+    });
+
+    if (deleted === 0) {
+      return sendNotFound(res, "Project instructor association not found");
+    }
+
+    return sendSuccess(res, "Instructor removed from project successfully");
+  } catch (error) {
+    console.error("Error removing project instructor:", error);
+    return sendServerError(res, error);
+  }
 };

@@ -16,6 +16,14 @@ import {
   completeProjectPurchase,
   getUserPurchases,
   getProjectStatistics,
+  // Language management
+  getProjectLanguages,
+  addProjectLanguages,
+  removeProjectLanguage,
+  // Instructor management
+  getProjectInstructors,
+  addProjectInstructors,
+  removeProjectInstructor
 } from "../controller/projectController.js";
 import { isAdmin, authenticateToken, isStudent } from "../middleware/authMiddleware.js";
 import { validateSchema, projectValidation } from "../middleware/fieldValidation.js";
@@ -139,5 +147,19 @@ router.delete(
   validateSchema(projectValidation.bulkDelete),
   bulkDeleteProjects
 );
+
+// ===================== PROJECT LANGUAGE MANAGEMENT =====================
+
+// Project Language CRUD operations
+router.get("/:projectId/languages", authenticateToken, getProjectLanguages); // Get project languages
+router.post("/:projectId/languages", isAdmin, addProjectLanguages); // Add languages to project
+router.delete("/:projectId/languages/:languageId", isAdmin, removeProjectLanguage); // Remove language from project
+
+// ===================== PROJECT INSTRUCTOR MANAGEMENT =====================
+
+// Project Instructor CRUD operations
+router.get("/:projectId/instructors", authenticateToken, getProjectInstructors); // Get project instructors
+router.post("/:projectId/instructors", isAdmin, addProjectInstructors); // Add instructors to project
+router.delete("/:projectId/instructors/:instructorId", isAdmin, removeProjectInstructor); // Remove instructor from project
 
 export default router;

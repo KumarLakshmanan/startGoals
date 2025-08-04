@@ -103,6 +103,12 @@ const sortModelsByDependencies = (modelsArray) => {
     
     // Many-to-many association tables
     'discount_categories', // Depends on DiscountCode, Category (exact name!)
+    
+    // Course and Project language/instructor associations
+    'CourseLanguage',  // Depends on Course, Language
+    'ProjectLanguage', // Depends on Project, Language
+    'CourseInstructor', // Depends on Course, User
+    'ProjectInstructor', // Depends on Project, User
   ];
 
   const modelMap = {};

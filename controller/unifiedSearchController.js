@@ -7,7 +7,6 @@ import CourseLevel from "../model/courseLevel.js";
 import Language from "../model/language.js";
 import SearchAnalytics from "../model/searchAnalytics.js";
 import { Op } from "sequelize";
-import sequelize from "../config/db.js";
 import {
   sendSuccess,
   sendServerError,
@@ -518,10 +517,4 @@ export const getUnifiedSearchFilters = async (req, res) => {
     console.error("Get unified search filters error:", error);
     return sendServerError(res, error);
   }
-};
-
-export default {
-  getUnifiedSearchSuggestions,
-  searchCoursesAndProjects,
-  getUnifiedSearchFilters,
 };

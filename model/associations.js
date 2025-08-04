@@ -50,6 +50,10 @@ import CourseFile from "./courseFile.js";
 import ProjectTechStack from "./projectTechStack.js";
 import Address from "./address.js";
 import CourseTechStack from "./courseTechStack.js";
+import CourseLanguage from "./courseLanguage.js";
+import ProjectLanguage from "./projectLanguage.js";
+import CourseInstructor from "./courseInstructor.js";
+import ProjectInstructor from "./projectInstructor.js";
 
 // All models must be defined before we associate them
 const models = {
@@ -101,6 +105,10 @@ const models = {
   Exam,
   UserExams,
   CourseFile,
+  CourseLanguage,
+  ProjectLanguage,
+  CourseInstructor,
+  ProjectInstructor,
 };
 
 //user to course
@@ -857,7 +865,6 @@ RatingHelpful.belongsTo(User, {
   as: "user",
 });
 
-
 // Associations for eager loading
 Project.hasMany(ProjectTechStack, { as: "techStack", foreignKey: "projectId" });
 ProjectTechStack.belongsTo(Project, { foreignKey: "projectId" });
@@ -867,5 +874,167 @@ CourseTechStack.belongsTo(Course, { foreignKey: "courseId" });
 
 ProjectTechStack.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
 CourseTechStack.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
+
+// ===================== COURSE LANGUAGE ASSOCIATIONS =====================
+Course.hasMany(CourseLanguage, {
+  foreignKey: "courseId",
+  as: "courseLanguages",
+  onDelete: "CASCADE",
+});
+
+CourseLanguage.belongsTo(Course, {
+  foreignKey: "courseId",
+  as: "course",
+});
+
+Language.hasMany(CourseLanguage, {
+  foreignKey: "languageId",
+  as: "courseLanguages",
+  onDelete: "CASCADE",
+});
+
+CourseLanguage.belongsTo(Language, {
+  foreignKey: "languageId",
+  as: "language",
+});
+
+// Course many-to-many with Language through CourseLanguage
+Course.belongsToMany(Language, {
+  through: CourseLanguage,
+  foreignKey: "courseId",
+  otherKey: "languageId",
+  as: "languages",
+});
+
+Language.belongsToMany(Course, {
+  through: CourseLanguage,
+  foreignKey: "languageId",
+  otherKey: "courseId",
+  as: "courses",
+});
+
+// ===================== PROJECT LANGUAGE ASSOCIATIONS =====================
+Project.hasMany(ProjectLanguage, {
+  foreignKey: "projectId",
+  as: "projectLanguages",
+  onDelete: "CASCADE",
+});
+
+ProjectLanguage.belongsTo(Project, {
+  foreignKey: "projectId",
+  as: "project",
+});
+
+Language.hasMany(ProjectLanguage, {
+  foreignKey: "languageId",
+  as: "projectLanguages",
+  onDelete: "CASCADE",
+});
+
+ProjectLanguage.belongsTo(Language, {
+  foreignKey: "languageId",
+  as: "language",
+});
+
+// Project many-to-many with Language through ProjectLanguage
+Project.belongsToMany(Language, {
+  through: ProjectLanguage,
+  foreignKey: "projectId",
+  otherKey: "languageId",
+  as: "languages",
+});
+
+Language.belongsToMany(Project, {
+  through: ProjectLanguage,
+  foreignKey: "languageId",
+  otherKey: "projectId",
+  as: "projects",
+});
+
+// ===================== COURSE INSTRUCTOR ASSOCIATIONS =====================
+Course.hasMany(CourseInstructor, {
+  foreignKey: "courseId",
+  as: "courseInstructors",
+  onDelete: "CASCADE",
+});
+
+CourseInstructor.belongsTo(Course, {
+  foreignKey: "courseId",
+  as: "course",
+});
+
+User.hasMany(CourseInstructor, {
+  foreignKey: "instructorId",
+  as: "courseInstructions",
+  onDelete: "CASCADE",
+});
+
+CourseInstructor.belongsTo(User, {
+  foreignKey: "instructorId",
+  as: "instructor",
+});
+
+CourseInstructor.belongsTo(User, {
+  foreignKey: "assignedBy",
+  as: "assigner",
+});
+
+// Course many-to-many with User (instructors) through CourseInstructor
+Course.belongsToMany(User, {
+  through: CourseInstructor,
+  foreignKey: "courseId",
+  otherKey: "instructorId",
+  as: "instructors",
+});
+
+User.belongsToMany(Course, {
+  through: CourseInstructor,
+  foreignKey: "instructorId",
+  otherKey: "courseId",
+  as: "instructedCourses",
+});
+
+// ===================== PROJECT INSTRUCTOR ASSOCIATIONS =====================
+Project.hasMany(ProjectInstructor, {
+  foreignKey: "projectId",
+  as: "projectInstructors",
+  onDelete: "CASCADE",
+});
+
+ProjectInstructor.belongsTo(Project, {
+  foreignKey: "projectId",
+  as: "project",
+});
+
+User.hasMany(ProjectInstructor, {
+  foreignKey: "instructorId",
+  as: "projectInstructions",
+  onDelete: "CASCADE",
+});
+
+ProjectInstructor.belongsTo(User, {
+  foreignKey: "instructorId",
+  as: "instructor",
+});
+
+ProjectInstructor.belongsTo(User, {
+  foreignKey: "assignedBy",
+  as: "assigner",
+});
+
+// Project many-to-many with User (instructors) through ProjectInstructor
+Project.belongsToMany(User, {
+  through: ProjectInstructor,
+  foreignKey: "projectId",
+  otherKey: "instructorId",
+  as: "instructors",
+});
+
+User.belongsToMany(Project, {
+  through: ProjectInstructor,
+  foreignKey: "instructorId",
+  otherKey: "projectId",
+  as: "instructedProjects",
+});
 
 export default models;

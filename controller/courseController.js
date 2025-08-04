@@ -32,6 +32,9 @@ import CourseRating from "../model/courseRating.js";
 import Order from "../model/order.js";
 import OrderItem from "../model/orderItem.js";
 import CourseGoal from "../model/courseGoal.js";
+import CourseLanguage from "../model/courseLanguage.js";
+import CourseInstructor from "../model/courseInstructor.js";
+import Language from "../model/language.js";
 
 // Get live courses only
 export const getLiveCourses = async (req, res) => {
@@ -2754,5 +2757,198 @@ export const createCourseReview = async (req, res) => {
   } catch (error) {
     console.error("Error creating course review:", error);
     return sendServerError(res, "Failed to create review", error.message);
+  }
+};
+
+// ===================== COURSE LANGUAGE MANAGEMENT =====================
+
+// Get languages for a course
+export const getCourseLanguages = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const courseLanguages = await CourseLanguage.findAll({
+      where: { courseId },
+      include: [
+        {
+          model: Language,
+          as: "language",
+          attributes: ["languageId", "language", "languageCode"]
+        }
+      ]
+    });
+
+    return sendSuccess(res, "Course languages retrieved successfully", courseLanguages);
+  } catch (error) {
+    console.error("Error getting course languages:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Add languages to a course
+export const addCourseLanguages = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { languageIds } = req.body;
+
+    if (!Array.isArray(languageIds) || languageIds.length === 0) {
+      return sendValidationError(res, "Language IDs array is required");
+    }
+
+    // Check if course exists
+    const course = await Course.findByPk(courseId);
+    if (!course) {
+      return sendNotFound(res, "Course not found");
+    }
+
+    // Check if languages exist
+    const languages = await Language.findAll({
+      where: { languageId: languageIds }
+    });
+    
+    if (languages.length !== languageIds.length) {
+      return sendValidationError(res, "One or more languages not found");
+    }
+
+    // Create course language associations
+    const courseLanguages = await Promise.all(
+      languageIds.map(languageId =>
+        CourseLanguage.findOrCreate({
+          where: { courseId, languageId },
+          defaults: { courseId, languageId }
+        })
+      )
+    );
+
+    const newlyAdded = courseLanguages.filter(([courseLanguage, created]) => created);
+    
+    return sendSuccess(res, `Added ${newlyAdded.length} new language(s) to course`, {
+      added: newlyAdded.length,
+      total: courseLanguages.length
+    });
+  } catch (error) {
+    console.error("Error adding course languages:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Remove language from course
+export const removeCourseLanguage = async (req, res) => {
+  try {
+    const { courseId, languageId } = req.params;
+
+    const deleted = await CourseLanguage.destroy({
+      where: { courseId, languageId }
+    });
+
+    if (deleted === 0) {
+      return sendNotFound(res, "Course language association not found");
+    }
+
+    return sendSuccess(res, "Language removed from course successfully");
+  } catch (error) {
+    console.error("Error removing course language:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// ===================== COURSE INSTRUCTOR MANAGEMENT =====================
+
+// Get instructors for a course
+export const getCourseInstructors = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const courseInstructors = await CourseInstructor.findAll({
+      where: { courseId },
+      include: [
+        {
+          model: User,
+          as: "instructor",
+          attributes: ["userId", "username", "email", "profileImage", "bio"]
+        },
+        {
+          model: User,
+          as: "assigner",
+          attributes: ["userId", "username"]
+        }
+      ]
+    });
+
+    return sendSuccess(res, "Course instructors retrieved successfully", courseInstructors);
+  } catch (error) {
+    console.error("Error getting course instructors:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Add instructors to a course
+export const addCourseInstructors = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { instructorIds, isPrimary = false } = req.body;
+    const assignedBy = req.user.userId;
+
+    if (!Array.isArray(instructorIds) || instructorIds.length === 0) {
+      return sendValidationError(res, "Instructor IDs array is required");
+    }
+
+    // Check if course exists
+    const course = await Course.findByPk(courseId);
+    if (!course) {
+      return sendNotFound(res, "Course not found");
+    }
+
+    // Check if instructors exist and have teacher/admin role
+    const instructors = await User.findAll({
+      where: { 
+        userId: instructorIds,
+        role: { [Op.in]: ['teacher', 'admin'] }
+      }
+    });
+    
+    if (instructors.length !== instructorIds.length) {
+      return sendValidationError(res, "One or more instructors not found or don't have appropriate role");
+    }
+
+    // Create course instructor associations
+    const courseInstructors = await Promise.all(
+      instructorIds.map(instructorId =>
+        CourseInstructor.findOrCreate({
+          where: { courseId, instructorId },
+          defaults: { courseId, instructorId, isPrimary, assignedBy }
+        })
+      )
+    );
+
+    const newlyAdded = courseInstructors.filter(([courseInstructor, created]) => created);
+    
+    return sendSuccess(res, `Added ${newlyAdded.length} new instructor(s) to course`, {
+      added: newlyAdded.length,
+      total: courseInstructors.length
+    });
+  } catch (error) {
+    console.error("Error adding course instructors:", error);
+    return sendServerError(res, error);
+  }
+};
+
+// Remove instructor from course
+export const removeCourseInstructor = async (req, res) => {
+  try {
+    const { courseId, instructorId } = req.params;
+
+    const deleted = await CourseInstructor.destroy({
+      where: { courseId, instructorId }
+    });
+
+    if (deleted === 0) {
+      return sendNotFound(res, "Course instructor association not found");
+    }
+
+    return sendSuccess(res, "Instructor removed from course successfully");
+  } catch (error) {
+    console.error("Error removing course instructor:", error);
+    return sendServerError(res, error);
   }
 };

@@ -27,6 +27,10 @@ import sequelize from '../config/db.js';
 import CourseTechStack from '../model/courseTechStack.js';
 import CourseGoal from '../model/courseGoal.js';
 import ProjectGoal from '../model/projectGoal.js';
+import CourseLanguage from '../model/courseLanguage.js';
+import ProjectLanguage from '../model/projectLanguage.js';
+import CourseInstructor from '../model/courseInstructor.js';
+import ProjectInstructor from '../model/projectInstructor.js';
 
 // Configure environment variables - use path relative to this file
 const __filename = fileURLToPath(import.meta.url);
@@ -944,6 +948,106 @@ async function createEnrollmentsAndPurchases(students, courses, projects) {
 }
 
 /**
+ * Create language associations for courses and projects
+ */
+async function createLanguageAssociations(courses, projects, languages) {
+  console.log('Creating language associations...');
+  
+  try {
+    // Add 1-3 languages to each course
+    for (const course of courses) {
+      const numLanguages = faker.number.int({ min: 1, max: 3 });
+      const selectedLanguages = faker.helpers.arrayElements(languages, numLanguages);
+      
+      for (const language of selectedLanguages) {
+        await CourseLanguage.findOrCreate({
+          where: { courseId: course.courseId, languageId: language.languageId },
+          defaults: {
+            courseId: course.courseId,
+            languageId: language.languageId
+          }
+        });
+      }
+    }
+
+    // Add 1-2 languages to each project
+    for (const project of projects) {
+      const numLanguages = faker.number.int({ min: 1, max: 2 });
+      const selectedLanguages = faker.helpers.arrayElements(languages, numLanguages);
+      
+      for (const language of selectedLanguages) {
+        await ProjectLanguage.findOrCreate({
+          where: { projectId: project.projectId, languageId: language.languageId },
+          defaults: {
+            projectId: project.projectId,
+            languageId: language.languageId
+          }
+        });
+      }
+    }
+    
+    console.log('Language associations created successfully');
+  } catch (error) {
+    console.error('Error creating language associations:', error);
+  }
+}
+
+/**
+ * Create instructor associations for courses and projects
+ */
+async function createInstructorAssociations(courses, projects, teachers) {
+  console.log('Creating instructor associations...');
+  
+  try {
+    // Add 1-3 instructors to each course
+    for (const course of courses) {
+      const numInstructors = faker.number.int({ min: 1, max: 3 });
+      const selectedInstructors = faker.helpers.arrayElements(teachers, numInstructors);
+      
+      for (let i = 0; i < selectedInstructors.length; i++) {
+        const instructor = selectedInstructors[i];
+        const isPrimary = i === 0; // First instructor is primary
+        
+        await CourseInstructor.findOrCreate({
+          where: { courseId: course.courseId, instructorId: instructor.userId },
+          defaults: {
+            courseId: course.courseId,
+            instructorId: instructor.userId,
+            isPrimary,
+            assignedBy: course.createdBy
+          }
+        });
+      }
+    }
+
+    // Add 1-2 instructors to each project
+    for (const project of projects) {
+      const numInstructors = faker.number.int({ min: 1, max: 2 });
+      const selectedInstructors = faker.helpers.arrayElements(teachers, numInstructors);
+      
+      for (let i = 0; i < selectedInstructors.length; i++) {
+        const instructor = selectedInstructors[i];
+        const isPrimary = i === 0; // First instructor is primary
+        
+        await ProjectInstructor.findOrCreate({
+          where: { projectId: project.projectId, instructorId: instructor.userId },
+          defaults: {
+            projectId: project.projectId,
+            instructorId: instructor.userId,
+            isPrimary,
+            assignedBy: project.createdBy
+          }
+        });
+      }
+    }
+    
+    console.log('Instructor associations created successfully');
+  } catch (error) {
+    console.error('Error creating instructor associations:', error);
+  }
+}
+
+/**
  * Main function to seed the database
  */
 async function seedDatabase() {
@@ -989,6 +1093,14 @@ async function seedDatabase() {
     // Create ratings (after purchases and enrollments exist)
     console.log('Step 10: Creating ratings...');
     const { courseRatings, projectRatings } = await createRatings(enrollments, purchases);
+
+    // Create course and project language associations
+    console.log('Step 11: Creating course and project language associations...');
+    await createLanguageAssociations([...liveCourses, ...recordedCourses], projects, languages);
+
+    // Create course and project instructor associations
+    console.log('Step 12: Creating course and project instructor associations...');
+    await createInstructorAssociations([...liveCourses, ...recordedCourses], projects, teachers);
 
     console.log('Database seeding completed successfully!');
     console.log(`Created ${liveCourses.length} live courses`);

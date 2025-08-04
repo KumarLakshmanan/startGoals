@@ -542,12 +542,3 @@ export const getDownloadStatistics = async (req, res) => {
     sendServerError(res, "Failed to fetch download statistics", error.message);
   }
 };
-
-export default {
-  uploadProjectFiles,
-  getProjectFiles,
-  downloadProjectFile,
-  updateProjectFile,
-  deleteProjectFile,
-  getDownloadStatistics,
-};

@@ -1023,14 +1023,3 @@ const getDiscountStatus = (discount) => {
 
   return "active";
 };
-
-export default {
-  createDiscountCode,
-  getDiscountCodeById,
-  updateDiscountCode,
-  deleteDiscountCode,
-  validateDiscountCode,
-  getDiscountUsageStatistics,
-  getAllDiscountCodesAdmin,
-  getDiscountAnalytics
-};

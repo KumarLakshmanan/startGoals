@@ -24,7 +24,15 @@ import {
   exportCourseData,
   getCourseRatingsStats,
   getCourseReviews,
-  createCourseReview
+  createCourseReview,
+  // Language management
+  getCourseLanguages,
+  addCourseLanguages,
+  removeCourseLanguage,
+  // Instructor management
+  getCourseInstructors,
+  addCourseInstructors,
+  removeCourseInstructor
 } from "../controller/courseController.js";
 
 const router = express.Router();
@@ -77,6 +85,20 @@ router.get("/admin/stats", isTeacher, getCoursesStats);
 router.get("/:courseId/ratings/stats", getCourseRatingsStats); // Get rating statistics
 router.get("/:courseId/reviews", getCourseReviews); // Get course reviews with pagination
 router.post("/:courseId/reviews", authenticateToken, createCourseReview); // Create review (authenticated users only)
+
+// ===================== COURSE LANGUAGE MANAGEMENT =====================
+
+// Course Language CRUD operations
+router.get("/:courseId/languages", authenticateToken, getCourseLanguages); // Get course languages
+router.post("/:courseId/languages", isAdmin, addCourseLanguages); // Add languages to course
+router.delete("/:courseId/languages/:languageId", isAdmin, removeCourseLanguage); // Remove language from course
+
+// ===================== COURSE INSTRUCTOR MANAGEMENT =====================
+
+// Course Instructor CRUD operations
+router.get("/:courseId/instructors", authenticateToken, getCourseInstructors); // Get course instructors
+router.post("/:courseId/instructors", isAdmin, addCourseInstructors); // Add instructors to course
+router.delete("/:courseId/instructors/:instructorId", isAdmin, removeCourseInstructor); // Remove instructor from course
 
 // Legacy routes (for backward compatibility)
 router.post("/uploadCourse", isTeacher, createCourse);

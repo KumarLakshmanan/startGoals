@@ -43,6 +43,13 @@ const ProjectGoal = sequelize.define(
   {
     tableName: "project_goals",
     ...commonOptions,
+    indexes: [
+      {
+        unique: true,
+        fields: ["project_id", "goal_id"],
+        name: "unique_project_goal",
+      },
+    ],
   },
 );
 
