@@ -6,10 +6,18 @@ import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 const CourseGoal = sequelize.define(
   "courseGoal",
   {
-    goalId: {
+    courseGoalId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
+    },
+    goalId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: "goals",
+        key: "goal_id",
+      },
     },
     courseId: {
       type: DataTypes.UUID,
@@ -17,6 +25,17 @@ const CourseGoal = sequelize.define(
       references: {
         model: "courses",
         key: "course_id",
+      },
+    },
+    goalName: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      validate: {
+        notEmpty: { msg: "Goal name is required" },
+        len: {
+          args: [3, 100],
+          msg: "Goal name must be between 3 and 100 characters",
+        },
       },
     },
     ...commonFields,

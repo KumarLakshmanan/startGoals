@@ -25,6 +25,8 @@ import { faker } from '@faker-js/faker';
 import bcrypt from 'bcrypt';
 import sequelize from '../config/db.js';
 import CourseTechStack from '../model/courseTechStack.js';
+import CourseGoal from '../model/courseGoal.js';
+import ProjectGoal from '../model/projectGoal.js';
 
 // Configure environment variables - use path relative to this file
 const __filename = fileURLToPath(import.meta.url);
@@ -81,7 +83,7 @@ async function initBasicData() {
     },
   ];
   // Spoken Languages
-  const languages = [
+  const courseLanguages = [
     { language: 'English', languageCode: 'en', languageType: 'both', nativeName: 'English' },
     { language: 'Tamil', languageCode: 'ta', languageType: 'both', nativeName: 'தமிழ்' },
     { language: 'Hindi', languageCode: 'hi', languageType: 'both', nativeName: 'हिन्दी' },
@@ -186,8 +188,8 @@ async function initBasicData() {
     categories.push(category);
   }
   // Create programming languages
-  const programmingLanguages = [];
-  for (const langData of languages) {
+  const languages = [];
+  for (const langData of courseLanguages) {
     const [lang] = await Language.findOrCreate({
       where: { language: langData.language },
       defaults: {
@@ -195,7 +197,7 @@ async function initBasicData() {
         ...langData,
       }
     });
-    programmingLanguages.push(lang);
+    languages.push(lang);
   }
 
   return {
@@ -204,15 +206,14 @@ async function initBasicData() {
     students,
     levels,
     categories,
-    programmingLanguages,
+    languages,
   };
 }
 
 /**
  * Create live courses with sessions
  */
-// const liveCourses = await createLiveCourses(teachers, categories, programmingLanguages, levels, skills);
-async function createLiveCourses(teachers, categories, programmingLanguages, levels, skills) {
+async function createLiveCourses(teachers, categories, goals, languages, levels, skills) {
   console.log('Creating live courses...');
 
   const liveCourses = [];
@@ -263,7 +264,7 @@ async function createLiveCourses(teachers, categories, programmingLanguages, lev
           'Course materials',
           'Project templates',
           'Support from instructors',
-        ].join('\n• '),  // Convert array to string with bullet points
+        ].join('\n• '),
         hasCertificate: true,
         certificateTemplateUrl: `https://storage.example.com/certificates/template_${i + 1}.pdf`,
         supportIncluded: faker.datatype.boolean(),
@@ -281,7 +282,7 @@ async function createLiveCourses(teachers, categories, programmingLanguages, lev
       });
 
       liveCourses.push(course);
-      
+
       // Add random tech stack (2-5 skills) using junction table
       if (skills && skills.length > 0) {
         const techStackSkills = faker.helpers.arrayElements(skills, { min: 2, max: 5 });
@@ -334,6 +335,19 @@ async function createLiveCourses(teachers, categories, programmingLanguages, lev
           recordingUrl: j < 2 ? `https://storage.example.com/recordings/session_${j + 1}_${faker.string.alphanumeric(8)}.mp4` : null,
         });
       }
+
+      // Add sample goals to CourseGoal
+      if (goals && goals.length > 0) {
+        const courseGoals = faker.helpers.arrayElements(goals, { min: 2, max: 4 });
+        for (const goal of courseGoals) {
+          await CourseGoal.create({
+            courseGoalId: uuidv4(),
+            goalId: goal.goalId,
+            courseId: course.courseId,
+            goalName: goal.goalName,
+          });
+        }
+      }
     } catch (error) {
       console.error(`Error creating live course ${i + 1}:`, error.message);
       // Continue with the next course
@@ -347,7 +361,7 @@ async function createLiveCourses(teachers, categories, programmingLanguages, lev
 /**
  * Create recorded courses
  */
-async function createRecordedCourses(teachers, categories, programmingLanguages, levels, skills) {
+async function createRecordedCourses(teachers, categories, goals, languages, levels, skills) {
   console.log('Creating recorded courses...');
 
   const recordedCourses = [];
@@ -389,7 +403,7 @@ async function createRecordedCourses(teachers, categories, programmingLanguages,
           'Downloadable resources',
           'Projects and exercises',
           'Certificate of completion',
-        ].join('\n• '),  // Convert array to string with bullet points
+        ].join('\n• '),
         hasCertificate: faker.datatype.boolean(),
         certificateTemplateUrl: faker.datatype.boolean() ? `https://storage.example.com/certificates/template_${i + 100}.pdf` : null,
         supportIncluded: faker.datatype.boolean(),
@@ -483,12 +497,25 @@ async function createRecordedCourses(teachers, categories, programmingLanguages,
         durationMinutes: totalDuration,
         lastUpdated: new Date()
       });
+
+      // Add sample goals to CourseGoal
+      if (goals && goals.length > 0) {
+        const courseGoals = faker.helpers.arrayElements(goals, { min: 2, max: 4 });
+        for (const goal of courseGoals) {
+          await CourseGoal.create({
+            courseGoalId: uuidv4(),
+            goalId: goal.goalId,
+            courseId: course.courseId,
+            goalName: goal.goalName,
+          });
+        }
+      }
     } catch (error) {
       console.error(`Error creating recorded course ${i + 1}:`, error.message);
       // Continue with the next course
     }
   }
-  
+
   console.log(`Successfully created ${recordedCourses.length} recorded courses`);
   return recordedCourses;
 }
@@ -496,7 +523,7 @@ async function createRecordedCourses(teachers, categories, programmingLanguages,
 /**
  * Create projects of different types with tech stack and programming languages
  */
-async function createProjects(teachers, categories, languages, levels, skills) {
+async function createProjects(teachers, categories, goals, languages, levels, skills) {
   console.log('Creating projects...');
 
   const projects = [];
@@ -554,7 +581,6 @@ async function createProjects(teachers, categories, languages, levels, skills) {
         licenseType: faker.helpers.arrayElement(['personal', 'commercial', 'one_time', 'unlimited']),
         featured: faker.datatype.boolean({ probability: 0.2 }),
       });
-
       projects.push(project);
 
       // Add random tech stack (2-5 skills) using junction table
@@ -567,7 +593,18 @@ async function createProjects(teachers, categories, languages, levels, skills) {
           });
         }
       }
-
+      // add goals to ProjectGoal
+      if (goals && goals.length > 0) {
+        const projectGoals = faker.helpers.arrayElements(goals, { min: 1, max: 3 });
+        for (const goal of projectGoals) {
+          await ProjectGoal.create({
+            projectGoalId: uuidv4(),
+            goalId: goal.goalId,
+            projectId: project.projectId,
+            goalName: goal.goalName,
+          });
+        }
+      }
     } catch (error) {
       console.error(`Error creating project ${i}:`, error.message);
     }
@@ -829,16 +866,16 @@ async function createEnrollmentsAndPurchases(students, courses, projects) {
   // Create course enrollments
   for (const course of courses) {
     const numEnrollments = faker.number.int({ min: 5, max: 20 });
-    
+
     for (let i = 0; i < numEnrollments; i++) {
       try {
         const student = students[Math.floor(Math.random() * students.length)];
-        
+
         // Check if this student is already enrolled
         const existingEnrollment = await Enrollment.findOne({
-          where: { 
+          where: {
             courseId: course.courseId,
-            userId: student.userId 
+            userId: student.userId
           }
         });
 
@@ -864,16 +901,16 @@ async function createEnrollmentsAndPurchases(students, courses, projects) {
   // Create project purchases
   for (const project of projects) {
     const numPurchases = faker.number.int({ min: 3, max: 15 });
-    
+
     for (let i = 0; i < numPurchases; i++) {
       try {
         const student = students[Math.floor(Math.random() * students.length)];
-        
+
         // Check if this student already purchased this project
         const existingPurchase = await ProjectPurchase.findOne({
-          where: { 
+          where: {
             projectId: project.projectId,
-            userId: student.userId 
+            userId: student.userId
           }
         });
 
@@ -890,7 +927,7 @@ async function createEnrollmentsAndPurchases(students, courses, projects) {
             paymentMethod: faker.helpers.arrayElement(['card', 'upi', 'netbanking', 'wallet']),
             paymentId: faker.string.alphanumeric(20),
             downloadCount: faker.number.int({ min: 0, max: project.downloadLimit || 5 }),
-            supportExpiryDate: project.supportDuration ? 
+            supportExpiryDate: project.supportDuration ?
               new Date(Date.now() + (project.supportDuration * 24 * 60 * 60 * 1000)) : null,
           });
           purchases.push(purchase);
@@ -915,7 +952,7 @@ async function seedDatabase() {
 
     // Initialize basic data
     console.log('Step 1: Initializing basic data...');
-    const { teachers, students, levels, categories, programmingLanguages } = await initBasicData();
+    const { teachers, students, levels, categories, languages } = await initBasicData();
 
     // Create goals
     console.log('Step 4: Creating goals...');
@@ -927,15 +964,15 @@ async function seedDatabase() {
 
     // Create projects
     console.log('Step 6: Creating projects...');
-    const projects = await createProjects(teachers, categories, programmingLanguages, levels, skills);
+    const projects = await createProjects(teachers, categories, goals, languages, levels, skills);
 
     // Create live courses
     console.log('Step 2: Creating live courses...');
-    const liveCourses = await createLiveCourses(teachers, categories, programmingLanguages, levels, skills);
+    const liveCourses = await createLiveCourses(teachers, categories, goals, languages, levels, skills);
 
     // Create recorded courses
     console.log('Step 3: Creating recorded courses...');
-    const recordedCourses = await createRecordedCourses(teachers, categories, programmingLanguages, levels, skills);
+    const recordedCourses = await createRecordedCourses(teachers, categories, goals, languages, levels, skills);
 
     // Create banners
     console.log('Step 7: Creating banners...');

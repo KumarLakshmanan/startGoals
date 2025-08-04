@@ -469,6 +469,18 @@ export const getProjectById = async (req, res) => {
             },
           ],
         },
+        {
+          model: ProjectGoal,
+          as: "goals",
+          attributes: ["goalId"],
+          include: [
+            {
+              model: Goal,
+              as: "goal",
+              attributes: ["goalId", "goalName", "description"],
+            },
+          ],
+        }
       ],
     });
 
