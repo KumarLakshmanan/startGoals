@@ -1,7 +1,6 @@
 // routes/examRoutes.js
 import express from "express";
 import {
-  bulkUploadExams,
   getAllExams,
   getExamsByLevel,
   getExamOptions,
@@ -19,7 +18,6 @@ router.get("/", getAllExams);
 router.post("/", isAdmin, createExam);
 
 // Legacy routes
-router.post("/saveAllExams", isAdmin, bulkUploadExams);
 router.post("/createExam", isAdmin, createExam);
 router.get("/getAllExams", getAllExams);
 router.get("/getAll", getAllExams);

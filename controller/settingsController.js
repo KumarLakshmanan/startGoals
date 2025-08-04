@@ -1,12 +1,6 @@
 import Settings from "../model/settings.js";
-import User from "../model/user.js";
-import { Op } from "sequelize";
-import sequelize from "../config/db.js";
-import fs from "fs/promises";
-import path from "path";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
   sendServerError,
@@ -181,8 +175,6 @@ export const getNotificationTemplates = async (req, res) => {
       category, // user_registration, course_completion, payment, etc.
       status, // active, inactive, draft
       search,
-      sortBy = "createdAt",
-      sortOrder = "DESC",
     } = req.query;
 
     // Since we don't have a notification templates table yet, let's create mock data structure

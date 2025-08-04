@@ -8,9 +8,8 @@ import {
   getDownloadStatistics,
 } from "../controller/projectFileController.js";
 import { isAdmin } from "../middleware/authMiddleware.js";
-
 import { param, query, body } from "express-validator";
-import { fileUploadMiddleware } from "../middleware/fileUploadMiddleware.js";
+import { uploadMultiple } from "../middleware/fileUploadMiddleware.js";
 
 const router = express.Router();
 
@@ -20,7 +19,7 @@ const router = express.Router();
 router.post(
   "/:projectId/files",
   isAdmin, // Add authentication
-  fileUploadMiddleware.array("files", 10), // Allow up to 10 files
+  uploadMultiple("files", 10), // Allow up to 10 files
   [
     param("projectId").isInt().withMessage("Valid project ID is required"),
     body("fileDescriptions")

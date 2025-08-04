@@ -1,10 +1,8 @@
 import express from "express";
-import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
+import { isAdmin } from "../middleware/authMiddleware.js";
 import {
   createCategory,
   getAllCategories,
-  bulkCreateCategories,
-  saveAllCategories,
   getCategoryById,
   getCategoryByCode,
   deleteCategoryById,
@@ -17,7 +15,6 @@ const router = express.Router();
 // Legacy routes for backward compatibility (STATIC FIRST)
 router.get("/getAllCategories", getAllCategories);
 router.get("/getCategory/:id", getCategoryById);
-router.post("/saveAllCategories", isAdmin, saveAllCategories);
 router.post("/createCategory", isAdmin, createCategory);
 router.get("/getCategoryByCode/:code", getCategoryByCode);
 router.delete("/deleteCategory/:id", isAdmin, deleteCategoryById);

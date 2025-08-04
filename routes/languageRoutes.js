@@ -1,9 +1,7 @@
 import express from "express";
-import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
+import { isAdmin } from "../middleware/authMiddleware.js";
 import {
   deleteCourseLanguage,
-  uploadLanguagesBulk,
-  saveAllLanguages,
   getAllLanguages,
   getLanguagesByType,
   getLanguageStats,
@@ -34,10 +32,6 @@ router.put("/:id", isAdmin, updateLanguage);
 router.delete("/:id", isAdmin, deleteCourseLanguage);
 
 
-// Bulk operations
-router.post("/upload", isAdmin, uploadLanguagesBulk);
-router.post("/saveAllLanguage", isAdmin, uploadLanguagesBulk);
-router.post("/saveAllLanguages", isAdmin, saveAllLanguages);
 router.post("/saveLanguage", isAdmin, saveLanguage);
 
 export default router;

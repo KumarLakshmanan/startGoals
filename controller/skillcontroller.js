@@ -1,7 +1,6 @@
 // controller/skillController.js
 import Skill from "../model/skill.js";
 import CourseLevel from "../model/courseLevel.js";
-import { validateSkillInput } from "../utils/commonUtils.js";
 import { Op } from "sequelize";
 import {
   sendSuccess,
@@ -11,108 +10,6 @@ import {
   sendConflict
 } from "../utils/responseHelper.js";
 
-export const bulkUploadSkills = async (req, res) => {
-  try {
-    const requestBody = req.body;
-    let skills;
-
-    // Handle both direct array and wrapper object formats
-    if (Array.isArray(requestBody)) {
-      skills = requestBody;
-    } else if (requestBody.skills && Array.isArray(requestBody.skills)) {
-      skills = requestBody.skills;
-    } else {
-      return sendValidationError(res, "Invalid request format", {
-        body: "Request body must be an array of skills or an object with a 'skills' array property"
-      });
-    }
-
-    if (skills.length === 0) {
-      return sendValidationError(res, "Empty skills array", {
-        skills: "Request body must be a non-empty array of skills"
-      });
-    }
-
-    // Check if skills table exists, if not create it
-    try {
-      await Skill.sync({ alter: false });
-    } catch (error) {
-      console.error("Error checking skills table:", error);
-      return sendServerError(res, "Database error: Skills table might not exist", error.message);
-    }
-
-    // Process skills
-    const skillsToCreate = [];
-    const validationErrors = [];
-
-    for (let i = 0; i < skills.length; i++) {
-      const skill = skills[i];
-
-      // Validate each skill
-      const errors = validateSkillInput(skill);
-      if (errors.length > 0) {
-        validationErrors.push({ index: i, errors });
-        continue;
-      }      // Look up level ID if level is provided
-      let levelId = null;
-      if (skill.level) {
-        const level = await CourseLevel.findOne({
-          where: {
-            [Op.or]: [
-              { name: skill.level },
-              { name: { [Op.iLike]: skill.level } },
-            ],
-          },
-        });
-        if (!level) {
-          validationErrors.push({
-            index: i,
-            errors: [`Level '${skill.level}' not found`],
-          });
-          continue;
-        }
-        levelId = level.levelId;
-      } else if (skill.levelId) {
-        // Validate levelId if provided directly
-        const level = await CourseLevel.findByPk(skill.levelId);
-        if (!level) {
-          validationErrors.push({
-            index: i,
-            errors: [`Level with ID '${skill.levelId}' not found`],
-          });
-          continue;
-        }
-        levelId = skill.levelId;
-      }
-
-      const skillData = {
-        skillName: skill.skillName,
-        levelId: levelId,
-        description: skill.description || null,
-      };
-
-      skillsToCreate.push(skillData);
-    }
-
-    // Return validation errors if any
-    if (validationErrors.length > 0) {
-      return sendValidationError(res, "Validation failed for one or more skills.", {
-        validationErrors
-      });
-    }
-
-    const createdSkills = await Skill.bulkCreate(skillsToCreate, {
-      ignoreDuplicates: true,
-    });
-
-    return sendSuccess(res, "Skills uploaded successfully", {
-      data: createdSkills
-    });
-  } catch (error) {
-    console.error("Bulk upload error:", error);
-    return sendServerError(res, "Failed to upload skills", error.message);
-  }
-};
 
 export const getAllSkills = async (req, res) => {
   try {

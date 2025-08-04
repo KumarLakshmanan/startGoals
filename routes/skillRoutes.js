@@ -1,7 +1,6 @@
 // routes/skillRoutes.js
 import express from "express";
 import {
-  bulkUploadSkills,
   getAllSkills,
   getSkillsByLevel,
   getSkillOptions,
@@ -15,8 +14,6 @@ import { isAdmin } from "../middleware/authMiddleware.js";
 const router = express.Router();
 
 
-// Legacy routes for backward compatibility (STATIC FIRST)
-router.post("/saveAllSkills", isAdmin, bulkUploadSkills);
 router.post("/createSkill", isAdmin, createSkill);
 router.get("/getAllSkills", getAllSkills);
 router.get("/getSkill/:skillId", getSkill);

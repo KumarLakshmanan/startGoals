@@ -1,6 +1,5 @@
 // middleware/upload.js
 import multer from "multer";
-import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { Upload } from "@aws-sdk/lib-storage";
 import { s3, bucketName } from "../config/awsS3Config.js";
 import path from "path";
@@ -14,7 +13,6 @@ const folderMap = {
   resource: "resources/",
   artical: "articals/",
   banner: "banners/",
-  files: "project-files/", // For project files
   projectFiles: "project-files/", // Alternative name for project files
   courseFiles: "course-files/", // For course files
 };
@@ -109,7 +107,6 @@ const upload = multer({
       resource: /pdf|doc|docx|ppt|pptx|txt|zip|rar/,
       artical: /pdf|doc|docx|txt/,
       banner: /jpeg|jpg|png|gif|webp/,
-      // allow all extensions for project files
       files: /.*/,
       projectFiles: /.*/,
       courseFiles: /.*/,

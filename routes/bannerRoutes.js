@@ -5,12 +5,11 @@ import {
   createBanner,
   updateBanner,
   deleteBanner,
-  bulkCreateBanners,
   bulkDeleteBanners,
   getActiveBanners,
 } from "../controller/bannerController.js";
-import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
-import upload from "../middleware/fileUploadMiddleware.js";
+import { isAdmin } from "../middleware/authMiddleware.js";
+import { uploadSingle } from "../middleware/fileUploadMiddleware.js";
 
 const router = express.Router();
 
@@ -24,14 +23,13 @@ router.get("/:id", getBannerById); // Direct ID access
 router.get("/get/:id", getBannerById); // Get banner by ID (backward compatibility)
 
 // Routes with file upload handling - using the project's standardized file upload middleware
-router.post("/", upload.single('banner'), createBanner); // Base route for creation
-router.post("/create", upload.single('banner'), createBanner); // Create new banner (backward compatibility)
-router.put("/:id", upload.single('banner'), updateBanner); // Direct ID update
-router.put("/update/:id", upload.single('banner'), updateBanner); // Update banner by ID (backward compatibility)
+router.post("/", uploadSingle('banner'), isAdmin, createBanner); // Base route for creation
+router.post("/create", uploadSingle('banner'), isAdmin, createBanner); // Create new banner (backward compatibility)
+router.put("/:id", uploadSingle('banner'), isAdmin, updateBanner); // Direct ID update
+router.put("/update/:id", uploadSingle('banner'), isAdmin, updateBanner); // Update banner by ID (backward compatibility)
 
-router.delete("/:id", deleteBanner); // Direct ID delete
-router.delete("/delete/:id", deleteBanner); // Delete banner by ID (backward compatibility)
-router.post("/bulkCreate", bulkCreateBanners); // Bulk create banners
-router.post("/bulkDelete", bulkDeleteBanners); // Bulk delete banners
+router.delete("/:id", isAdmin, deleteBanner); // Direct ID delete
+router.delete("/delete/:id", isAdmin, deleteBanner); // Delete banner by ID (backward compatibility)
+router.post("/bulkDelete", isAdmin, bulkDeleteBanners); // Bulk delete banners
 
 export default router;

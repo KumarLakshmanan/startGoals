@@ -13,7 +13,6 @@ import {
   uploadLessonVideo,
 } from "../controller/sectionController.js";
 import {
-  authenticateToken,
   isTeacher,
   isStudent,
   isAdmin,

@@ -34,14 +34,26 @@ const CourseEnhanced = sequelize.define(
     levelId: {
       type: DataTypes.UUID,
       allowNull: false,
+      references: {
+        model: "course_levels",
+        key: "level_id",
+      },
     },
     categoryId: {
       type: DataTypes.UUID,
       allowNull: false,
+      references: {
+        model: "categories",
+        key: "category_id",
+      },
     },
     createdBy: {
       type: DataTypes.UUID,
       allowNull: false,
+      references: {
+        model: "users",
+        key: "user_id",
+      },
     },
     type: {
       type: DataTypes.ENUM("recorded", "live"),
