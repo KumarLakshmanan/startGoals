@@ -76,7 +76,7 @@ export const getSearchSuggestions = async (req, res) => {
           {
             model: User,
             as: "instructor",
-            attributes: ["userId", "firstName", "lastName", "username"],
+            attributes: ["userId", "username"],
           },
           {
             model: Category,
@@ -101,7 +101,7 @@ export const getSearchSuggestions = async (req, res) => {
           type: "course",
           id: course.courseId,
           title: course.title,
-          subtitle: `${course.type} Course by ${course.instructor?.firstName} ${course.instructor?.lastName}`,
+          subtitle: `${course.type} Course by ${course.instructor?.username || "Unknown"}`,
           icon: "📘",
           price: course.price,
           thumbnail: course.thumbnailUrl,
@@ -163,15 +163,11 @@ export const getSearchSuggestions = async (req, res) => {
         where: {
           [Op.or]: [
             { username: { [Op.iLike]: searchTerm } },
-            { firstName: { [Op.iLike]: searchTerm } },
-            { lastName: { [Op.iLike]: searchTerm } },
           ],
           role: "teacher",
         },
         attributes: [
           "userId",
-          "firstName",
-          "lastName",
           "username",
           "profileImage",
           "bio",
@@ -191,14 +187,14 @@ export const getSearchSuggestions = async (req, res) => {
         ...instructorResults.map((instructor) => ({
           type: "instructor",
           id: instructor.userId,
-          title: `${instructor.firstName} ${instructor.lastName}`,
-          subtitle: `@${instructor.username} - Instructor`,
+          title: `${instructor.username}`,
+          subtitle: `@${instructor.username}`,
           icon: "👨‍🏫",
           image: instructor.profileImage,
           bio: instructor.bio,
           url: `/instructors/${instructor.userId}`,
           relevance_score: calculateBasicRelevance(
-            `${instructor.firstName} ${instructor.lastName} ${instructor.username}`,
+            `${instructor.username}`,
             query
           ),
         }))
@@ -895,8 +891,6 @@ export const getSearchFilters = async (req, res) => {
         where: { role: "teacher" },
         attributes: [
           "userId",
-          "firstName",
-          "lastName",
           "username",
           "profileImage",
         ],
@@ -910,12 +904,12 @@ export const getSearchFilters = async (req, res) => {
           },
         ],
         group: ["User.userId"],
-        order: [["firstName", "ASC"]],
+        order: [["username", "ASC"]],
         limit: 50,
       });
       filters.instructors = instructors.map((inst) => ({
         id: inst.userId,
-        name: `${inst.firstName} ${inst.lastName}`,
+        name: `${inst.username}`,
         username: inst.username,
         profileImage: inst.profileImage,
       }));

@@ -215,7 +215,7 @@ export const userLogin = async (req, res) => {
 
       return sendSuccess(res,  "Login successful.", {
         userId: user.userId,
-        name: user.username || user.firstName || user.email,
+        name: user.username || user.email,
         email: user.email,
         mobile: user.mobile,
         role: user.role,
@@ -526,8 +526,6 @@ export const getAllStudents = async (req, res) => {
 
     if (search) {
       whereConditions[Op.or] = [
-        { firstName: { [Op.iLike]: `%${search}%` } },
-        { lastName: { [Op.iLike]: `%${search}%` } },
         { username: { [Op.iLike]: `%${search}%` } },
         { email: { [Op.iLike]: `%${search}%` } },
         { mobile: { [Op.iLike]: `%${search}%` } },

@@ -33,6 +33,7 @@ const CourseFile = sequelize.define(
       type: DataTypes.ENUM(
         "video",
         "document",
+        "assignment",
         "image",
         "audio",
         "archive",

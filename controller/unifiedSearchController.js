@@ -91,26 +91,22 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
         where: {
           [Op.or]: [
             { username: { [Op.iLike]: searchTerm } },
-            { firstName: { [Op.iLike]: searchTerm } },
-            { lastName: { [Op.iLike]: searchTerm } },
           ],
           role: "teacher",
         },
         attributes: [
           "userId",
           "username",
-          "firstName",
-          "lastName",
           "profileImage",
         ],
         limit: Math.floor(parseInt(limit) / 3),
-        order: [["firstName", "ASC"]],
+        order: [["username", "ASC"]],
       });
 
       instructorResults.forEach((instructor) => {
         suggestions.push({
           id: instructor.userId,
-          title: `${instructor.firstName} ${instructor.lastName}`,
+          title: `${instructor.username}`,
           username: instructor.username,
           type: "instructor",
           thumbnail: instructor.profileImage,
@@ -176,8 +172,7 @@ export const searchCoursesAndProjects = async (req, res) => {
         courseWhere[Op.or] = [
           { title: { [Op.iLike]: `%${query}%` } },
           { description: { [Op.iLike]: `%${query}%` } },
-          { "$instructor.firstName$": { [Op.iLike]: `%${query}%` } },
-          { "$instructor.lastName$": { [Op.iLike]: `%${query}%` } },
+          { "$instructor.username$": { [Op.iLike]: `%${query}%` } },
         ];
       }
 
@@ -201,7 +196,7 @@ export const searchCoursesAndProjects = async (req, res) => {
         {
           model: User,
           as: "instructor",
-          attributes: ["userId", "firstName", "lastName", "profileImage"],
+          attributes: ["userId", "username", "profileImage"],
         },
         {
           model: Category,
@@ -477,8 +472,8 @@ export const getUnifiedSearchFilters = async (req, res) => {
     // Instructors/Creators
     const instructors = await User.findAll({
       where: { role: "teacher" },
-      attributes: ["userId", "firstName", "lastName", "profileImage"],
-      order: [["firstName", "ASC"]],
+      attributes: ["userId", "username", "profileImage"],
+      order: [["username", "ASC"]],
     });
 
     let filters = {

@@ -1720,97 +1720,263 @@ export const removeProjectLanguage = async (req, res) => {
 export const getProjectInstructors = async (req, res) => {
   try {
     const { projectId } = req.params;
+    const { page = 1, limit = 10 } = req.query;
 
-    const projectInstructors = await ProjectInstructor.findAll({
-      where: { projectId },
-      include: [
-        {
-          model: User,
-          as: "instructor",
-          attributes: ["userId", "username", "email", "profileImage", "bio"]
-        },
-        {
-          model: User,
-          as: "assigner",
-          attributes: ["userId", "username"]
-        }
-      ]
-    });
-
-    return sendSuccess(res, "Project instructors retrieved successfully", projectInstructors);
-  } catch (error) {
-    console.error("Error getting project instructors:", error);
-    return sendServerError(res, error);
-  }
-};
-
-// Add instructors to a project
-export const addProjectInstructors = async (req, res) => {
-  try {
-    const { projectId } = req.params;
-    const { instructorIds, isPrimary = false } = req.body;
-    const assignedBy = req.user.userId;
-
-    if (!Array.isArray(instructorIds) || instructorIds.length === 0) {
-      return sendValidationError(res, "Instructor IDs array is required");
-    }
-
-    // Check if project exists
+    // Validate project exists
     const project = await Project.findByPk(projectId);
     if (!project) {
       return sendNotFound(res, "Project not found");
     }
 
-    // Check if instructors exist and have teacher/admin role
-    const instructors = await User.findAll({
-      where: { 
-        userId: instructorIds,
-        role: { [Op.in]: ['teacher', 'admin'] }
-      }
+    const offset = (page - 1) * limit;
+
+    const { count, rows: instructors } = await ProjectInstructor.findAndCountAll({
+      where: { projectId },
+      include: [
+        {
+          model: User,
+          as: 'instructor',
+          attributes: ['userId', 'username', 'email', 'profileImage'],
+        },
+        {
+          model: User,
+          as: 'assigner',
+          attributes: ['userId', 'username', 'email'],
+        },
+      ],
+      limit: parseInt(limit),
+      offset,
+      order: [['isPrimary', 'DESC'], ['createdAt', 'ASC']],
     });
-    
-    if (instructors.length !== instructorIds.length) {
-      return sendValidationError(res, "One or more instructors not found or don't have appropriate role");
-    }
 
-    // Create project instructor associations
-    const projectInstructors = await Promise.all(
-      instructorIds.map(instructorId =>
-        ProjectInstructor.findOrCreate({
-          where: { projectId, instructorId },
-          defaults: { projectId, instructorId, isPrimary, assignedBy }
-        })
-      )
-    );
-
-    const newlyAdded = projectInstructors.filter(([, created]) => created);
-    
-    return sendSuccess(res, `Added ${newlyAdded.length} new instructor(s) to project`, {
-      added: newlyAdded.length,
-      total: projectInstructors.length
+    return sendSuccess(res, "Project instructors retrieved successfully", {
+      instructors,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / limit),
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
+      },
     });
   } catch (error) {
+    console.error("Error fetching project instructors:", error);
+    return sendServerError(res, "Failed to fetch project instructors");
+  }
+};
+
+// Add instructors to a project
+export const addProjectInstructors = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { projectId } = req.params;
+    const { instructorIds, isPrimary = false } = req.body;
+    const userId = req.user.userId;
+
+    // Validate project exists
+    const project = await Project.findByPk(projectId, { transaction });
+    if (!project) {
+      await transaction.rollback();
+      return sendNotFound(res, "Project not found");
+    }
+
+    // Validate instructor IDs
+    if (!Array.isArray(instructorIds) || instructorIds.length === 0) {
+      await transaction.rollback();
+      return sendValidationError(res, "At least one instructor ID is required");
+    }
+
+    // Validate instructors exist and are teachers/admins
+    const instructors = await User.findAll({
+      where: {
+        userId: { [Op.in]: instructorIds },
+        role: { [Op.in]: ['teacher', 'admin'] },
+      },
+      transaction,
+    });
+
+    if (instructors.length !== instructorIds.length) {
+      await transaction.rollback();
+      return sendValidationError(res, "One or more invalid instructor IDs");
+    }
+
+    // Check for existing assignments (including soft deleted ones)
+    const existingAssignments = await ProjectInstructor.findAll({
+      where: {
+        projectId,
+        instructorId: { [Op.in]: instructorIds },
+      },
+      paranoid: false, // Include soft deleted records
+      transaction,
+    });
+
+    // Filter out soft deleted assignments - they can be restored
+    const activeAssignments = existingAssignments.filter(assignment => !assignment.deletedAt);
+    
+    if (activeAssignments.length > 0) {
+      await transaction.rollback();
+      return sendConflict(res, "One or more instructors are already assigned to this project");
+    }
+
+    // Restore any soft deleted assignments
+    const softDeletedAssignments = existingAssignments.filter(assignment => assignment.deletedAt);
+    if (softDeletedAssignments.length > 0) {
+      await ProjectInstructor.restore({
+        where: {
+          projectId,
+          instructorId: { [Op.in]: softDeletedAssignments.map(a => a.instructorId) }
+        },
+        transaction
+      });
+      
+      // Update the restored assignments
+      await ProjectInstructor.update(
+        { 
+          isPrimary: isPrimary && instructorIds.length === 1, // Only if adding single instructor as primary
+          assignedBy: userId 
+        },
+        {
+          where: {
+            projectId,
+            instructorId: { [Op.in]: softDeletedAssignments.map(a => a.instructorId) }
+          },
+          transaction
+        }
+      );
+    }
+
+    // If setting as primary, remove primary flag from existing instructors
+    if (isPrimary) {
+      await ProjectInstructor.update(
+        { isPrimary: false },
+        {
+          where: { projectId },
+          transaction,
+        }
+      );
+    }
+
+    // Create instructor assignments for new instructors only
+    const restoredInstructorIds = softDeletedAssignments.map(a => a.instructorId);
+    const newInstructorIds = instructorIds.filter(id => !restoredInstructorIds.includes(id));
+    
+    let createdAssignments = [];
+    if (newInstructorIds.length > 0) {
+      const assignments = newInstructorIds.map((instructorId, index) => ({
+        projectId,
+        instructorId,
+        isPrimary: isPrimary && index === 0 && newInstructorIds.length === instructorIds.length, // Only first instructor gets primary flag if no restored ones
+        assignedBy: userId,
+      }));
+
+      createdAssignments = await ProjectInstructor.bulkCreate(assignments, {
+        transaction,
+        returning: true,
+      });
+    }
+
+    await transaction.commit();
+
+    // Fetch the full data with includes for all instructors
+    const allAssignmentIds = [
+      ...createdAssignments.map(a => a.projectInstructorId),
+      ...softDeletedAssignments.map(a => a.projectInstructorId)
+    ];
+    
+    const fullAssignments = await ProjectInstructor.findAll({
+      where: {
+        projectInstructorId: { [Op.in]: allAssignmentIds }
+      },
+      include: [
+        {
+          model: User,
+          as: 'instructor',
+          attributes: ['userId', 'username', 'email', 'profileImage'],
+        },
+      ],
+    });
+
+    return sendSuccess(res, "Instructors added successfully", {
+      assignments: fullAssignments,
+      restored: softDeletedAssignments.length,
+      created: createdAssignments.length,
+    });
+  } catch (error) {
+    if (transaction && !transaction.finished) {
+      await transaction.rollback();
+    }
     console.error("Error adding project instructors:", error);
-    return sendServerError(res, error);
+    return sendServerError(res, "Failed to add project instructors");
   }
 };
 
 // Remove instructor from project
 export const removeProjectInstructor = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
   try {
     const { projectId, instructorId } = req.params;
 
-    const deleted = await ProjectInstructor.destroy({
-      where: { projectId, instructorId }
-    });
-
-    if (deleted === 0) {
-      return sendNotFound(res, "Project instructor association not found");
+    // Validate project exists
+    const project = await Project.findByPk(projectId, { transaction });
+    if (!project) {
+      await transaction.rollback();
+      return sendNotFound(res, "Project not found");
     }
 
-    return sendSuccess(res, "Instructor removed from project successfully");
+    // Find and remove the assignment
+    const assignment = await ProjectInstructor.findOne({
+      where: { projectId, instructorId },
+      transaction,
+    });
+
+    if (!assignment) {
+      await transaction.rollback();
+      return sendNotFound(res, "Instructor assignment not found");
+    }
+
+    await assignment.destroy({ transaction });
+    await transaction.commit();
+
+    return sendSuccess(res, "Instructor removed successfully");
   } catch (error) {
+    await transaction.rollback();
     console.error("Error removing project instructor:", error);
-    return sendServerError(res, error);
+    return sendServerError(res, "Failed to remove project instructor");
+  }
+};
+
+// Get all available instructors (teachers and admins)
+export const getAllInstructors = async (req, res) => {
+  try {
+    const { page = 1, limit = 50, } = req.query;
+    const offset = (page - 1) * limit;
+
+    console.log("Getting all instructors...");
+
+    const { count, rows: instructors } = await User.findAndCountAll({
+      where: {
+        role: { [Op.in]: ['teacher', 'admin'] },
+      },
+      attributes: ['userId', 'username', 'email', 'profileImage', 'role'],
+      limit: parseInt(limit),
+      offset,
+      order: [['username', 'ASC'],],
+    });
+
+    console.log(`Found ${count} instructors`);
+
+    return sendSuccess(res, "Instructors retrieved successfully", {
+      instructors,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(count / limit),
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching instructors:", error);
+    return sendServerError(res, "Failed to fetch instructors");
   }
 };

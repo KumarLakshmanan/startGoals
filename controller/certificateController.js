@@ -75,7 +75,7 @@ export const generateCertificate = async (req, res) => {
       certificateNumber,
       issueDate: new Date(),
       courseName: course.title,
-      userName: `${user.firstName} ${user.lastName}`,
+      userName: `${user.username}`, // Assuming username is unique
       instructorName: course.instructorName, // Assuming this field exists
       completionDate: enrollment.completedAt || new Date()
     });
@@ -304,7 +304,7 @@ export const downloadCertificate = async (req, res) => {
         },
         {
           model: User,
-          attributes: ['userId', 'username', 'firstName', 'lastName']
+          attributes: ['userId', 'username',]
         }
       ]
     });

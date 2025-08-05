@@ -23,7 +23,8 @@ import {
   // Instructor management
   getProjectInstructors,
   addProjectInstructors,
-  removeProjectInstructor
+  removeProjectInstructor,
+  getAllInstructors
 } from "../controller/projectController.js";
 import { isAdmin, authenticateToken, isStudent } from "../middleware/authMiddleware.js";
 import { validateSchema, projectValidation } from "../middleware/fieldValidation.js";
@@ -156,6 +157,9 @@ router.post("/:projectId/languages", isAdmin, addProjectLanguages); // Add langu
 router.delete("/:projectId/languages/:languageId", isAdmin, removeProjectLanguage); // Remove language from project
 
 // ===================== PROJECT INSTRUCTOR MANAGEMENT =====================
+
+// Get all available instructors (for dropdowns)
+router.get("/admin/instructors", isAdmin, getAllInstructors);
 
 // Project Instructor CRUD operations
 router.get("/:projectId/instructors", authenticateToken, getProjectInstructors); // Get project instructors

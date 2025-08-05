@@ -28,7 +28,7 @@ export const uploadProjectFiles = async (req, res) => {
 
   try {
     const { projectId } = req.params;
-    const { fileDescriptions, isPreview } = req.body;
+    const { fileDescriptions } = req.body;
     const userId = req.user.userId;
 
     // Validate project exists and user has permission
@@ -54,15 +54,11 @@ export const uploadProjectFiles = async (req, res) => {
     const descriptions = Array.isArray(fileDescriptions)
       ? fileDescriptions
       : [fileDescriptions];
-    const previewFlags = Array.isArray(isPreview) ? isPreview : [isPreview];
 
     // Process each uploaded file
     for (let i = 0; i < req.files.length; i++) {
       const file = req.files[i];
       const description = descriptions[i] || "";
-      const isPreviewFile =
-        previewFlags[i] === "true" || previewFlags[i] === true;
-
       // Determine file type based on extension
       const fileExtension = path.extname(file.originalname).toLowerCase();
       let fileType = "other";
@@ -109,7 +105,6 @@ export const uploadProjectFiles = async (req, res) => {
           fileSize: file.size,
           mimeType: file.mimetype,
           description: description,
-          isPreview: isPreviewFile,
           downloadCount: 0,
           uploadedBy: userId,
         },
@@ -130,7 +125,7 @@ export const uploadProjectFiles = async (req, res) => {
         {
           model: User,
           as: "uploader",
-          attributes: ["id", "firstName", "lastName"],
+          attributes: ["id", "username"],
         },
       ],
     });
@@ -147,7 +142,7 @@ export const uploadProjectFiles = async (req, res) => {
 export const getProjectFiles = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { fileType, isPreview } = req.query;
+    const { fileType } = req.query;
     const userId = req.user?.userId;
 
     // Validate project exists
@@ -171,28 +166,14 @@ export const getProjectFiles = async (req, res) => {
       : null;
 
     // Build where conditions
-    const whereConditions = { projectId: parseInt(projectId) };
+    const whereConditions = { projectId: projectId };
 
     if (fileType) {
       whereConditions.fileType = fileType;
     }
 
-    // If user is not creator/admin and hasn't purchased, only show preview files
-    if (!isCreatorOrAdmin && !hasPurchased) {
-      whereConditions.isPreview = true;
-    } else if (isPreview !== undefined) {
-      whereConditions.isPreview = isPreview === "true";
-    }
-
     const files = await ProjectFile.findAll({
       where: whereConditions,
-      include: [
-        {
-          model: User,
-          as: "uploader",
-          attributes: ["id", "firstName", "lastName"],
-        },
-      ],
       order: [["createdAt", "ASC"]],
     });
 
@@ -268,7 +249,7 @@ export const downloadProjectFile = async (req, res) => {
       (projectFile.project.createdBy === userId || req.user?.role === "admin");
 
     // Check if the file is a preview or if special permissions apply
-    if (!projectFile.isPreview && !isCreatorOrAdmin) {
+    if (!isCreatorOrAdmin) {
       // Check if user has purchased the project
       const purchase = await ProjectPurchase.findOne({
         where: {
@@ -341,7 +322,7 @@ export const downloadProjectFile = async (req, res) => {
 export const updateProjectFile = async (req, res) => {
   try {
     const { fileId } = req.params;
-    const { description, isPreview, fileType } = req.body;
+    const { description, fileType } = req.body;
     const userId = req.user.userId;
 
     // Find file with project information
@@ -367,7 +348,6 @@ export const updateProjectFile = async (req, res) => {
     // Update file details
     const updateData = {};
     if (description !== undefined) updateData.description = description;
-    if (isPreview !== undefined) updateData.isPreview = isPreview;
     if (fileType !== undefined) updateData.fileType = fileType;
 
     await projectFile.update(updateData);
@@ -378,7 +358,7 @@ export const updateProjectFile = async (req, res) => {
         {
           model: User,
           as: "uploader",
-          attributes: ["id", "firstName", "lastName"],
+          attributes: ["id", "username"],
         },
       ],
     });
@@ -497,7 +477,7 @@ export const getDownloadStatistics = async (req, res) => {
           attributes: ["id", "title"],
         },
       ],
-      attributes: ["id", "fileName", "fileType", "downloadCount", "isPreview"],
+      attributes: ["id", "fileName", "fileType", "downloadCount"],
       order: [["downloadCount", "DESC"]],
       limit: 10,
     });

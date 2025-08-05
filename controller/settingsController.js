@@ -186,8 +186,8 @@ export const getNotificationTemplates = async (req, res) => {
         category: "user_registration",
         subject: "Welcome to StartGoals!",
         content:
-          "<p>Welcome {{firstName}}! Your account has been created successfully.</p>",
-        variables: ["firstName", "lastName", "email"],
+          "<p>Welcome {{username}}! Your account has been created successfully.</p>",
+        variables: ["username", "email"],
         status: "active",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -201,8 +201,8 @@ export const getNotificationTemplates = async (req, res) => {
         category: "course_completion",
         subject: null,
         content:
-          "Congratulations {{firstName}}! You have completed {{courseName}}. Certificate: {{certificateUrl}}",
-        variables: ["firstName", "courseName", "certificateUrl"],
+          "Congratulations {{username}}! You have completed {{courseName}}. Certificate: {{certificateUrl}}",
+        variables: ["username", "courseName", "certificateUrl"],
         status: "active",
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -216,8 +216,8 @@ export const getNotificationTemplates = async (req, res) => {
         category: "payment",
         subject: "Payment Received - Order #{{orderId}}",
         content:
-          "<p>Dear {{firstName}}, your payment of ${{amount}} has been received for {{itemName}}.</p>",
-        variables: ["firstName", "orderId", "amount", "itemName"],
+          "<p>Dear {{username}}, your payment of ${{amount}} has been received for {{itemName}}.</p>",
+        variables: ["username", "orderId", "amount", "itemName"],
         status: "active",
         createdAt: new Date(),
         updatedAt: new Date(),

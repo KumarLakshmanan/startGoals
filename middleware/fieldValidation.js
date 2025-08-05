@@ -1032,8 +1032,6 @@ export const projectFileValidation = {
   }),
   getFiles: Joi.object({
     projectId: Joi.number().integer().positive().required(),
-    fileType: Joi.string().valid("archive", "source_code", "documentation", "image", "video", "other").optional(),
-    isPreview: Joi.boolean().optional(),
   }),
   fileIdParam: Joi.object({
     fileId: Joi.number().integer().positive().required(),

@@ -441,7 +441,7 @@ export const verifyPaymentAndEnroll = async (req, res) => {
 
     // Get user details for response
     const user = await User.findByPk(userId, {
-      attributes: ["userId", "firstName", "lastName", "username", "email"],
+      attributes: ["userId", "username", "email"],
     });
 
     return sendSuccess(
@@ -458,9 +458,7 @@ export const verifyPaymentAndEnroll = async (req, res) => {
         amountPaid: payment.amount / 100,
         user: {
           userId: user.userId,
-          name: user.firstName
-            ? `${user.firstName} ${user.lastName || ""}`.trim()
-            : user.username,
+          name: user.username,
           email: user.email,
         },
       },

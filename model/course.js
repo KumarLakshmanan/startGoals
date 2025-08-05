@@ -73,11 +73,6 @@ const CourseEnhanced = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    durationDays: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      comment: "Duration in days for live courses",
-    },
     durationMinutes: {
       type: DataTypes.INTEGER,
       allowNull: true,

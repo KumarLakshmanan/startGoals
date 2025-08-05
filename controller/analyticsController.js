@@ -545,8 +545,7 @@ export const getStudentAnalytics = async (req, res) => {
     const activeStudents = await User.findAll({
       attributes: [
         'id',
-        'firstName',
-        'lastName',
+        'username',
         'email',
         [sequelize.fn('count', sequelize.col('Enrollments.id')), 'enrollmentCount']
       ],
@@ -587,7 +586,7 @@ export const getStudentAnalytics = async (req, res) => {
       })),
       mostActiveStudents: activeStudents.map(student => ({
         id: student.id,
-        name: `${student.firstName} ${student.lastName}`,
+        name: `${student.username}`,
         email: student.email,
         enrollmentCount: parseInt(student.get('enrollmentCount'), 10)
       })),
@@ -631,8 +630,7 @@ export const getTeacherAnalytics = async (req, res) => {
     const topTeachersByCourses = await User.findAll({
       attributes: [
         'id',
-        'firstName',
-        'lastName',
+        'username',
         'email',
         [sequelize.fn('count', sequelize.col('Courses.id')), 'courseCount']
       ],
@@ -652,9 +650,8 @@ export const getTeacherAnalytics = async (req, res) => {
     // Top teachers by students
     const topTeachersByStudents = await User.findAll({
       attributes: [
-        'id',
-        'firstName',
-        'lastName',
+        'id',        'username',
+
         [sequelize.literal('COUNT(DISTINCT "Enrollments"."userId")'), 'studentCount']
       ],
       include: [{
@@ -708,13 +705,13 @@ export const getTeacherAnalytics = async (req, res) => {
       }),
       topTeachersByCourses: topTeachersByCourses.map(teacher => ({
         id: teacher.id,
-        name: `${teacher.firstName} ${teacher.lastName}`,
+        name: `${teacher.username}`,
         email: teacher.email,
         courseCount: parseInt(teacher.get('courseCount'), 10)
       })),
       topTeachersByStudents: topTeachersByStudents.map(teacher => ({
         id: teacher.id,
-        name: `${teacher.firstName} ${teacher.lastName}`,
+        name: `${teacher.username}`,
         studentCount: parseInt(teacher.get('studentCount'), 10)
       })),
       registrationTrend: registrationTrend.map(item => ({

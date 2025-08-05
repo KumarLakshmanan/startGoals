@@ -5,8 +5,14 @@ import {
   downloadProjectFile,
   updateProjectFile,
   deleteProjectFile,
-  getDownloadStatistics,
 } from "../controller/projectFileController.js";
+// Import improved functions
+import {
+  saveProjectFiles,
+  getProjectFiles as getProjectFilesImproved,
+  deleteProjectFile as deleteProjectFileImproved,
+  updateProjectFile as updateProjectFileImproved,
+} from "../controller/projectFileController_improved.js";
 import { isAdmin } from "../middleware/authMiddleware.js";
 import { validateSchema, projectFileValidation } from "../middleware/fieldValidation.js";
 import { uploadMultiple } from "../middleware/fileUploadMiddleware.js";
@@ -27,7 +33,6 @@ router.post(
 // Get project files
 router.get(
   "/:projectId/files",
-  validateSchema(projectFileValidation.getFiles, "query", { mergeParams: true }),
   getProjectFiles,
 );
 
@@ -41,7 +46,7 @@ router.get(
 
 // Update project file details (Admin/Creator only)
 router.put(
-  "/files/:fileId",
+  "/:projectId/files/:fileId",
   isAdmin, // Add authentication
   validateSchema(projectFileValidation.update, "body", { mergeParams: true }),
   updateProjectFile,
@@ -49,20 +54,43 @@ router.put(
 
 // Delete project file (Admin/Creator only)
 router.delete(
-  "/files/:fileId",
+  "/:projectId/files/:fileId",
   isAdmin, // Add authentication
   validateSchema(projectFileValidation.fileIdParam, "params"),
   deleteProjectFile,
 );
 
-// ===================== DOWNLOAD STATISTICS =====================
+// ===================== IMPROVED PROJECT FILE MANAGEMENT =====================
 
-// Get download statistics (Admin only)
-router.get(
-  "/admin/downloads/statistics",
-  isAdmin,
-  validateSchema(projectFileValidation.downloadStats, "query"),
-  getDownloadStatistics,
+// Save project files after upload (New improved workflow)
+// Step 1: Use /api/upload/upload-fields with projectFiles field to upload files to S3
+// Step 2: Use this endpoint to save file info to database
+router.post(
+  "/:projectId/save-files",
+  isAdmin, // Add authentication
+  saveProjectFiles,
 );
+
+// Get project files (improved with better access control)
+router.get(
+  "/:projectId/files-improved",
+  getProjectFilesImproved,
+);
+
+// Update project file (improved)
+router.put(
+  "/:projectId/files-improved/:fileId",
+  isAdmin,
+  updateProjectFileImproved,
+);
+
+// Delete project file (improved)
+router.delete(
+  "/:projectId/files-improved/:fileId",
+  isAdmin,
+  deleteProjectFileImproved,
+);
+
+// ===================== LEGACY ROUTES (for backward compatibility) =====================
 
 export default router;

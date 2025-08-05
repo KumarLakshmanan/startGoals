@@ -259,7 +259,7 @@ export async function validateOtp(req, res) {
 
     const responseData = {
       userId: user.userId,
-      name: user.username || user.firstName || user.email,
+      name: user.username || user.email,
       email: user.email,
       mobile: user.mobile,
       profileImage: user.profileImage,

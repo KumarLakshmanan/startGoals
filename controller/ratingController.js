@@ -23,16 +23,11 @@ import {
   sendUnauthorized,
   sendForbidden,
 } from "../utils/responseHelper.js";
+import { isValidUUID } from "../utils/commonUtils.js";
 
 // ===========================================================================================
 // HELPER FUNCTIONS
 // ===========================================================================================
-
-// Validate UUID format
-const isValidUUID = (uuid) => {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(uuid);
-};
 
 // Check if user has purchased/enrolled in the entity
 const checkUserAccess = async (entityType, entityId, userId, transaction = null) => {
@@ -221,6 +216,11 @@ export const getReviews = async (req, res) => {
       rating,
       verified
     } = req.query;
+
+    // Validate UUID format
+    if (!isValidUUID(entityId)) {
+      return sendValidationError(res, "Invalid ID format");
+    }
     
     // Normalize entity type (remove 's' if plural)
     if (entityType.endsWith('s')) {
@@ -745,6 +745,7 @@ export const deleteReview = async (req, res) => {
   try {
     let { entityType, ratingId } = req.params;
     const userId = req.user?.userId;
+    const isAdmin = req.user?.role === 'admin';
     
     if (!userId) {
       await transaction.rollback();
@@ -764,9 +765,10 @@ export const deleteReview = async (req, res) => {
     const entityTypeSingular = entityType;
     const RatingModel = getRatingModel(entityTypeSingular);
     
-    // Find rating and check ownership
+    // Find rating and check ownership or admin
+    const whereClause = isAdmin ? { ratingId } : { ratingId, userId };
     const ratingRecord = await RatingModel.findOne({
-      where: { ratingId, userId },
+      where: whereClause,
       transaction
     });
     
@@ -869,56 +871,84 @@ export const getMySpecificRating = async (req, res) => {
 // ===========================================================================================
 
 // For backward compatibility with existing routes
+
 export const getCourseRatingsStats = (req, res) => {
   req.params.entityType = 'course';
   req.params.entityId = req.params.courseId;
+  if (!isValidUUID(req.params.entityId)) {
+    return sendValidationError(res, "Invalid ID format");
+  }
   return getRatingsStats(req, res);
 };
 
 export const getCourseReviews = (req, res) => {
   req.params.entityType = 'course';
   req.params.entityId = req.params.courseId;
+  if (!isValidUUID(req.params.entityId)) {
+    return sendValidationError(res, "Invalid ID format");
+  }
   return getReviews(req, res);
 };
 
 export const createCourseReview = (req, res) => {
   req.params.entityType = 'course';
   req.params.entityId = req.params.courseId;
+  if (!isValidUUID(req.params.entityId)) {
+    return sendValidationError(res, "Invalid ID format");
+  }
   return createReview(req, res);
 };
 
 export const getProjectRatingsStats = (req, res) => {
   req.params.entityType = 'project';
   req.params.entityId = req.params.projectId;
+  if (!isValidUUID(req.params.entityId)) {
+    return sendValidationError(res, "Invalid ID format");
+  }
   return getRatingsStats(req, res);
 };
 
 export const getProjectReviews = (req, res) => {
   req.params.entityType = 'project';
   req.params.entityId = req.params.projectId;
+  if (!isValidUUID(req.params.entityId)) {
+    return sendValidationError(res, "Invalid ID format");
+  }
   return getReviews(req, res);
 };
 
 export const createProjectReview = (req, res) => {
   req.params.entityType = 'project';
   req.params.entityId = req.params.projectId;
+  if (!isValidUUID(req.params.entityId)) {
+    return sendValidationError(res, "Invalid ID format");
+  }
   return createReview(req, res);
 };
 
 export const getInstructorRatingsStats = (req, res) => {
   req.params.entityType = 'instructor';
   req.params.entityId = req.params.instructorId;
+  if (!isValidUUID(req.params.entityId)) {
+    return sendValidationError(res, "Invalid ID format");
+  }
   return getRatingsStats(req, res);
 };
 
 export const getInstructorReviews = (req, res) => {
   req.params.entityType = 'instructor';
   req.params.entityId = req.params.instructorId;
+  if (!isValidUUID(req.params.entityId)) {
+    return sendValidationError(res, "Invalid ID format");
+  }
   return getReviews(req, res);
 };
 
 export const createInstructorReview = (req, res) => {
   req.params.entityType = 'instructor';
   req.params.entityId = req.params.instructorId;
+  if (!isValidUUID(req.params.entityId)) {
+    return sendValidationError(res, "Invalid ID format");
+  }
   return createReview(req, res);
 };

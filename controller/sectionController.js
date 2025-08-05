@@ -5,7 +5,6 @@ import Resource from "../model/resource.js";
 import Course from "../model/course.js";
 import {
   sendSuccess,
-  sendError,
   sendValidationError,
   sendNotFound,
   sendServerError,
@@ -168,7 +167,7 @@ export const updateSectionById = async (req, res) => {
 //get all sections by its courseId
 export const getSectionsByCourseId = async (req, res) => {
   const { courseId } = req.params;
-
+  console.log("Fetching sections for courseId:", courseId);
   if (!courseId) {
     return sendValidationError(res, "courseId parameter is required");
   }

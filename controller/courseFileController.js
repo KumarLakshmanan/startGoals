@@ -29,7 +29,7 @@ export const uploadCourseFiles = async (req, res) => {
 
   try {
     const { courseId } = req.params;
-    const { fileDescriptions, isPreview, sectionId, lessonId, order } = req.body;
+    const { fileDescriptions, sectionId, lessonId, order } = req.body;
     const userId = req.user.userId;
 
     // Validate course exists and user has permission
@@ -55,15 +55,12 @@ export const uploadCourseFiles = async (req, res) => {
     const descriptions = Array.isArray(fileDescriptions)
       ? fileDescriptions
       : [fileDescriptions];
-    const previewFlags = Array.isArray(isPreview) ? isPreview : [isPreview];
     const orders = Array.isArray(order) ? order : [order];
 
     // Process each uploaded file
     for (let i = 0; i < req.files.length; i++) {
       const file = req.files[i];
       const description = descriptions[i] || "";
-      const isPreviewFile =
-        previewFlags[i] === "true" || previewFlags[i] === true;
       const fileOrder = orders[i] ? parseInt(orders[i]) : i;
 
       // Determine file type based on extension
@@ -98,7 +95,6 @@ export const uploadCourseFiles = async (req, res) => {
           fileSize: file.size,
           mimeType: file.mimetype,
           description: description,
-          isPreview: isPreviewFile,
           sectionId: sectionId || null,
           lessonId: lessonId || null,
           order: fileOrder,
@@ -122,7 +118,7 @@ export const uploadCourseFiles = async (req, res) => {
         {
           model: User,
           as: "uploader",
-          attributes: ["userId", "firstName", "lastName"],
+          attributes: ["userId", "username"],
         },
       ],
     });
@@ -143,7 +139,7 @@ export const uploadCourseFiles = async (req, res) => {
 export const getCourseFiles = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { fileType, isPreview, sectionId, lessonId } = req.query;
+    const { fileType, sectionId, lessonId } = req.query;
     const userId = req.user?.userId;
 
     // Validate course exists
@@ -196,20 +192,13 @@ export const getCourseFiles = async (req, res) => {
       whereConditions.lessonId = lessonId;
     }
 
-    // If user is not creator/admin and hasn't enrolled, only show preview files
-    if (!hasAccess) {
-      whereConditions.isPreview = true;
-    } else if (isPreview !== undefined) {
-      whereConditions.isPreview = isPreview === "true";
-    }
-
     const files = await CourseFile.findAll({
       where: whereConditions,
       include: [
         {
           model: User,
           as: "uploader",
-          attributes: ["userId", "firstName", "lastName"],
+          attributes: ["userId", "username"],
         },
       ],
       order: [
@@ -290,7 +279,7 @@ export const downloadCourseFile = async (req, res) => {
       (courseFile.course.createdBy === userId || req.user?.role === "admin");
 
     // Check if the file is a preview or if special permissions apply
-    if (!courseFile.isPreview && !isCreatorOrAdmin) {
+    if (!isCreatorOrAdmin) {
       // Check if user is enrolled in the course
       const enrollment = await Enrollment.findOne({
         where: {
@@ -357,7 +346,7 @@ export const downloadCourseFile = async (req, res) => {
 export const updateCourseFile = async (req, res) => {
   try {
     const { fileId } = req.params;
-    const { description, isPreview, fileType, sectionId, lessonId, order } = req.body;
+    const { description, fileType, sectionId, lessonId, order } = req.body;
     const userId = req.user.userId;
 
     // Find file with course information
@@ -383,7 +372,6 @@ export const updateCourseFile = async (req, res) => {
     // Update file details
     const updateData = {};
     if (description !== undefined) updateData.description = description;
-    if (isPreview !== undefined) updateData.isPreview = isPreview;
     if (fileType !== undefined) updateData.fileType = fileType;
     if (sectionId !== undefined) updateData.sectionId = sectionId;
     if (lessonId !== undefined) updateData.lessonId = lessonId;
@@ -397,7 +385,7 @@ export const updateCourseFile = async (req, res) => {
         {
           model: User,
           as: "uploader",
-          attributes: ["userId", "firstName", "lastName"],
+          attributes: ["userId", "username"],
         },
       ],
     });
@@ -502,7 +490,7 @@ export const streamCourseFile = async (req, res) => {
       (courseFile.course.createdBy === userId || req.user?.role === "admin");
 
     // Check if the file is a preview or if special permissions apply
-    if (!courseFile.isPreview && !isCreatorOrAdmin) {
+    if (!isCreatorOrAdmin) {
       // Check if user is enrolled in the course
       const enrollment = await Enrollment.findOne({
         where: {

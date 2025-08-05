@@ -336,3 +336,160 @@ SQL that failed: CREATE INDEX "projects_language_id" ON "projects" ("language_id
 Parent error: column "language_id" does not exist
 
 and after that test the sync db and seedData with the new changes. and fix any issues that arise during the sync and seedData execution.
+
+
+
+in the backend i have already created the ratings routes and ratings controller. please use the code. and you can also create new routes in the same ratingRoute.js and ratingController.js,
+
+and so you need to create/edit four pages in the frontend for projects:
+1. Project Details View Page
+2. Instructors Management Page
+3. Reviews & Ratings Management Page
+4. Files Management Page
+
+
+Project details (model/project.js) (controller/projectController.js) (routes/projectRoutes.js)
+    - show the project details.
+    - edit button that navigates to the edit page.
+    - delete button that deletes the project.
+Instructors (model/projectInstructor.js) (controller/instructorController.js) (routes/instructorRoutes.js)
+    - list the users who are instructors for the project.
+    - add/remove instructors for the project.
+Reviews & Ratings (model/projectRating.js) (controller/ratingController.js) (routes/ratingRoutes.js)
+    - bar chart showing the average rating of the project.
+    - list the reviews & ratings for the project.
+    - add/edit/delete reviews & ratings.
+Files List for this project (model/projectFile.js) (controller/projectFileController.js) (routes/projectFileRoutes.js)
+    - list the files for the project.
+    - add/edit/delete files for the project.
+    - upload files for the project.
+    - download files for the project.
+
+frontend/src/pages/admin/projects/
+create/update the project details view page.
+
+and inside that show the reviews & ratings of the project. user list of purchases, and instructors of the projects.
+
+and the list of files for the project.
+
+and in the list of files. use the projectFile model to show the files. and also the add/edit/delete file functionality for the project.
+
+and the reviews & ratings should be shown in the project view page. and the admin can edit/delete the reviews & ratings.
+
+and the admin can add/remove instructors for the project.
+
+please refer the backend code and and do the frontend code accordingly. and also if any routes/ endpoints are needed, please create them. and you can also modify the existing routes/endpoints if needed.
+
+the in the project list view eye button -> go to the details page
+
+in that page.
+Project details (model/project.js) (controller/projectController.js) (routes/projectRoutes.js)
+    - show the project details.
+    - edit button that navigates to the edit page.
+    - delete button that deletes the project.
+Instructors (model/projectInstructor.js) (controller/projectController.js) (routes/projectRoutes.js)
+    - list the users who are instructors for the project.
+    - add/remove instructors for the project.
+Reviews & Ratings (model/projectRating.js) (controller/ratingController.js) (routes/ratingRoutes.js)
+    - bar chart showing the average rating of the project.
+    - list the reviews & ratings for the project.
+    - add/edit/delete reviews & ratings.
+Files List for this project (model/projectFile.js) (controller/projectFileController.js) (routes/projectFileRoutes.js)
+    - list the files for the project.
+    - add/edit/delete files for the project.
+    - upload files for the project.
+    - download files for the project.
+
+
+
+
+
+and in the files list view for the project is not working. so please fix that. and also make the add/edit/delete files functionality for the project. (refer the projectFile model, projectFileRoutes.js, projectFileController.js)
+and the instructors if i delete and add the same instructor again, it is not working. so please fix that too.
+and the ratings delete is not working for projects. so please fix that too.
+
+Just like how you did for projects create a new page for courses details view page.
+and inside that show the reviews & ratings of the course. user list of purchases, and instructors of the course sections & lessons.
+so the course view page should have the following sections:
+Course details (model/course.js) (controller/courseController.js) (routes/courseRoutes.js)
+    - show the course details.
+    - edit button that navigates to the edit page.
+    - delete button that deletes the course.
+Instructors (model/courseInstructor.js) (controller/courseController.js) (routes/courseRoutes.js)
+    - list the users who are instructors for the course.
+    - add/remove instructors for the course.
+Reviews & Ratings (model/courseRating.js) (controller/ratingController.js) (routes/ratingRoutes.js)
+    - bar chart showing the average rating of the course.
+    - list the reviews & ratings for the course.
+    - add/edit/delete reviews & ratings.
+Sessions & Lessons (model/courseSection.js, model/courseLesson.js) (controller/courseController.js) (routes/courseRoutes.js)
+    - list the sections and lessons for the course.
+    - add/edit/delete sections and lessons for the course.
+    - upload files for the lessons.
+    - add content for the lessons.
+
+so you need to create/edit four pages in the frontend for courses;
+and you need to edit the existing pages in the projects. and also the backend nodejs code for the projects and courses.
+
+and after all the frontend and backend code is done, please test the complete flow of the courses and projects. and also the ratings and reviews, instructors, sections, lessons, files, etc.
+
+
+
+
+From the new live, new recorded, edit live, edit recorded jsx file remove the sections and lessons.
+and add it in the tab of the course details view page.
+
+and the live & recorded course list page on click view eye icon is showing 404 error.
+
+and in the project files the upload API is not working. first call the file upload API and then get the file URL and then save it into the projectFiles
+and to upload the file refer the fileUploadRoutes.js file with the upload-fields and the field name is project-files
+
+and also please please check if the project files are being saved in the database or not. and also implement the file upload in the lessons and sections of the courses like how you did for the projects.
+
+and also in the live course and edit pages the start and end date time is react component is not working. so the whole page is crashing.
+
+and refer the code in the project coverImage and screenshot and implement the same for the course coverImage and screenshot.
+
+and just like the project screenshots implement the file upload for the projectFiles for projects and courseFiles for sections and lessons. 
+
+and change the project reviews and ratings view tab in the details page just like the course reviews and ratings view tab in the details page.
+
+and change the new recorded course add page (new-recorded.jsx) and add the newly implemented changed to that file.
+
+
+
+
+
+
+
+the projectFiles upload button click on the details page needs to show the multi file uploader just like the project screenshots field in project/new.jsx file. and also change the API's for that. i need the same design in the dialog as the project screenshots field in the project/new.jsx file.
+
+
+and also in the live-list, recorded-list and project list pages, the table pagination is not working. so please fix that.
+and also the filters are not working in the live-list and recorded-list pages. so please fix that too.
+
+and remove the instructor from the tables.
+
+and in the course instructors page the list of instructors is not showing the instructors. so please fix that.
+
+and in the course details the Course Structure is not working. the duration is always showing zero. show the total minutes of all the lessons in the course.
+
+and these are the lesson types in the course sections:
+"video", "live", "quiz", "assignment", "document"
+so change the course update form in the dialog based on the lesson type.
+Video 
+- create a single video upload field. and save the file in the courseFile model as videoUrl. and lint it with the sectionId and lessonId.
+- single video can be uploaded for the video lesson type.
+Live
+- create a date time picker for the live start and end date time. and save it in the lesson model as streamStartDateTime and streamEndDateTime.
+Quiz
+- for now show as "Quiz" and later we will implement the quiz functionality.
+Assignment
+- create a file upload field for the assignment document. and save it in the courseFile model. and link it with the sectionId and lessonId.
+- multiple files can be uploaded for the assignment.
+
+so please remove the videourl field from the lesson model and controller, and also remove the videoUrl field from the course edit page. also the file upload designs needs to be look like the project screenshots field in the project/new.jsx file.
+
+and change the section and lesson add/edit pages to match the new lesson types and their fields.
+
+and because of the Datepicker in the live course edit and new pages, the page is crashing. so please fix that.This is the error i am getting.. Uncaught TypeError: renderInput is not a function

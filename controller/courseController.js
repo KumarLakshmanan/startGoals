@@ -87,8 +87,6 @@ export const getLiveCourses = async (req, res) => {
       include: [
         { model: Category, as: "category", attributes: ["categoryId", "categoryName"] },
         { model: CourseLevel, as: "level", attributes: ["levelId", "name"] },
-        // { model: Language, as: "language", attributes: ["languageId", "language"] },
-        { model: User, as: "instructor", attributes: ["userId", "username", "email", "profileImage"] },
         {
           model: CourseTechStack,
           as: "techStack",
@@ -173,8 +171,6 @@ export const getRecordedCourses = async (req, res) => {
       include: [
         { model: Category, as: "category", attributes: ["categoryId", "categoryName"] },
         { model: CourseLevel, as: "level", attributes: ["levelId", "name"] },
-        // { model: Language, as: "language", attributes: ["languageId", "language"] },
-        { model: User, as: "instructor", attributes: ["userId", "username", "email", "profileImage"] },
         {
           model: CourseTechStack,
           as: "techStack",
@@ -291,7 +287,6 @@ export const getCourseById = async (req, res) => {
               attributes: [
                 "lessonId",
                 "title",
-                "videoUrl",
                 "streamStartDateTime",
                 "streamEndDateTime",
                 "duration",
@@ -379,7 +374,7 @@ export const getCourseById = async (req, res) => {
         },
         {
           model: User,
-          as: "instructor",
+          as: "instructors",
           attributes: ["userId", "username", "profileImage"],
         }
       ],
@@ -413,7 +408,6 @@ export const createCourse = async (req, res) => {
       salePrice,
       discountEnabled = true,
       isMonthlyPayment = false,
-      durationDays,
       durationMinutes,
       liveStartDate,
       liveEndDate,
@@ -481,7 +475,6 @@ export const createCourse = async (req, res) => {
       salePrice: salePrice ? parseFloat(salePrice) : null,
       discountEnabled,
       isMonthlyPayment,
-      durationDays,
       durationMinutes,
       liveStartDate: liveStartDate ? new Date(liveStartDate) : null,
       liveEndDate: liveEndDate ? new Date(liveEndDate) : null,
@@ -537,7 +530,7 @@ export const createCourse = async (req, res) => {
       include: [
         { model: Category, as: "category" },
         { model: CourseLevel, as: "level" },
-        { model: User, as: "instructor" },
+        { model: User, as: "instructors" },
         {
           model: Section,
           as: "sections",
@@ -589,7 +582,6 @@ export const updateCourse = async (req, res) => {
       salePrice,
       discountEnabled,
       isMonthlyPayment,
-      durationDays,
       durationMinutes,
       liveStartDate,
       liveEndDate,
@@ -625,7 +617,6 @@ export const updateCourse = async (req, res) => {
       ...(salePrice !== undefined && { salePrice: salePrice ? parseFloat(salePrice) : null }),
       ...(discountEnabled !== undefined && { discountEnabled }),
       ...(isMonthlyPayment !== undefined && { isMonthlyPayment }),
-      ...(durationDays !== undefined && { durationDays }),
       ...(durationMinutes !== undefined && { durationMinutes }),
       ...(liveStartDate !== undefined && { liveStartDate: liveStartDate ? new Date(liveStartDate) : null }),
       ...(liveEndDate !== undefined && { liveEndDate: liveEndDate ? new Date(liveEndDate) : null }),
@@ -672,7 +663,7 @@ export const updateCourse = async (req, res) => {
       include: [
         { model: Category, as: "category" },
         { model: CourseLevel, as: "level" },
-        { model: User, as: "instructor" },
+        { model: User, as: "instructors" },
         {
           model: Section,
           as: "sections",
@@ -930,7 +921,7 @@ export const getCourseAnalytics = async (req, res) => {
         },
         {
           model: User,
-          as: "instructor",
+          as: "instructors",
           attributes: ["userId", "username", "email"],
         },
       ],
@@ -2234,7 +2225,7 @@ export const getCoursePurchases = async (req, res) => {
         {
           model: User,
           as: 'user',
-          attributes: ['userId', 'firstName', 'lastName', 'username', 'email', 'profileImage', 'mobile']
+          attributes: ['userId', 'username', 'email', 'profileImage', 'mobile']
         }
       ],
       order: [['enrollmentDate', 'DESC']]
@@ -2250,9 +2241,7 @@ export const getCoursePurchases = async (req, res) => {
       progressPercentage: enrollment.progressPercentage,
       student: {
         id: enrollment.user.userId,
-        name: enrollment.user.firstName
-          ? `${enrollment.user.firstName} ${enrollment.user.lastName || ''}`.trim()
-          : enrollment.user.username,
+        name: enrollment.user.username,
         email: enrollment.user.email,
         avatar: enrollment.user.profileImage,
         phone: enrollment.user.mobile
@@ -2281,7 +2270,7 @@ export const getPurchaseDetails = async (req, res) => {
         {
           model: User,
           as: 'user',
-          attributes: ['userId', 'firstName', 'lastName', 'username', 'email', 'profileImage', 'mobile']
+          attributes: ['userId', 'username', 'email', 'profileImage', 'mobile']
         },
         {
           model: Course,
@@ -2307,9 +2296,7 @@ export const getPurchaseDetails = async (req, res) => {
       progressPercentage: purchase.progressPercentage,
       student: {
         id: purchase.user.userId,
-        name: purchase.user.firstName
-          ? `${purchase.user.firstName} ${purchase.user.lastName || ''}`.trim()
-          : purchase.user.username,
+        name: purchase.user.username,
         email: purchase.user.email,
         avatar: purchase.user.profileImage,
         phone: purchase.user.mobile

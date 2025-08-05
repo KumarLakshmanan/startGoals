@@ -39,10 +39,6 @@ const Lesson = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
-    videoUrl: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
     duration: {
       type: DataTypes.INTEGER,
       allowNull: true,
