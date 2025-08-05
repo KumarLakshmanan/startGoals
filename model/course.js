@@ -59,11 +59,6 @@ const CourseEnhanced = sequelize.define(
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,
     },
-    salePrice: {
-      type: DataTypes.DECIMAL(10, 2),
-      allowNull: true,
-      comment: "Discounted price for the course",
-    },
     discountEnabled: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,

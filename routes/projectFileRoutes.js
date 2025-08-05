@@ -26,7 +26,14 @@ router.post(
   "/:projectId/files",
   isAdmin, // Add authentication
   uploadMultiple("files", 10), // Allow up to 10 files
-  validateSchema(projectFileValidation.upload, "body", { mergeParams: true }),
+  uploadProjectFiles,
+);
+
+// Upload project files (Admin/Creator only)
+router.post(
+  "/:projectId/upload",
+  isAdmin, // Add authentication
+  uploadMultiple("files", 10), // Allow up to 10 files
   uploadProjectFiles,
 );
 

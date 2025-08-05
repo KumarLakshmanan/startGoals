@@ -346,27 +346,222 @@ export const reorderLessons = async (req, res) => {
 
 // ===================== ADMIN LESSON MANAGEMENT =====================
 
+// Create lesson (Admin only)
 export const createLessonAdmin = async (req, res) => {
-  return createLesson(req, res); // Reuse the main createLesson function
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { 
+      courseId,
+      sectionId, 
+      title, 
+      type, 
+      content, 
+      streamStartDateTime, 
+      streamEndDateTime, 
+      duration,
+      order,
+      isPreview = false
+    } = req.body;
+
+    // Validate required fields
+    if (!title || !type || !sectionId || !courseId) {
+      await transaction.rollback();
+      return sendValidationError(res, "Missing required fields: title, type, sectionId, courseId");
+    }
+
+    // Check if section exists and belongs to the course
+    const section = await Section.findOne({
+      where: { 
+        sectionId: sectionId, 
+        courseId: courseId 
+      },
+      include: [
+        {
+          model: Course,
+          as: "course",
+          attributes: ["courseId", "title"]
+        }
+      ],
+      transaction
+    });
+
+    if (!section) {
+      await transaction.rollback();
+      return sendNotFound(res, "Section not found or doesn't belong to the specified course");
+    }
+
+    // Get next order if not provided
+    let lessonOrder = order;
+    if (lessonOrder === undefined) {
+      const lastLesson = await Lesson.findOne({
+        where: { sectionId },
+        order: [['order', 'DESC']],
+        transaction
+      });
+      lessonOrder = lastLesson ? lastLesson.order + 1 : 0;
+    }
+
+    // Prepare lesson data
+    const lessonData = {
+      sectionId,
+      title,
+      type,
+      content: content || '',
+      duration: duration || 0,
+      order: lessonOrder,
+      isPreview
+    };
+
+    // Add type-specific fields
+    if (type === 'live') {
+      if (streamStartDateTime) {
+        lessonData.streamStartDateTime = new Date(streamStartDateTime);
+      }
+      if (streamEndDateTime) {
+        lessonData.streamEndDateTime = new Date(streamEndDateTime);
+      }
+    }
+
+    const lesson = await Lesson.create(lessonData, { transaction });
+
+    await transaction.commit();
+
+    // Fetch the created lesson with section info
+    const createdLesson = await Lesson.findOne({
+      where: { lessonId: lesson.lessonId },
+      include: [
+        {
+          model: Section,
+          as: "section",
+          attributes: ["sectionId", "title"],
+          include: [
+            {
+              model: Course,
+              as: "course",
+              attributes: ["courseId", "title"]
+            }
+          ]
+        }
+      ]
+    });
+
+    return sendSuccess(res, "Lesson created successfully", createdLesson);
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error creating lesson (admin):", error);
+    return sendServerError(res, "Failed to create lesson", error.message);
+  }
 };
 
+// Update lesson (Admin only)
 export const updateLessonAdmin = async (req, res) => {
-  return updateLesson(req, res); // Reuse the main updateLesson function
-};
+  const transaction = await sequelize.transaction();
 
-export const deleteLessonAdmin = async (req, res) => {
-  return deleteLesson(req, res); // Reuse the main deleteLesson function
-};
-
-// ===================== LESSON CONTENT MANAGEMENT =====================
-
-export const updateLessonVideo = async (req, res) => {
   try {
     const { lessonId } = req.params;
-    const videoFile = req.file;
+    const { 
+      title, 
+      type, 
+      content, 
+      streamStartDateTime, 
+      streamEndDateTime, 
+      duration,
+      order,
+      isPreview
+    } = req.body;
 
-    if (!videoFile) {
-      return sendValidationError(res, "Video file is required");
+    const lesson = await Lesson.findByPk(lessonId, { transaction });
+    if (!lesson) {
+      await transaction.rollback();
+      return sendNotFound(res, "Lesson not found");
+    }
+
+    // Prepare update data
+    const updateData = {};
+    if (title !== undefined) updateData.title = title;
+    if (type !== undefined) updateData.type = type;
+    if (content !== undefined) updateData.content = content;
+    if (duration !== undefined) updateData.duration = duration;
+    if (order !== undefined) updateData.order = order;
+    if (isPreview !== undefined) updateData.isPreview = isPreview;
+
+    // Add type-specific fields
+    if (type === 'live') {
+      if (streamStartDateTime) {
+        updateData.streamStartDateTime = new Date(streamStartDateTime);
+      }
+      if (streamEndDateTime) {
+        updateData.streamEndDateTime = new Date(streamEndDateTime);
+      }
+    }
+
+    await lesson.update(updateData, { transaction });
+
+    await transaction.commit();
+
+    // Fetch updated lesson
+    const updatedLesson = await Lesson.findOne({
+      where: { lessonId },
+      include: [
+        {
+          model: Section,
+          as: "section",
+          attributes: ["sectionId", "title"],
+          include: [
+            {
+              model: Course,
+              as: "course",
+              attributes: ["courseId", "title"]
+            }
+          ]
+        }
+      ]
+    });
+
+    return sendSuccess(res, "Lesson updated successfully", updatedLesson);
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error updating lesson (admin):", error);
+    return sendServerError(res, "Failed to update lesson", error.message);
+  }
+};
+
+// Delete lesson (Admin only)
+export const deleteLessonAdmin = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { lessonId } = req.params;
+
+    const lesson = await Lesson.findByPk(lessonId, { transaction });
+    if (!lesson) {
+      await transaction.rollback();
+      return sendNotFound(res, "Lesson not found");
+    }
+
+    await Lesson.destroy({
+      where: { lessonId },
+      transaction
+    });
+
+    await transaction.commit();
+
+    return sendSuccess(res, "Lesson deleted successfully");
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error deleting lesson (admin):", error);
+    return sendServerError(res, "Failed to delete lesson", error.message);
+  }
+};
+
+// Upload lesson video (referenced in project files)
+export const uploadLessonVideo = async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    
+    if (!req.files || req.files.length === 0) {
+      return sendValidationError(res, "No video file uploaded");
     }
 
     const lesson = await Lesson.findByPk(lessonId);
@@ -374,18 +569,28 @@ export const updateLessonVideo = async (req, res) => {
       return sendNotFound(res, "Lesson not found");
     }
 
-    // Update lesson with video URL (assuming file upload middleware sets the URL)
-    const videoUrl = videoFile.location || videoFile.path; // For S3 or local storage
-    
-    await lesson.update({ videoUrl });
+    // Get the uploaded file info
+    const videoFile = req.files[0];
+    const videoUrl = videoFile.location || videoFile.path || videoFile.url;
 
-    return sendSuccess(res, "Lesson video updated successfully", {
+    if (!videoUrl) {
+      return sendServerError(res, "Failed to get video URL after upload");
+    }
+
+    // Update lesson with video URL (this would typically be handled via courseFiles)
+    await lesson.update({
+      // Note: You may want to store this in CourseFile model instead
+      content: JSON.stringify({ videoUrl, fileName: videoFile.originalname })
+    });
+
+    return sendSuccess(res, "Video uploaded successfully", {
       lessonId: lesson.lessonId,
-      videoUrl: lesson.videoUrl
+      videoUrl,
+      fileName: videoFile.originalname
     });
   } catch (error) {
-    console.error("Error updating lesson video:", error);
-    return sendServerError(res, "Failed to update lesson video", error.message);
+    console.error("Error uploading lesson video:", error);
+    return sendServerError(res, "Failed to upload lesson video", error.message);
   }
 };
 

@@ -42,21 +42,6 @@ router.get(
 
 // ===================== COMPREHENSIVE ADMIN MANAGEMENT ROUTES =====================
 
-router.get(
-  "/all",
-  isAdmin,
-  validateSchema(discountValidation.filter, "query"),
-  getAllDiscountCodesAdmin,
-);
-
-router.get(
-  "/:discountId/analytics",
-  isAdmin,
-  validateSchema(discountValidation.analytics, "query"),
-  validateSchema(discountValidation.params, "params"),
-  getDiscountAnalytics,
-);
-
 // Create new discount code (Admin only)
 router.post(
   "/",
@@ -65,7 +50,7 @@ router.post(
   createDiscountCode,
 );
 
-// Get all discount codes (Admin only)
+// Get all discount codes (Admin only) - this should come before /:id route
 router.get(
   "/",
   isAdmin,
@@ -73,7 +58,32 @@ router.get(
   getAllDiscountCodesAdmin,
 );
 
+// Alternative endpoint for getting all discount codes
+router.get(
+  "/all",
+  isAdmin,
+  validateSchema(discountValidation.filter, "query"),
+  getAllDiscountCodesAdmin,
+);
+
+// Alternative endpoint for creating discount codes (for admin panel)
+router.post(
+  "/admin",
+  isAdmin,
+  validateSchema(discountValidation.create),
+  createDiscountCode,
+);
+
 // ===================== ADMIN DISCOUNT CODE MANAGEMENT =====================
+
+// Get discount analytics for specific discount
+router.get(
+  "/:discountId/analytics",
+  isAdmin,
+  validateSchema(discountValidation.analytics, "query"),
+  validateSchema(discountValidation.params, "params"),
+  getDiscountAnalytics,
+);
 
 // Get single discount code by ID (Admin only)
 router.get(

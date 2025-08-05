@@ -114,7 +114,6 @@ export const courseValidation = {
     title: Joi.string().min(5).max(200).required(),
     description: Joi.string().min(10).max(2000).required(),
     price: Joi.number().min(0).max(10000).required(),
-    salePrice: Joi.number().min(0).max(Joi.ref("price")),
     categoryId: commonSchemas.id.required(),
     levelId: commonSchemas.id.required(),
     duration: Joi.number().min(1).max(500),
@@ -133,7 +132,6 @@ export const courseValidation = {
     title: Joi.string().min(5).max(200),
     description: Joi.string().min(10).max(2000),
     price: Joi.number().min(0).max(10000),
-    salePrice: Joi.number().min(0),
     categoryId: commonSchemas.id,
     levelId: commonSchemas.id,
     duration: Joi.number().min(1).max(500),
@@ -224,7 +222,6 @@ export const projectValidation = {
     title: Joi.string().optional(),
     description: Joi.string().optional(),
     price: Joi.number().min(0).optional(),
-    salePrice: Joi.number().min(0).optional(),
     categoryId: Joi.string().optional(),
     levelId: Joi.string().optional(),
     techStack: Joi.alternatives().try(
@@ -702,13 +699,19 @@ export const discountValidation = {
     groupBy: Joi.string().valid("day", "week", "month").optional(),
   }),
   params: Joi.object({
-    id: Joi.number().integer().required().messages({
-      "number.base": "Valid discount code ID is required"
+    id: Joi.alternatives().try(
+      Joi.number().integer(),
+      Joi.string().guid({ version: 'uuidv4' })
+    ).messages({
+      "alternatives.match": "Valid discount code ID is required"
     }),
-    discountId: Joi.number().integer().required().messages({
-      "number.base": "Valid discount ID is required"
+    discountId: Joi.alternatives().try(
+      Joi.number().integer(),
+      Joi.string().guid({ version: 'uuidv4' })
+    ).messages({
+      "alternatives.match": "Valid discount ID is required"
     })
-  })
+  }).or('id', 'discountId')
 };
 
 // Generic validation middleware factory

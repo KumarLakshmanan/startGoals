@@ -12,6 +12,7 @@ import {
   sendNotFound,
   sendServerError,
   sendConflict,
+  sendResponse,
 } from "../utils/responseHelper.js";
 import Cart from "../model/cart.js";
 
@@ -19,7 +20,7 @@ import Cart from "../model/cart.js";
 
 // Create new discount code (Admin only)
 export const createDiscountCode = async (req, res) => {
-  const transaction = await sequelize.transaction();
+  const transaction =  await sequelize.transaction();
 
   try {
     const {
@@ -141,9 +142,10 @@ export const createDiscountCode = async (req, res) => {
       ],
     });
 
-    return sendSuccess(
+    return sendResponse(
       res,
       201,
+      true,
       "Discount code created successfully",
       completeDiscountCode
     );
@@ -241,7 +243,7 @@ export const getDiscountCodeById = async (req, res) => {
     );
     dcData.totalDiscountGiven = totalDiscountGiven;
 
-    return sendSuccess(res,  "Discount code fetched successfully", dcData);
+    return sendSuccess(res, "Discount code fetched successfully", dcData);
   } catch (error) {
     console.error("Get discount code by ID error:", error);
     return sendServerError(res, error);
@@ -372,7 +374,7 @@ export const deleteDiscountCode = async (req, res) => {
     await discountCode.destroy({ transaction });
     await transaction.commit();
 
-    return sendSuccess(res,  "Discount code deleted successfully");
+    return sendSuccess(res, "Discount code deleted successfully");
   } catch (error) {
     await transaction.rollback();
     console.error("Delete discount code error:", error);
@@ -491,7 +493,7 @@ export const validateDiscountCode = async (req, res) => {
       };
     });
 
-    return sendSuccess(res,  "Discount code applied to cart total", {
+    return sendSuccess(res, "Discount code applied to cart total", {
       discountCode: {
         id: discountCode.discountId, // FIXED: use correct PK
         code: discountCode.code,
@@ -583,7 +585,7 @@ export const getDiscountUsageStatistics = async (req, res) => {
         {
           model: DiscountCode,
           as: "discountCode",
-          attributes: ["discountId", "code", "description"], // FIXED: use correct PK
+          attributes: ["discount_id", "code", "description"], // FIXED: use correct PK
         },
       ],
       where: whereConditions,
@@ -609,7 +611,7 @@ export const getDiscountUsageStatistics = async (req, res) => {
         END`),
           "type",
         ],
-        [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+        [sequelize.fn("COUNT", sequelize.col("discount_id")), "count"],
         [sequelize.fn("SUM", sequelize.col("discount_amount")), "totalDiscount"],
       ],
       where: whereConditions,
@@ -627,7 +629,7 @@ export const getDiscountUsageStatistics = async (req, res) => {
     const dailyUsage = await DiscountUsage.findAll({
       attributes: [
         [sequelize.fn("DATE", sequelize.col("createdAt")), "date"],
-        [sequelize.fn("COUNT", sequelize.col("id")), "count"],
+        [sequelize.fn("COUNT", sequelize.col("discount_id")), "count"],
         [sequelize.fn("SUM", sequelize.col("discount_amount")), "totalDiscount"],
       ],
       where: whereConditions,
@@ -636,7 +638,7 @@ export const getDiscountUsageStatistics = async (req, res) => {
       raw: true,
     });
 
-    return sendSuccess(res,  "Discount usage statistics fetched", {
+    return sendSuccess(res, "Discount usage statistics fetched", {
       overview: {
         totalUsages,
         totalDiscountGiven,
@@ -687,11 +689,11 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
     } else if (status === "usage_exhausted") {
       whereConditions[Op.and] = [
         sequelize.where(
-          sequelize.col("currentUsage"),
+          sequelize.col("currentUses"),
           Op.gte,
-          sequelize.col("usageLimit")
+          sequelize.col("maxUses")
         ),
-        { usageLimit: { [Op.ne]: null } },
+        { maxUses: { [Op.ne]: null } },
       ];
     }
 
@@ -722,96 +724,71 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
 
     const { count, rows: discountCodes } = await DiscountCode.findAndCountAll({
       where: whereConditions,
-      include: [
-        {
-          model: User,
-          attributes: ["userId", "username", "email"],
-          as: "creator",
-        },
-      ],
+      // Temporarily remove User association to isolate issue
+      // include: [
+      //   {
+      //     model: User,
+      //     as: "creator",
+      //     attributes: ["userId", "username", "email"],
+      //     required: false,
+      //   },
+      // ],
       order: [[sortBy, sortOrder.toUpperCase()]],
       limit: parseInt(limit),
       offset,
       distinct: true,
     });
-
     // Calculate additional analytics for each discount code
     const enrichedDiscountCodes = await Promise.all(
       discountCodes.map(async (discount) => {
         const discountData = discount.toJSON();
+        const now = new Date();
+        let status = "active";
 
-        // Calculate usage statistics
-        const usageStats = await DiscountUsage.findAll({
-          where: { discountId: discount.id },
+        if (!discountData.isActive) {
+          status = "inactive";
+        } else if (new Date(discountData.validUntil) < now) {
+          status = "expired";
+        } else if (new Date(discountData.validFrom) > now) {
+          status = "scheduled";
+        } else if (
+          discountData.maxUses &&
+          discountData.currentUses >= discountData.maxUses
+        ) {
+          status = "usage_exhausted";
+        }
+
+        // Calculate usage stats
+        const totalDiscountGivenResult = await DiscountUsage.findOne({
           attributes: [
-            [sequelize.fn("COUNT", sequelize.col("*")), "totalUsages"],
-            [
-              sequelize.fn("SUM", sequelize.col("discount_amount")),
-              "totalDiscountGiven",
-            ],
-            [
-              sequelize.fn(
-                "COUNT",
-                sequelize.fn("DISTINCT", sequelize.col("userId"))
-              ),
-              "uniqueUsers",
-            ],
+            [sequelize.fn("SUM", sequelize.col("discount_amount")), "totalDiscount"],
+            [sequelize.fn("COUNT", sequelize.col("discount_id")), "totalUsages"],
           ],
+          where: { discountId: discountData.discountId },
           raw: true,
         });
 
-        // Get recent usage activity
-        const recentUsage = await DiscountUsage.findAll({
-          where: {
-            discountId: discount.id,
-            createdAt: {
-              [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-            }, // Last 7 days
-          },
-          include: [
-            {
-              model: User,
-              attributes: ["username", "email"],
-            },
-          ],
-          order: [["createdAt", "DESC"]],
-          limit: 5,
-        });
+        const totalDiscountGiven = parseFloat(totalDiscountGivenResult?.totalDiscount || 0);
+        const totalUsages = parseInt(totalDiscountGivenResult?.totalUsages || 0);
 
-        // Calculate effectiveness metrics
-        const effectiveness = {
-          usageRate: discount.maxUses
-            ? (
-              ((usageStats[0]?.totalUsages || 0) / discount.maxUses) *
-              100
-            ).toFixed(2)
-            : null,
-          avgDiscountPerUse:
-            usageStats[0]?.totalUsages > 0
-              ? (
-                usageStats[0]?.totalDiscountGiven /
-                usageStats[0]?.totalUsages
-              ).toFixed(2)
-              : 0,
-          daysActive: Math.ceil(
-            (new Date() - new Date(discount.validFrom)) / (1000 * 60 * 60 * 24)
-          ),
-          daysRemaining: Math.ceil(
-            (new Date(discount.validUntil) - new Date()) /
-            (1000 * 60 * 60 * 24)
-          ),
-        };
+        let usagePercentage = 0;
+        if (discountData.maxUses) {
+          usagePercentage = (discountData.currentUses / discountData.maxUses) * 100;
+        }
 
         return {
           ...discountData,
-          usageStatistics: usageStats[0] || {
-            totalUsages: 0,
-            totalDiscountGiven: 0,
-            uniqueUsers: 0,
+          status,
+          usagePercentage,
+          totalDiscountGiven,
+          effectiveness: {
+            usageRate: discountData.maxUses
+              ? ((discountData.currentUses / discountData.maxUses) * 100).toFixed(2)
+              : null,
+            avgDiscountPerUse: totalUsages > 0 ? (totalDiscountGiven / totalUsages).toFixed(2) : 0,
+            daysActive: Math.ceil((now - new Date(discountData.createdAt)) / (1000 * 60 * 60 * 24)),
           },
-          recentUsage,
-          effectiveness,
-          status: getDiscountStatus(discount),
+          totalUsages,
         };
       })
     );
@@ -819,27 +796,15 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
     // Calculate overall statistics
     const overallStats = {
       totalCodes: count,
-      activeCodesCount: enrichedDiscountCodes.filter(
-        (d) => d.status === "active"
-      ).length,
-      expiredCodesCount: enrichedDiscountCodes.filter(
-        (d) => d.status === "expired"
-      ).length,
-      scheduledCodesCount: enrichedDiscountCodes.filter(
-        (d) => d.status === "scheduled"
-      ).length,
-      totalDiscountGiven: enrichedDiscountCodes.reduce(
-        (sum, d) =>
-          sum + (parseFloat(d.usageStatistics.totalDiscountGiven) || 0),
-        0
-      ),
-      totalUsages: enrichedDiscountCodes.reduce(
-        (sum, d) => sum + (parseInt(d.usageStatistics.totalUsages) || 0),
-        0
-      ),
+      activeCodesCount: enrichedDiscountCodes.filter((d) => d.status === "active").length,
+      expiredCodesCount: enrichedDiscountCodes.filter((d) => d.status === "expired").length,
+      scheduledCodesCount: enrichedDiscountCodes.filter((d) => d.status === "scheduled").length,
+      usageExhaustedCodesCount: enrichedDiscountCodes.filter((d) => d.status === "usage_exhausted").length,
+      totalDiscountGiven: enrichedDiscountCodes.reduce((sum, d) => sum + d.totalDiscountGiven, 0),
+      totalUsages: enrichedDiscountCodes.reduce((sum, d) => sum + d.totalUsages, 0),
     };
 
-    return sendSuccess(res,  "Discount codes retrieved successfully", {
+    return sendSuccess(res, "Discount codes retrieved successfully", {
       discountCodes: enrichedDiscountCodes,
       pagination: {
         currentPage: parseInt(page),
@@ -850,7 +815,7 @@ export const getAllDiscountCodesAdmin = async (req, res) => {
       overallStatistics: overallStats,
     });
   } catch (error) {
-    console.error("Get all discount codes error:", error);
+    console.error("Get all discount codes admin error:", error);
     return sendServerError(res, error);
   }
 };
@@ -995,31 +960,4 @@ export const getDiscountAnalytics = async (req, res) => {
     console.error("Get discount analytics error:", error);
     return sendServerError(res, error);
   }
-};
-
-/**
- * Helper function to determine discount status
- */
-const getDiscountStatus = (discount) => {
-  const now = new Date();
-  const validFrom = new Date(discount.validFrom);
-  const validUntil = new Date(discount.validUntil);
-
-  if (!discount.isActive) {
-    return "inactive";
-  }
-
-  if (now < validFrom) {
-    return "scheduled";
-  }
-
-  if (now > validUntil) {
-    return "expired";
-  }
-
-  if (discount.maxUses && discount.currentUses >= discount.maxUses) {
-    return "usage_exhausted";
-  }
-
-  return "active";
 };

@@ -268,6 +268,12 @@ Batch.belongsTo(Course, {
   targetKey: "courseId", // primaryKey in the Course model
 });
 
+// Course has many Batches
+Course.hasMany(Batch, {
+  foreignKey: "courseId",
+  as: "batches",
+});
+
 // A Batch can have many Students (many-to-many relationship through BatchStudents)
 Batch.belongsToMany(User, {
   through: BatchStudents,
@@ -582,6 +588,11 @@ User.hasMany(DiscountCode, {
   as: "createdDiscountCodes",
 });
 
+DiscountCode.belongsTo(User, {
+  foreignKey: "createdBy",
+  as: "creator",
+});
+
 // DiscountCode can apply to categories - TEMPORARILY DISABLED
 // DiscountCode.belongsToMany(Category, {
 //   through: "discount_categories",
@@ -601,24 +612,24 @@ User.hasMany(DiscountCode, {
 
 // DiscountUsage associations
 DiscountCode.hasMany(DiscountUsage, {
-  foreignKey: "discount_id",
+  foreignKey: "discountId", // Changed from "discount_id" to match the model definition
   as: "usages",
   onDelete: "CASCADE",
 });
 
 DiscountUsage.belongsTo(DiscountCode, {
-  foreignKey: "discount_id",
+  foreignKey: "discountId", // Changed from "discount_id" to match the model definition
   as: "discountCode",
 });
 
 User.hasMany(DiscountUsage, {
-  foreignKey: "user_id",
+  foreignKey: "userId", // Changed from "user_id" to match the model definition
   as: "discountUsages",
   onDelete: "CASCADE",
 });
 
 DiscountUsage.belongsTo(User, {
-  foreignKey: "user_id",
+  foreignKey: "userId", // Changed from "user_id" to match the model definition
   as: "user",
 });
 

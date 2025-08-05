@@ -666,7 +666,7 @@ export const createSimpleOrder = async (req, res) => {
 
           if (discount.maxUsesPerUser) {
             const userUsages = await DiscountUsage.count({
-              where: { userId, discountId: discount.id },
+              where: { userId, discountId: discount.discountId },
             });
             if (userUsages >= discount.maxUsesPerUser) {
               return sendError(res, 400, "You have reached the usage limit for this discount code");

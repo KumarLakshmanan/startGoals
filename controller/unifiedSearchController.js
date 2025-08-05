@@ -66,7 +66,6 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
           "shortDescription",
           "previewImages",
           "price",
-          "salePrice",
         ],
         limit: Math.floor(parseInt(limit) / 3),
         order: [["title", "ASC"]],
@@ -79,7 +78,7 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
           description: project.shortDescription,
           type: "project",
           thumbnail: project.previewImages?.[0] || null,
-          price: project.salePrice || project.price,
+          price: project.price,
           url: `/projects/${project.id}`,
         });
       });

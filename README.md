@@ -464,15 +464,13 @@ and change the new recorded course add page (new-recorded.jsx) and add the newly
 
 the projectFiles upload button click on the details page needs to show the multi file uploader just like the project screenshots field in project/new.jsx file. and also change the API's for that. i need the same design in the dialog as the project screenshots field in the project/new.jsx file.
 
-
 and also in the live-list, recorded-list and project list pages, the table pagination is not working. so please fix that.
 and also the filters are not working in the live-list and recorded-list pages. so please fix that too.
 
-and remove the instructor from the tables.
+and change the section and lesson add/edit pages to match the new lesson types and their fields.
+- Create new page for lesson edit/add instead of the popup inside the course
+- For the the video upload is not working because the forms is showing in the dialog and not in the new page.
 
-and in the course instructors page the list of instructors is not showing the instructors. so please fix that.
-
-and in the course details the Course Structure is not working. the duration is always showing zero. show the total minutes of all the lessons in the course.
 
 and these are the lesson types in the course sections:
 "video", "live", "quiz", "assignment", "document"
@@ -490,6 +488,87 @@ Assignment
 
 so please remove the videourl field from the lesson model and controller, and also remove the videoUrl field from the course edit page. also the file upload designs needs to be look like the project screenshots field in the project/new.jsx file.
 
-and change the section and lesson add/edit pages to match the new lesson types and their fields.
 
-and because of the Datepicker in the live course edit and new pages, the page is crashing. so please fix that.This is the error i am getting.. Uncaught TypeError: renderInput is not a function
+in the projects change the component named ProjectFilesView inside the details.jsx file. but now you changed the files.jsx file in the projects
+
+i have changed the paths of the lesson edit and lesson new pages in the paths.js file.
+
+so please create the routes in the src/routes/sections/admin.jsx file for the lesson edit and lesson new pages. like below
+`/courses/${courseid}/lesson/${lessonid}/edit`,
+`/courses/${courseid}/lesson/new`,
+
+
+
+
+
+
+please use the profileFileController.js file for project file changes. not it is using the fileController.js file.
+and use these functionalities.
+  deleteProjectFile,
+  uploadProjectFiles,
+  uploadLessonVideo
+and also on update functionality, is not working. and in the update request if there is no file, then do no update the file, just update the name and description. 
+
+and in the lessons add/edit the content will be in the richtext html editor.
+
+Request URL
+http://localhost:8080/api/lesson/admin/create
+Request Method
+POST
+Status Code
+404 Not Found
+
+{
+    "title": "Test 1",
+    "description": "",
+    "content": "asdf",
+    "type": "video",
+    "duration": 11,
+    "order": 0,
+    "streamStartDateTime": "",
+    "streamEndDateTime": "",
+    "isPreview": false,
+    "sectionId": "b0b12936-3fac-4088-a416-28cbea5ef417",
+    "courseId": "e125c8f9-34fe-401f-b041-7911fbb6e5d7"
+}
+
+and it shows section not found. please check lesson add/edit and delete functionality in the lesson routes and controller files. and also please check if it is working in the frontend or not.
+
+
+
+
+
+
+
+now fix the backend code to handle this error gracefully and ensure that the file upload process does not crash the application.
+and in the frontend add the loading animation on the button while the file is being uploaded.
+
+the delete is not working
+http://localhost:8080/api/project-files/4c3cceb8-191e-4c53-b1ad-c7371ed05d21/files
+404 Not Found
+
+in the add file and edit file dialog boxes must be same. and remove the fille type from the edit form dialog boxes
+and in the add 
+
+so in the add dialog 
+- multiple image upload
+- file type should not be there
+
+so in the edit dialog
+- file name
+- description
+- single file upload
+
+- and on both dialogs add the loading animation on the button while the file is being uploaded.
+
+and also change the controller for this new functionality.
+
+
+
+
+please use the profileFileController.js file for project file changes. not it is using the fileController.js file.
+and also on update functionality, is not working. and in the update request if there is no file, then do no update the file, just update the name and description. 
+
+use these funcitons 
+  deleteProjectFile,
+  uploadProjectFiles 

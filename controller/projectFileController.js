@@ -24,29 +24,29 @@ const __dirname = path.dirname(__filename);
 
 // Upload project files (Admin/Creator only)
 export const uploadProjectFiles = async (req, res) => {
-  const transaction = await sequelize.transaction();
-
+  let transaction;
   try {
+    transaction = await sequelize.transaction();
     const { projectId } = req.params;
     const { fileDescriptions } = req.body;
     const userId = req.user.userId;
 
     // Validate project exists and user has permission
-    const project = await Project.findByPk(projectId);
+    const project = await Project.findByPk(projectId, { transaction });
     if (!project) {
-      await transaction.rollback();
+      if (transaction) await transaction.rollback();
       return sendNotFound(res, "Project not found");
     }
 
     // Check if user is creator or admin
     if (project.createdBy !== userId && req.user.role !== "admin") {
-      await transaction.rollback();
+      if (transaction) await transaction.rollback();
       return sendError(res, 403, "Not authorized to upload files for this project");
     }
 
     // Check if files were uploaded
     if (!req.files || req.files.length === 0) {
-      await transaction.rollback();
+      if (transaction) await transaction.rollback();
       return sendValidationError(res, "No files uploaded");
     }
 
@@ -59,59 +59,84 @@ export const uploadProjectFiles = async (req, res) => {
     for (let i = 0; i < req.files.length; i++) {
       const file = req.files[i];
       const description = descriptions[i] || "";
-      // Determine file type based on extension
-      const fileExtension = path.extname(file.originalname).toLowerCase();
-      let fileType = "other";
+      
+      try {
+        // Determine file type based on extension
+        const fileExtension = path.extname(file.originalname).toLowerCase();
+        let fileType = "other";
 
-      if ([".zip", ".rar", ".7z", ".tar", ".gz"].includes(fileExtension)) {
-        fileType = "archive";
-      } else if (
-        [
-          ".js",
-          ".ts",
-          ".html",
-          ".css",
-          ".php",
-          ".py",
-          ".java",
-          ".cpp",
-          ".c",
-        ].includes(fileExtension)
-      ) {
-        fileType = "source_code";
-      } else if (
-        [".pdf", ".doc", ".docx", ".txt", ".md"].includes(fileExtension)
-      ) {
-        fileType = "documentation";
-      } else if (
-        [".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp"].includes(
-          fileExtension,
-        )
-      ) {
-        fileType = "image";
-      } else if (
-        [".mp4", ".avi", ".mov", ".wmv", ".flv"].includes(fileExtension)
-      ) {
-        fileType = "video";
+        if ([".zip", ".rar", ".7z", ".tar", ".gz"].includes(fileExtension)) {
+          fileType = "archive";
+        } else if (
+          [
+            ".js",
+            ".ts",
+            ".html",
+            ".css",
+            ".php",
+            ".py",
+            ".java",
+            ".cpp",
+            ".c",
+          ].includes(fileExtension)
+        ) {
+          fileType = "source_code";
+        } else if (
+          [".pdf", ".doc", ".docx", ".txt", ".md"].includes(fileExtension)
+        ) {
+          fileType = "documentation";
+        } else if (
+          [".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp"].includes(
+            fileExtension,
+          )
+        ) {
+          fileType = "image";
+        } else if (
+          [".mp4", ".avi", ".mov", ".wmv", ".flv"].includes(fileExtension)
+        ) {
+          fileType = "video";
+        }
+
+        console.log(`File upload check for field files field ${file.originalname}: extname=${!!fileExtension}`);
+        
+        // Check if file was uploaded to S3 and has a valid URL
+        const fileUrl = file.location || file.path || file.url;
+        if (!fileUrl) {
+          console.error(`No valid file URL found for ${file.originalname}. File object:`, file);
+          throw new Error(`Failed to upload file ${file.originalname} - no valid URL returned`);
+        }
+
+        // Create file record with proper data validation
+        const projectFile = await ProjectFile.create(
+          {
+            projectId: projectId,
+            fileName: file.originalname,
+            fileUrl: fileUrl,
+            fileType: fileType,
+            fileSize: file.size || 0,
+            mimeType: file.mimetype || 'application/octet-stream',
+            description: description || '',
+            downloadCount: 0,
+            uploadedBy: userId,
+            isMain: false,
+            downloadOrder: 0,
+            version: '1.0',
+          },
+          { transaction },
+        );
+
+        uploadedFiles.push(projectFile);
+      } catch (fileError) {
+        console.error(`Error processing file ${file.originalname}:`, fileError);
+        // Continue with other files instead of failing the entire upload
+        continue;
       }
+    }
 
-      // Create file record
-      const projectFile = await ProjectFile.create(
-        {
-          projectId: parseInt(projectId),
-          fileName: file.originalname,
-          filePath: file.path,
-          fileType: fileType,
-          fileSize: file.size,
-          mimeType: file.mimetype,
-          description: description,
-          downloadCount: 0,
-          uploadedBy: userId,
-        },
-        { transaction },
-      );
-
-      uploadedFiles.push(projectFile);
+    // Only commit if we have successfully uploaded files
+    if (uploadedFiles.length === 0) {
+      if (transaction) await transaction.rollback();
+      return sendValidationError(res, "No files were successfully uploaded");
     }
 
     await transaction.commit();
@@ -119,20 +144,30 @@ export const uploadProjectFiles = async (req, res) => {
     // Fetch uploaded files with associations
     const filesWithDetails = await ProjectFile.findAll({
       where: {
-        id: { [Op.in]: uploadedFiles.map((f) => f.id) },
+        fileId: { [Op.in]: uploadedFiles.map((f) => f.fileId) },
       },
       include: [
         {
           model: User,
           as: "uploader",
-          attributes: ["id", "username"],
+          attributes: ["userId", "username"],
         },
       ],
     });
 
-    sendSuccess(res, `${uploadedFiles.length} file(s) uploaded successfully`, filesWithDetails);
+    sendSuccess(res, `${uploadedFiles.length} file(s) uploaded successfully`, {
+      files: filesWithDetails,
+      totalUploaded: uploadedFiles.length,
+      totalAttempted: req.files.length,
+    });
   } catch (error) {
-    await transaction.rollback();
+    if (transaction) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error("Transaction rollback error:", rollbackError);
+      }
+    }
     console.error("Upload project files error:", error);
     sendServerError(res, "Failed to upload files", error.message);
   }
@@ -191,7 +226,6 @@ export const getProjectFiles = async (req, res) => {
 
     return sendSuccess(
       res, 
-      200, 
       "Project files retrieved successfully", 
       {
         files: formattedFiles,
@@ -320,13 +354,32 @@ export const downloadProjectFile = async (req, res) => {
 
 // Update project file details (Admin/Creator only)
 export const updateProjectFile = async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
   try {
-    const { fileId } = req.params;
-    const { description, fileType } = req.body;
+    const { projectId, fileId } = req.params;
+    const { fileName, description, fileType } = req.body;
     const userId = req.user.userId;
 
-    // Find file with project information
-    const projectFile = await ProjectFile.findByPk(fileId, {
+    // Validate project exists
+    const project = await Project.findByPk(projectId, { transaction });
+    if (!project) {
+      await transaction.rollback();
+      return sendNotFound(res, "Project not found");
+    }
+
+    // Check if user is creator or admin
+    if (project.createdBy !== userId && req.user.role !== "admin") {
+      await transaction.rollback();
+      return sendError(res, 403, "Not authorized to update files for this project");
+    }
+
+    // Find file within the specific project
+    const projectFile = await ProjectFile.findOne({
+      where: { 
+        fileId: fileId, 
+        projectId: projectId 
+      },
       include: [
         {
           model: Project,
@@ -334,43 +387,46 @@ export const updateProjectFile = async (req, res) => {
           attributes: ["id", "createdBy"],
         },
       ],
+      transaction
     });
 
     if (!projectFile) {
-      return sendNotFound(res, "File not found");
-    }
-
-    // Check if user is creator or admin
-    if (projectFile.project.createdBy !== userId && req.user.role !== "admin") {
-      return sendError(res, 403, "Not authorized to update this file");
+      await transaction.rollback();
+      return sendNotFound(res, "File not found in this project");
     }
 
     // Update file details
     const updateData = {};
+    if (fileName !== undefined) updateData.fileName = fileName;
     if (description !== undefined) updateData.description = description;
     if (fileType !== undefined) updateData.fileType = fileType;
 
-    await projectFile.update(updateData);
+    await projectFile.update(updateData, { transaction });
+
+    await transaction.commit();
 
     // Fetch updated file with associations
-    const updatedFile = await ProjectFile.findByPk(fileId, {
+    const updatedFile = await ProjectFile.findByPk(projectFile.id, {
       include: [
         {
           model: User,
           as: "uploader",
-          attributes: ["id", "username"],
+          attributes: ["userId", "username"],
         },
       ],
     });
 
-    res.json({
-      success: true,
-      message: "File updated successfully",
-      data: updatedFile,
-    });
+    return sendSuccess(res, "File updated successfully", updatedFile);
   } catch (error) {
+    if (transaction) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error("Transaction rollback error:", rollbackError);
+      }
+    }
     console.error("Update project file error:", error);
-    sendServerError(res, "Failed to update file", error.message);
+    return sendServerError(res, "Failed to update file", error.message);
   }
 };
 
@@ -379,11 +435,28 @@ export const deleteProjectFile = async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { fileId } = req.params;
+    const { projectId, fileId } = req.params;
     const userId = req.user.userId;
 
-    // Find file with project information
-    const projectFile = await ProjectFile.findByPk(fileId, {
+    // Validate project exists
+    const project = await Project.findByPk(projectId, { transaction });
+    if (!project) {
+      await transaction.rollback();
+      return sendNotFound(res, "Project not found");
+    }
+
+    // Check if user is creator or admin
+    if (project.createdBy !== userId && req.user.role !== "admin") {
+      await transaction.rollback();
+      return sendError(res, 403, "Not authorized to delete files for this project");
+    }
+
+    // Find file within the specific project
+    const projectFile = await ProjectFile.findOne({
+      where: { 
+        fileId: fileId, 
+        projectId: projectId 
+      },
       include: [
         {
           model: Project,
@@ -391,17 +464,12 @@ export const deleteProjectFile = async (req, res) => {
           attributes: ["id", "createdBy"],
         },
       ],
+      transaction
     });
 
     if (!projectFile) {
       await transaction.rollback();
-      return sendNotFound(res, "File not found");
-    }
-
-    // Check if user is creator or admin
-    if (projectFile.project.createdBy !== userId && req.user.role !== "admin") {
-      await transaction.rollback();
-      return sendError(res, 403, "Not authorized to delete this file");
+      return sendNotFound(res, "File not found in this project");
     }
 
     // Delete file from database
@@ -409,7 +477,7 @@ export const deleteProjectFile = async (req, res) => {
 
     // Delete file from disk (optional - you might want to keep files for backup)
     try {
-      if (fs.existsSync(projectFile.filePath)) {
+      if (projectFile.filePath && fs.existsSync(projectFile.filePath)) {
         fs.unlinkSync(projectFile.filePath);
       }
     } catch (fileError) {
@@ -419,14 +487,22 @@ export const deleteProjectFile = async (req, res) => {
 
     await transaction.commit();
 
-    res.json({
-      success: true,
-      message: "File deleted successfully",
+    return sendSuccess(res, "File deleted successfully", {
+      deletedFile: {
+        fileId: projectFile.fileId,
+        fileName: projectFile.fileName
+      }
     });
   } catch (error) {
-    await transaction.rollback();
+    if (transaction) {
+      try {
+        await transaction.rollback();
+      } catch (rollbackError) {
+        console.error("Transaction rollback error:", rollbackError);
+      }
+    }
     console.error("Delete project file error:", error);
-    sendServerError(res, "Failed to delete file", error.message);
+    return sendServerError(res, "Failed to delete file", error.message);
   }
 };
 

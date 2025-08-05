@@ -82,11 +82,27 @@ export const getLiveCourses = async (req, res) => {
     }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Handle sorting by related fields
+    let orderClause;
+    if (sortBy === 'category') {
+      orderClause = [['category', 'categoryName', sortOrder]];
+    } else if (sortBy === 'level') {
+      orderClause = [['level', 'name', sortOrder]];
+    } else if (sortBy === 'startDate') {
+      orderClause = [['batches', 'startDate', sortOrder]];
+    } else if (sortBy === 'endDate') {
+      orderClause = [['batches', 'endDate', sortOrder]];
+    } else {
+      orderClause = [[sortBy, sortOrder]];
+    }
+
     const { count, rows } = await Course.findAndCountAll({
       where: whereClause,
       include: [
         { model: Category, as: "category", attributes: ["categoryId", "categoryName"] },
         { model: CourseLevel, as: "level", attributes: ["levelId", "name"] },
+        { model: Batch, as: "batches", attributes: ["batchId", "startDate", "endDate", "status"], required: false },
         {
           model: CourseTechStack,
           as: "techStack",
@@ -100,7 +116,7 @@ export const getLiveCourses = async (req, res) => {
           required: false,
         },
       ],
-      order: [[sortBy, sortOrder]],
+      order: orderClause,
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
@@ -166,6 +182,17 @@ export const getRecordedCourses = async (req, res) => {
     }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
+    
+    // Handle sorting by related fields
+    let orderClause;
+    if (sortBy === 'category') {
+      orderClause = [['category', 'categoryName', sortOrder]];
+    } else if (sortBy === 'level') {
+      orderClause = [['level', 'name', sortOrder]];
+    } else {
+      orderClause = [[sortBy, sortOrder]];
+    }
+
     const { count, rows } = await Course.findAndCountAll({
       where: whereClause,
       include: [
@@ -184,7 +211,7 @@ export const getRecordedCourses = async (req, res) => {
           required: false,
         },
       ],
-      order: [[sortBy, sortOrder]],
+      order: orderClause,
       limit: parseInt(limit),
       offset: parseInt(offset)
     });
@@ -405,7 +432,6 @@ export const createCourse = async (req, res) => {
       type,
       isPaid = false,
       price = 0,
-      salePrice,
       discountEnabled = true,
       isMonthlyPayment = false,
       durationMinutes,
@@ -472,7 +498,6 @@ export const createCourse = async (req, res) => {
       type,
       isPaid,
       price: isPaid ? parseFloat(price) : 0,
-      salePrice: salePrice ? parseFloat(salePrice) : null,
       discountEnabled,
       isMonthlyPayment,
       durationMinutes,
@@ -579,7 +604,6 @@ export const updateCourse = async (req, res) => {
       categoryId,
       isPaid,
       price,
-      salePrice,
       discountEnabled,
       isMonthlyPayment,
       durationMinutes,
@@ -614,7 +638,6 @@ export const updateCourse = async (req, res) => {
       ...(categoryId && { categoryId }),
       ...(isPaid !== undefined && { isPaid }),
       ...(price !== undefined && { price: isPaid ? parseFloat(price) : 0 }),
-      ...(salePrice !== undefined && { salePrice: salePrice ? parseFloat(salePrice) : null }),
       ...(discountEnabled !== undefined && { discountEnabled }),
       ...(isMonthlyPayment !== undefined && { isMonthlyPayment }),
       ...(durationMinutes !== undefined && { durationMinutes }),
@@ -2275,7 +2298,7 @@ export const getPurchaseDetails = async (req, res) => {
         {
           model: Course,
           as: 'course',
-          attributes: ['courseId', 'title', 'type', 'price', 'salePrice']
+          attributes: ['courseId', 'title', 'type', 'price']
         }
       ]
     });

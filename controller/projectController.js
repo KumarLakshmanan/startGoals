@@ -362,12 +362,20 @@ export const getAllProjects = async (req, res) => {
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
+    // Handle sorting by related fields
+    let orderClause;
+    if (sortBy === 'category') {
+      orderClause = [['category', 'categoryName', sortOrder.toUpperCase()]];
+    } else {
+      orderClause = [[sortBy, sortOrder.toUpperCase()]];
+    }
+
     const { count, rows: projects } = await Project.findAndCountAll({
       where: whereConditions,
       include: includeOptions,
       limit: parseInt(limit),
       offset: offset,
-      order: [[sortBy, sortOrder.toUpperCase()]],
+      order: orderClause,
       distinct: true,
     });
 
@@ -726,7 +734,7 @@ export const initiateProjectPurchase = async (req, res) => {
       return sendError(res, 400, "You have already purchased this project");
     }
 
-    let finalPrice = project.salePrice || project.price;
+    let finalPrice = project.price;
     let discountAmount = 0;
     let discountId = null;
 
@@ -754,7 +762,7 @@ export const initiateProjectPurchase = async (req, res) => {
 
       if (discount.maxUsesPerUser) {
         const userUsages = await DiscountUsage.count({
-          where: { userId, discountId: discount.id },
+          where: { userId, discountId: discount.discountId },
         });
 
         if (userUsages >= discount.maxUsesPerUser) {
@@ -781,7 +789,7 @@ export const initiateProjectPurchase = async (req, res) => {
 
       discountAmount = Math.min(discountAmount, finalPrice); // Don't exceed original price
       finalPrice = finalPrice - discountAmount;
-      discountId = discount.id;
+      discountId = discount.discountId;
     }
 
     // Create purchase record
@@ -789,7 +797,7 @@ export const initiateProjectPurchase = async (req, res) => {
       {
         userId,
         projectId,
-        originalPrice: project.salePrice || project.price,
+        originalPrice: project.price,
         discountAmount,
         finalPrice,
         discountId,
@@ -1025,7 +1033,6 @@ export const getProjectStatistics = async (req, res) => {
         "title",
         "totalSales",
         "price",
-        "salePrice",
         [sequelize.literal('(price * "totalSales")'), "revenue"],
       ],
       where: { status: "published" },

@@ -14,7 +14,7 @@ import {
   deleteLessonAdmin,
   
   // Lesson content management
-  updateLessonVideo,
+  uploadLessonVideo,
   updateLessonContent,
   toggleLessonPreview,
   bulkUpdateLessons,
@@ -49,7 +49,7 @@ router.put("/:lessonId", isTeacher, updateLesson);
 router.delete("/:lessonId", isTeacher, deleteLesson);
 
 // Lesson content management
-router.put("/:lessonId/video", isTeacher, upload.single("video"), updateLessonVideo);
+router.put("/:lessonId/video", isTeacher, upload.single("video"), uploadLessonVideo);
 router.put("/:lessonId/content", isTeacher, updateLessonContent);
 router.put("/:lessonId/preview", isTeacher, toggleLessonPreview);
 
