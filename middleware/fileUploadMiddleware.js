@@ -31,7 +31,19 @@ class S3Storage {
     const fileExtension = path.extname(file.originalname);
     const fileName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${fileExtension}`;
     const key = `${folder}${fileName}`;
-
+    let fileSize = 0;
+    // get the file size
+    file.stream.on("data", (chunk) => {
+      fileSize += chunk.length;
+    });
+    file.stream.on("end", () => {
+      console.log(`File size for ${file.originalname}: ${fileSize} bytes`);
+    });
+    file.stream.on("error", (err) => {
+      console.error(`Error reading file stream for ${file.originalname}:`, err);
+      cb(err);
+      return;
+    });
     const metadata = this.metadata
       ? this.metadata(req, file, (err, metadata) => metadata)
       : {};
@@ -62,7 +74,8 @@ class S3Storage {
         cb(null, {
           bucket: this.bucket,
           key: key,
-          location: publicUrl, // Use constructed public URL
+          size: fileSize,
+          location: publicUrl,
           etag: result.ETag,
         });
       })
@@ -96,7 +109,7 @@ const customS3Storage = new S3Storage({
 const upload = multer({
   storage: customS3Storage,
   limits: {
-    fileSize: 100 * 1024 * 1024, // 100MB file size limit
+    fileSize: 1024 * 1024 * 1024, // 1GB file size limit
   },
   fileFilter: (req, file, cb) => {
     // Define allowed file types based on fieldname
@@ -126,9 +139,6 @@ const upload = multer({
     const fieldType = allowedTypes[file.fieldname];
     const extname = fieldType.test(
       path.extname(file.originalname).toLowerCase(),
-    );
-    console.log(
-      `File upload check for field ${file.fieldname} field ${file.originalname}: extname=${extname}`,
     );
     if (extname) {
       return cb(null, true);

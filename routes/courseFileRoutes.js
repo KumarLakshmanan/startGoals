@@ -4,21 +4,20 @@ import { uploadMultiple } from "../middleware/fileUploadMiddleware.js";
 import {
   uploadCourseFiles,
   getCourseFiles,
-  downloadCourseFile,
   updateCourseFile,
   deleteCourseFile,
-  streamCourseFile
+  updateCourseFileData,
 } from "../controller/courseFileController.js";
 
 const router = express.Router();
 
 /**
- * @route   POST /api/courses/:courseId/files
- * @desc    Upload files for a course (admin/creator only)
+ * @route   POST /api/courses/:courseId/sections/:sectionId/lessons/:lessonId/files
+ * @desc    Upload files for a lesson in a section in a course (admin/creator only)
  * @access  Private (Admin, Course Creator)
  */
 router.post(
-  "/:courseId/files",
+  "/:courseId/sections/:sectionId/lessons/:lessonId/files",
   authenticateToken,
   checkRole(["admin", "teacher"]),
   uploadMultiple("courseFiles"),
@@ -26,59 +25,52 @@ router.post(
 );
 
 /**
- * @route   GET /api/courses/:courseId/files
- * @desc    Get all files for a course (preview for all, all for enrolled)
+ * @route   GET /api/courses/:courseId/sections/:sectionId/lessons/:lessonId/files
+ * @desc    Get all files for a lesson in a section in a course (preview for all, all for enrolled)
  * @access  Mixed (Public for preview, Private for all)
  */
 router.get(
-  "/:courseId/files",
+  "/:courseId/sections/:sectionId/lessons/:lessonId/files",
+  authenticateToken,
   getCourseFiles
 );
 
 /**
- * @route   GET /api/course-files/:fileId/download
- * @desc    Download a course file
- * @access  Private (Enrolled users, Creator, Admin)
- */
-router.get(
-  "/files/:fileId/download",
-  authenticateToken,
-  downloadCourseFile
-);
-
-/**
- * @route   GET /api/course-files/:fileId/stream
- * @desc    Stream a video or audio course file
- * @access  Private (Enrolled users, Creator, Admin)
- */
-router.get(
-  "/files/:fileId/stream",
-  authenticateToken,
-  streamCourseFile
-);
-
-/**
- * @route   PUT /api/course-files/:fileId
- * @desc    Update course file details
+ * @route   PUT /api/courses/:courseId/sections/:sectionId/lessons/:lessonId/files/:fileId
+ * @desc    Update a file for a lesson in a section in a course
  * @access  Private (Creator, Admin)
  */
 router.put(
-  "/files/:fileId",
+  "/:courseId/sections/:sectionId/lessons/:lessonId/files/:fileId",
   authenticateToken,
   checkRole(["admin", "teacher"]),
   updateCourseFile
 );
 
 /**
- * @route   DELETE /api/course-files/:fileId
- * @desc    Delete a course file
+ * @route   DELETE /api/courses/:courseId/sections/:sectionId/lessons/:lessonId/files/:fileId
+ * @desc    Delete a file for a lesson in a section in a course
  * @access  Private (Creator, Admin)
  */
 router.delete(
-  "/files/:fileId",
+  "/:courseId/sections/:sectionId/lessons/:lessonId/files/:fileId",
   authenticateToken,
   checkRole(["admin", "teacher"]),
   deleteCourseFile
 );
+
+/**
+ * @route   PUT /api/courses/:courseId/sections/:sectionId/lessons/:lessonId/data/:fileId
+ * @desc    Update file data for a lesson in a section in a course
+ * @access  Private (Creator, Admin)
+ */
+router.put(
+  "/:courseId/sections/:sectionId/lessons/:lessonId/data/:fileId",
+  authenticateToken,
+  checkRole(["admin", "teacher"]),
+  updateCourseFileData
+);
+
+
 
 export default router;

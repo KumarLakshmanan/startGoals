@@ -1,7 +1,6 @@
 import ProjectFile from "../model/projectFile.js";
 import Project from "../model/project.js";
 import ProjectPurchase from "../model/projectPurchase.js";
-import User from "../model/user.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import path from "path";
@@ -13,7 +12,6 @@ import {
   sendValidationError,
   sendNotFound,
   sendServerError,
-  sendUnauthorized,
   sendForbidden,
 } from "../utils/responseHelper.js";
 
@@ -22,7 +20,10 @@ const __dirname = path.dirname(__filename);
 
 // ===================== PROJECT FILE MANAGEMENT =====================
 
-// Upload project files (Admin/Creator only)
+/**
+ * Upload project files (Admin/Creator only) - Legacy method
+ * This method directly handles file uploads with multer
+ */
 export const uploadProjectFiles = async (req, res) => {
   let transaction;
   try {
@@ -96,70 +97,46 @@ export const uploadProjectFiles = async (req, res) => {
         ) {
           fileType = "video";
         }
-
-        console.log(`File upload check for field files field ${file.originalname}: extname=${!!fileExtension}`);
-        
-        // Check if file was uploaded to S3 and has a valid URL
-        const fileUrl = file.location || file.path || file.url;
-        if (!fileUrl) {
-          console.error(`No valid file URL found for ${file.originalname}. File object:`, file);
-          throw new Error(`Failed to upload file ${file.originalname} - no valid URL returned`);
-        }
-
-        // Create file record with proper data validation
+        console.log(file);
+        // Create file record
         const projectFile = await ProjectFile.create(
           {
-            projectId: projectId,
+            projectId,
             fileName: file.originalname,
-            fileUrl: fileUrl,
-            fileType: fileType,
-            fileSize: file.size || 0,
-            mimeType: file.mimetype || 'application/octet-stream',
-            description: description || '',
+            fileUrl: file.location || file.path, // Use S3 location if available
+            fileType,
+            fileSize: file.size,
+            mimeType: file.mimetype,
+            description: description,
             downloadCount: 0,
             uploadedBy: userId,
-            isMain: false,
-            downloadOrder: 0,
-            version: '1.0',
           },
-          { transaction },
+          { transaction }
         );
 
         uploadedFiles.push(projectFile);
       } catch (fileError) {
         console.error(`Error processing file ${file.originalname}:`, fileError);
-        // Continue with other files instead of failing the entire upload
-        continue;
+        // Continue with other files
       }
     }
 
-    // Only commit if we have successfully uploaded files
     if (uploadedFiles.length === 0) {
       if (transaction) await transaction.rollback();
-      return sendValidationError(res, "No files were successfully uploaded");
+      return sendValidationError(res, "No files could be processed");
     }
 
     await transaction.commit();
 
-    // Fetch uploaded files with associations
-    const filesWithDetails = await ProjectFile.findAll({
-      where: {
-        fileId: { [Op.in]: uploadedFiles.map((f) => f.fileId) },
-      },
-      include: [
-        {
-          model: User,
-          as: "uploader",
-          attributes: ["userId", "username"],
-        },
-      ],
-    });
-
-    sendSuccess(res, `${uploadedFiles.length} file(s) uploaded successfully`, {
-      files: filesWithDetails,
-      totalUploaded: uploadedFiles.length,
-      totalAttempted: req.files.length,
-    });
+    // Return success response
+    sendSuccess(
+      res,
+      `${uploadedFiles.length} file(s) uploaded successfully`,
+      {
+        files: uploadedFiles,
+        projectId,
+      }
+    );
   } catch (error) {
     if (transaction) {
       try {
@@ -173,11 +150,128 @@ export const uploadProjectFiles = async (req, res) => {
   }
 };
 
-// Get project files (Admin/Creator for all, Users for preview only, Purchased users for all)
+/**
+ * Save project files to database (after upload via file upload API)
+ * This endpoint expects file information from the upload API response
+ */
+export const saveProjectFiles = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { projectId } = req.params;
+    const { files } = req.body; // Array of file objects from upload API
+    const userId = req.user.userId;
+
+    // Validate project exists and user has permission
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      await transaction.rollback();
+      return sendNotFound(res, "Project not found");
+    }
+
+    // Check if user is creator or admin
+    if (project.createdBy !== userId && req.user.role !== "admin") {
+      await transaction.rollback();
+      return sendError(res, 403, "Not authorized to upload files for this project");
+    }
+
+    // Validate files array
+    if (!files || !Array.isArray(files) || files.length === 0) {
+      await transaction.rollback();
+      return sendValidationError(res, "No file information provided");
+    }
+
+    const savedFiles = [];
+
+    // Process each file
+    for (const fileInfo of files) {
+      // Validate required file information
+      if (!fileInfo.url || !fileInfo.originalName || !fileInfo.fileId) {
+        continue; // Skip invalid files
+      }
+
+      // Determine file type based on extension or mime type
+      const fileExtension = fileInfo.originalName
+        ? fileInfo.originalName.split('.').pop().toLowerCase()
+        : '';
+      
+      let fileType = "other";
+      if ([".zip", ".rar", ".7z", ".tar", ".gz"].includes(`.${fileExtension}`)) {
+        fileType = "archive";
+      } else if (
+        [".js", ".ts", ".html", ".css", ".php", ".py", ".java", ".cpp", ".c"]
+          .includes(`.${fileExtension}`)
+      ) {
+        fileType = "source_code";
+      } else if (
+        [".pdf", ".doc", ".docx", ".txt", ".md"].includes(`.${fileExtension}`)
+      ) {
+        fileType = "documentation";
+      } else if (
+        [".jpg", ".jpeg", ".png", ".gif", ".svg", ".webp"]
+          .includes(`.${fileExtension}`)
+      ) {
+        fileType = "image";
+      } else if (
+        [".mp4", ".avi", ".mov", ".wmv", ".flv"].includes(`.${fileExtension}`)
+      ) {
+        fileType = "video";
+      }
+
+      // Create file record in database
+      const projectFile = await ProjectFile.create(
+        {
+          projectId: projectId, // Keep as string/UUID
+          fileName: fileInfo.originalName,
+          fileUrl: fileInfo.url, // Use S3 URL
+          fileType: fileType,
+          fileSize: fileInfo.fileSize || 0,
+          mimeType: fileInfo.mimeType || "application/octet-stream",
+          description: fileInfo.description || "",
+          downloadCount: 0,
+          uploadedBy: userId,
+        },
+        { transaction }
+      );
+
+      savedFiles.push(projectFile);
+    }
+
+    await transaction.commit();
+
+    // Fetch saved files with associations for response
+    const filesWithDetails = await ProjectFile.findAll({
+      where: {
+        fileId: { [Op.in]: savedFiles.map((f) => f.fileId) },
+      },
+    });
+
+    sendSuccess(
+      res,
+      `${savedFiles.length} file(s) saved successfully`,
+      {
+        files: filesWithDetails,
+        projectId: projectId
+      }
+    );
+  } catch (error) {
+    try {
+      await transaction.rollback();
+    } catch (rollbackError) {
+      console.error("Transaction rollback error:", rollbackError);
+    }
+    console.error("Save project files error:", error);
+    sendServerError(res, "Failed to save files", error.message);
+  }
+};
+
+/**
+ * Get project files (improved version with better access control)
+ */
 export const getProjectFiles = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { fileType } = req.query;
+    const { fileType, page = 1, limit = 50 } = req.query;
     const userId = req.user?.userId;
 
     // Validate project exists
@@ -186,183 +280,79 @@ export const getProjectFiles = async (req, res) => {
       return sendNotFound(res, "Project not found");
     }
 
-    // Check user permissions
-    const isCreatorOrAdmin =
-      userId && (project.createdBy === userId || req.user?.role === "admin");
-    
-    const hasPurchased = userId
-      ? await ProjectPurchase.findOne({
-          where: {
-            userId,
-            projectId,
-            paymentStatus: "completed",
-          },
-        })
-      : null;
-
-    // Build where conditions
-    const whereConditions = { projectId: projectId };
-
-    if (fileType) {
-      whereConditions.fileType = fileType;
+    // Build where condition
+    const whereCondition = { projectId: projectId };
+    if (fileType && fileType !== 'all') {
+      whereCondition.fileType = fileType;
     }
 
-    const files = await ProjectFile.findAll({
-      where: whereConditions,
-      order: [["createdAt", "ASC"]],
+    // Check user access permissions
+    let hasFullAccess = false;
+    
+    if (userId) {
+      // Check if user is admin, project creator, or has purchased the project
+      if (req.user.role === 'admin' || project.createdBy === userId) {
+        hasFullAccess = true;
+      } else {
+        // Check if user has purchased the project
+        const purchase = await ProjectPurchase.findOne({
+          where: { projectId: projectId, userId: userId }
+        });
+        hasFullAccess = !!purchase;
+      }
+    }
+
+    // If no access, only show preview files
+    if (!hasFullAccess) {
+      whereCondition.isPreview = true;
+    }
+
+    // Calculate pagination
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
+    // Fetch files with pagination
+    const { rows: files, count: totalFiles } = await ProjectFile.findAndCountAll({
+      where: whereCondition,
+      order: [["createdAt", "DESC"]],
+      limit: parseInt(limit),
+      offset: offset,
     });
 
-    // Format file data and hide sensitive information
-    const formattedFiles = files.map((file) => {
-      const fileData = file.toJSON();
-
-      // Remove sensitive information for non-authorized users
-      if (!isCreatorOrAdmin && !hasPurchased) {
-        delete fileData.filePath;
+    const response = {
+      files,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(totalFiles / parseInt(limit)),
+        totalFiles,
+        limit: parseInt(limit),
+        hasNext: offset + files.length < totalFiles,
+        hasPrev: parseInt(page) > 1
+      },
+      access: {
+        hasFullAccess,
+        isPreviewOnly: !hasFullAccess
       }
+    };
 
-      return fileData;
-    });
-
-    return sendSuccess(
-      res, 
-      "Project files retrieved successfully", 
-      {
-        files: formattedFiles,
-        meta: {
-          userCanAccessAllFiles: isCreatorOrAdmin || !!hasPurchased,
-          totalFiles: formattedFiles.length,
-          isPurchased: !!hasPurchased,
-          isCreatorOrAdmin: isCreatorOrAdmin
-        }
-      }
-    );
+    sendSuccess(res, "Project files retrieved successfully", response);
   } catch (error) {
     console.error("Get project files error:", error);
-    return sendServerError(res, "Failed to fetch project files", error.message);
+    sendServerError(res, "Failed to retrieve files", error.message);
   }
 };
 
-// Download project file
-export const downloadProjectFile = async (req, res) => {
-  try {
-    const { fileId } = req.params;
-    const userId = req.user?.userId;
-
-    // Authentication check
-    if (!userId) {
-      return sendUnauthorized(res, "You must be logged in to download files");
-    }
-
-    // Find file with project information
-    const projectFile = await ProjectFile.findByPk(fileId, {
-      include: [
-        {
-          model: Project,
-          as: "project",
-          attributes: ["id", "projectId", "title", "createdBy", "status"],
-        },
-      ],
-    });
-
-    if (!projectFile) {
-      return sendNotFound(res, "File not found");
-    }
-
-    // Check if project is published or user is creator/admin
-    if (
-      projectFile.project.status !== "published" &&
-      projectFile.project.createdBy !== userId &&
-      req.user?.role !== "admin"
-    ) {
-      return sendForbidden(res, "Project not available for download");
-    }
-
-    const isCreatorOrAdmin =
-      userId &&
-      (projectFile.project.createdBy === userId || req.user?.role === "admin");
-
-    // Check if the file is a preview or if special permissions apply
-    if (!isCreatorOrAdmin) {
-      // Check if user has purchased the project
-      const purchase = await ProjectPurchase.findOne({
-        where: {
-          userId,
-          projectId: projectFile.project.projectId,
-          paymentStatus: "completed",
-        },
-      });
-
-      if (!purchase) {
-        return sendForbidden(res, "You need to purchase this project to download this file");
-      }
-
-      // Check download limits if any (for purchased users)
-      if (
-        purchase.downloadLimit &&
-        purchase.downloadCount >= purchase.downloadLimit
-      ) {
-        return sendForbidden(res, "Download limit exceeded for this purchase");
-      }
-
-      // Increment purchase download count
-      await purchase.increment("downloadCount");
-      
-      // Update the lastDownloadAt timestamp
-      await purchase.update({
-        lastDownloadAt: new Date()
-      });
-    }
-
-    // Check if file exists on disk
-    if (!fs.existsSync(projectFile.filePath)) {
-      return sendNotFound(res, "File not found on server");
-    }
-
-    // Increment file download count
-    await projectFile.increment("downloadCount");
-
-    // Set download headers
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename="${projectFile.fileName}"`,
-    );
-    res.setHeader(
-      "Content-Type",
-      projectFile.mimeType || "application/octet-stream",
-    );
-    res.setHeader("Content-Length", projectFile.fileSize);
-
-    // Create read stream and pipe to response
-    const fileStream = fs.createReadStream(projectFile.filePath);
-
-    fileStream.on("error", (error) => {
-      console.error("File stream error:", error);
-      if (!res.headersSent) {
-        sendServerError(res, "Error reading file");
-      }
-    });
-
-    fileStream.pipe(res);
-  } catch (error) {
-    console.error("Download project file error:", error);
-    if (!res.headersSent) {
-      sendServerError(res, "Failed to download file", error.message);
-    }
-  }
-};
-
-// Update project file details (Admin/Creator only)
+/**
+ * Update project file metadata (Admin/Creator only)
+ */
 export const updateProjectFile = async (req, res) => {
   const transaction = await sequelize.transaction();
-  
+
   try {
     const { projectId, fileId } = req.params;
-    const { fileName, description, fileType } = req.body;
     const userId = req.user.userId;
 
     // Validate project exists
-    const project = await Project.findByPk(projectId, { transaction });
+    const project = await Project.findByPk(projectId);
     if (!project) {
       await transaction.rollback();
       return sendNotFound(res, "Project not found");
@@ -374,63 +364,82 @@ export const updateProjectFile = async (req, res) => {
       return sendError(res, 403, "Not authorized to update files for this project");
     }
 
-    // Find file within the specific project
+    // Find and update the file
     const projectFile = await ProjectFile.findOne({
-      where: { 
-        fileId: fileId, 
-        projectId: projectId 
-      },
-      include: [
-        {
-          model: Project,
-          as: "project",
-          attributes: ["id", "createdBy"],
-        },
-      ],
-      transaction
+      where: { fileId: fileId, projectId: projectId }
     });
 
     if (!projectFile) {
       await transaction.rollback();
-      return sendNotFound(res, "File not found in this project");
+      return sendNotFound(res, "File not found");
     }
 
-    // Update file details
-    const updateData = {};
-    if (fileName !== undefined) updateData.fileName = fileName;
-    if (description !== undefined) updateData.description = description;
-    if (fileType !== undefined) updateData.fileType = fileType;
-
-    await projectFile.update(updateData, { transaction });
-
+    await projectFile.save({ transaction });
     await transaction.commit();
 
     // Fetch updated file with associations
-    const updatedFile = await ProjectFile.findByPk(projectFile.id, {
-      include: [
-        {
-          model: User,
-          as: "uploader",
-          attributes: ["userId", "username"],
-        },
-      ],
-    });
+    const updatedFile = await ProjectFile.findByPk(projectFile.fileId,);
 
-    return sendSuccess(res, "File updated successfully", updatedFile);
+    sendSuccess(res, "File updated successfully", updatedFile);
   } catch (error) {
-    if (transaction) {
-      try {
-        await transaction.rollback();
-      } catch (rollbackError) {
-        console.error("Transaction rollback error:", rollbackError);
-      }
-    }
+    await transaction.rollback();
     console.error("Update project file error:", error);
-    return sendServerError(res, "Failed to update file", error.message);
+    sendServerError(res, "Failed to update file", error.message);
   }
 };
 
-// Delete project file (Admin/Creator only)
+export const updateProjectData = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { projectId, fileId } = req.params;
+    const { fileName, description } = req.body;
+    const userId = req.user.userId;
+
+    // Validate project exists
+    const project = await Project.findByPk(projectId);
+    if (!project) {
+      await transaction.rollback();
+      return sendNotFound(res, "Project not found");
+    }
+
+    // Check if user is creator or admin
+    if (project.createdBy !== userId && req.user.role !== "admin") {
+      await transaction.rollback();
+      return sendError(res, 403, "Not authorized to update files for this project");
+    }
+
+    // Find and update the file
+    const projectFile = await ProjectFile.findOne({
+      where: { fileId: fileId, projectId: projectId }
+    });
+
+    if (!projectFile) {
+      await transaction.rollback();
+      return sendNotFound(res, "File not found");
+    }
+
+    // Update fields if provided
+    if (fileName !== undefined) projectFile.fileName = fileName;
+    if (description !== undefined) projectFile.description = description;
+
+    await projectFile.save({ transaction });
+    await transaction.commit();
+
+    // Fetch updated file with associations
+    const updatedFile = await ProjectFile.findByPk(projectFile.fileId);
+
+    sendSuccess(res, "File updated successfully", updatedFile);
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Update project data error:", error);
+    sendServerError(res, "Failed to update file", error.message);
+  }
+}
+
+/**
+ * Delete project file (Admin/Creator only)
+ */
 export const deleteProjectFile = async (req, res) => {
   const transaction = await sequelize.transaction();
 
@@ -439,7 +448,7 @@ export const deleteProjectFile = async (req, res) => {
     const userId = req.user.userId;
 
     // Validate project exists
-    const project = await Project.findByPk(projectId, { transaction });
+    const project = await Project.findByPk(projectId);
     if (!project) {
       await transaction.rollback();
       return sendNotFound(res, "Project not found");
@@ -451,153 +460,94 @@ export const deleteProjectFile = async (req, res) => {
       return sendError(res, 403, "Not authorized to delete files for this project");
     }
 
-    // Find file within the specific project
+    // Find and delete the file
     const projectFile = await ProjectFile.findOne({
-      where: { 
-        fileId: fileId, 
-        projectId: projectId 
-      },
-      include: [
-        {
-          model: Project,
-          as: "project",
-          attributes: ["id", "createdBy"],
-        },
-      ],
-      transaction
+      where: { fileId: fileId, projectId: projectId }
     });
 
     if (!projectFile) {
       await transaction.rollback();
-      return sendNotFound(res, "File not found in this project");
+      return sendNotFound(res, "File not found");
     }
 
-    // Delete file from database
     await projectFile.destroy({ transaction });
-
-    // Delete file from disk (optional - you might want to keep files for backup)
-    try {
-      if (projectFile.filePath && fs.existsSync(projectFile.filePath)) {
-        fs.unlinkSync(projectFile.filePath);
-      }
-    } catch (fileError) {
-      console.error("Error deleting file from disk:", fileError);
-      // Continue with database transaction - file deletion from disk is not critical
-    }
-
     await transaction.commit();
 
-    return sendSuccess(res, "File deleted successfully", {
+    sendSuccess(res, "File deleted successfully", { 
       deletedFile: {
         fileId: projectFile.fileId,
         fileName: projectFile.fileName
       }
     });
   } catch (error) {
-    if (transaction) {
-      try {
-        await transaction.rollback();
-      } catch (rollbackError) {
-        console.error("Transaction rollback error:", rollbackError);
-      }
-    }
+    await transaction.rollback();
     console.error("Delete project file error:", error);
-    return sendServerError(res, "Failed to delete file", error.message);
+    sendServerError(res, "Failed to delete file", error.message);
   }
 };
 
-// Get download statistics (Admin only)
-export const getDownloadStatistics = async (req, res) => {
+/**
+ * Download project file (Purchased users only)
+ */
+export const downloadProjectFile = async (req, res) => {
   try {
-    const { projectId, period = "30d" } = req.query;
+    const { fileId } = req.params;
+    const userId = req.user?.userId;
 
-    let dateFilter = {};
-    const now = new Date();
-
-    switch (period) {
-      case "7d":
-        dateFilter = {
-          [Op.gte]: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
-        };
-        break;
-      case "30d":
-        dateFilter = {
-          [Op.gte]: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
-        };
-        break;
-      case "90d":
-        dateFilter = {
-          [Op.gte]: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
-        };
-        break;
-      case "1y":
-        // eslint-disable-next-line no-unused-vars
-        dateFilter = {
-          [Op.gte]: new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000),
-        };
-        break;
-    }
-
-    const whereConditions = {};
-    if (projectId) {
-      whereConditions.projectId = projectId;
-    }
-
-    // Most downloaded files
-    const topDownloadedFiles = await ProjectFile.findAll({
-      where: whereConditions,
+    // Find the file
+    const projectFile = await ProjectFile.findOne({
+      where: { fileId },
       include: [
         {
           model: Project,
           as: "project",
-          attributes: ["id", "title"],
+          attributes: ["projectId", "createdBy", "title"],
         },
       ],
-      attributes: ["id", "fileName", "fileType", "downloadCount"],
-      order: [["downloadCount", "DESC"]],
-      limit: 10,
     });
 
-    // File type distribution
-    const fileTypeStats = await ProjectFile.findAll({
-      where: whereConditions,
-      attributes: [
-        "fileType",
-        [sequelize.fn("COUNT", sequelize.col("id")), "fileCount"],
-        [sequelize.fn("SUM", sequelize.col("downloadCount")), "totalDownloads"],
-      ],
-      group: ["fileType"],
-      order: [[sequelize.fn("SUM", sequelize.col("downloadCount")), "DESC"]],
-    });
+    if (!projectFile) {
+      return sendNotFound(res, "File not found");
+    }
 
-    // Total statistics
-    const totalStats = await ProjectFile.findAll({
-      where: whereConditions,
-      attributes: [
-        [sequelize.fn("COUNT", sequelize.col("id")), "totalFiles"],
-        [sequelize.fn("SUM", sequelize.col("downloadCount")), "totalDownloads"],
-        [sequelize.fn("SUM", sequelize.col("fileSize")), "totalSize"],
-      ],
-      raw: true,
-    });
+    const project = projectFile.project;
 
-    const stats = totalStats[0] || {};
+    // Check access permissions
+    let hasAccess = false;
 
-    res.json({
-      success: true,
-      data: {
-        overview: {
-          totalFiles: parseInt(stats.totalFiles) || 0,
-          totalDownloads: parseInt(stats.totalDownloads) || 0,
-          totalSize: parseInt(stats.totalSize) || 0,
-          period,
-        },
-        topDownloadedFiles,
-        fileTypeDistribution: fileTypeStats,
-      },
-    });
+    if (userId) {
+      // Admin or creator has full access
+      if (req.user.role === 'admin' || project.createdBy === userId) {
+        hasAccess = true;
+      } else {
+        // Check if user has purchased the project
+        const purchase = await ProjectPurchase.findOne({
+          where: { projectId: project.projectId, userId: userId }
+        });
+        hasAccess = !!purchase;
+      }
+    }
+
+    // If no access and not a preview file, deny
+    if (!hasAccess && !projectFile.isPreview) {
+      return sendForbidden(res, "You need to purchase this project to download files");
+    }
+
+    // Increment download count
+    await projectFile.increment('downloadCount');
+
+    // Send file info or redirect to download URL
+    if (projectFile.fileUrl) {
+      // If it's an S3 URL, redirect to it
+      res.redirect(projectFile.fileUrl);
+    } else if (projectFile.filePath && fs.existsSync(projectFile.filePath)) {
+      // If it's a local file, serve it
+      res.download(projectFile.filePath, projectFile.fileName);
+    } else {
+      return sendNotFound(res, "File not accessible");
+    }
   } catch (error) {
-    console.error("Get download statistics error:", error);
-    sendServerError(res, "Failed to fetch download statistics", error.message);
+    console.error("Download project file error:", error);
+    sendServerError(res, "Failed to download file", error.message);
   }
 };

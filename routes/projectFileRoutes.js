@@ -5,14 +5,9 @@ import {
   downloadProjectFile,
   updateProjectFile,
   deleteProjectFile,
-} from "../controller/projectFileController.js";
-// Import improved functions
-import {
   saveProjectFiles,
-  getProjectFiles as getProjectFilesImproved,
-  deleteProjectFile as deleteProjectFileImproved,
-  updateProjectFile as updateProjectFileImproved,
-} from "../controller/projectFileController_improved.js";
+  updateProjectData,
+} from "../controller/projectFileController.js";
 import { isAdmin } from "../middleware/authMiddleware.js";
 import { validateSchema, projectFileValidation } from "../middleware/fieldValidation.js";
 import { uploadMultiple } from "../middleware/fileUploadMiddleware.js";
@@ -25,7 +20,7 @@ const router = express.Router();
 router.post(
   "/:projectId/files",
   isAdmin, // Add authentication
-  uploadMultiple("files", 10), // Allow up to 10 files
+  uploadMultiple("projectFiles", 10), // Allow up to 10 files
   uploadProjectFiles,
 );
 
@@ -33,13 +28,14 @@ router.post(
 router.post(
   "/:projectId/upload",
   isAdmin, // Add authentication
-  uploadMultiple("files", 10), // Allow up to 10 files
+  uploadMultiple("projectFiles", 10), // Allow up to 10 files
   uploadProjectFiles,
 );
 
 // Get project files
 router.get(
   "/:projectId/files",
+  isAdmin, // Add authentication for admin access, remove for public access
   getProjectFiles,
 );
 
@@ -55,10 +51,14 @@ router.get(
 router.put(
   "/:projectId/files/:fileId",
   isAdmin, // Add authentication
-  validateSchema(projectFileValidation.update, "body", { mergeParams: true }),
   updateProjectFile,
 );
-
+router.put(
+  "/:projectId/data/:fileId",
+  isAdmin,
+  updateProjectData,
+);
+// http://localhost:3030/api/project-files/4321fc35-2804-434e-868e-ca4607024d36/files/bb53adb8-f6c3-49d7-982b-6e4121bc089b
 // Delete project file (Admin/Creator only)
 router.delete(
   "/:projectId/files/:fileId",
@@ -66,7 +66,6 @@ router.delete(
   validateSchema(projectFileValidation.fileIdParam, "params"),
   deleteProjectFile,
 );
-
 // ===================== IMPROVED PROJECT FILE MANAGEMENT =====================
 
 // Save project files after upload (New improved workflow)
@@ -77,27 +76,5 @@ router.post(
   isAdmin, // Add authentication
   saveProjectFiles,
 );
-
-// Get project files (improved with better access control)
-router.get(
-  "/:projectId/files-improved",
-  getProjectFilesImproved,
-);
-
-// Update project file (improved)
-router.put(
-  "/:projectId/files-improved/:fileId",
-  isAdmin,
-  updateProjectFileImproved,
-);
-
-// Delete project file (improved)
-router.delete(
-  "/:projectId/files-improved/:fileId",
-  isAdmin,
-  deleteProjectFileImproved,
-);
-
-// ===================== LEGACY ROUTES (for backward compatibility) =====================
 
 export default router;

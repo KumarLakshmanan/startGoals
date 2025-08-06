@@ -1029,24 +1029,22 @@ export const coursePurchaseValidation = {
 // ===================== PROJECT FILE VALIDATION SCHEMAS =====================
 export const projectFileValidation = {
   upload: Joi.object({
-    projectId: Joi.number().integer().positive().required(),
+    projectId: Joi.string().uuid().required(),
     fileDescriptions: Joi.array().items(Joi.string().max(500)).optional(),
     isPreview: Joi.array().items(Joi.boolean()).optional(),
   }),
   getFiles: Joi.object({
-    projectId: Joi.number().integer().positive().required(),
+    projectId: Joi.string().uuid().required(),
   }),
   fileIdParam: Joi.object({
-    fileId: Joi.number().integer().positive().required(),
+    fileId: Joi.string().uuid().required(),
   }),
   update: Joi.object({
-    fileId: Joi.number().integer().positive().required(),
+    fileName: Joi.string().max(255).optional(),
     description: Joi.string().max(500).optional(),
-    isPreview: Joi.boolean().optional(),
-    fileType: Joi.string().valid("archive", "source_code", "documentation", "image", "video", "other").optional(),
   }),
   downloadStats: Joi.object({
-    projectId: Joi.number().integer().positive().optional(),
+    projectId: Joi.string().uuid().optional(),
     period: Joi.string().valid("7d", "30d", "90d", "1y").optional(),
   }),
 };
