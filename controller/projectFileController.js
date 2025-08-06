@@ -1,10 +1,8 @@
 import ProjectFile from "../model/projectFile.js";
 import Project from "../model/project.js";
-import ProjectPurchase from "../model/projectPurchase.js";
 import { Op } from "sequelize";
 import sequelize from "../config/db.js";
 import path from "path";
-import fs from "fs";
 import { fileURLToPath } from "url";
 import {
   sendSuccess,
@@ -12,7 +10,6 @@ import {
   sendValidationError,
   sendNotFound,
   sendServerError,
-  sendForbidden,
 } from "../utils/responseHelper.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -37,12 +34,6 @@ export const uploadProjectFiles = async (req, res) => {
     if (!project) {
       if (transaction) await transaction.rollback();
       return sendNotFound(res, "Project not found");
-    }
-
-    // Check if user is creator or admin
-    if (project.createdBy !== userId && req.user.role !== "admin") {
-      if (transaction) await transaction.rollback();
-      return sendError(res, 403, "Not authorized to upload files for this project");
     }
 
     // Check if files were uploaded
@@ -169,12 +160,6 @@ export const saveProjectFiles = async (req, res) => {
       return sendNotFound(res, "Project not found");
     }
 
-    // Check if user is creator or admin
-    if (project.createdBy !== userId && req.user.role !== "admin") {
-      await transaction.rollback();
-      return sendError(res, 403, "Not authorized to upload files for this project");
-    }
-
     // Validate files array
     if (!files || !Array.isArray(files) || files.length === 0) {
       await transaction.rollback();
@@ -272,7 +257,6 @@ export const getProjectFiles = async (req, res) => {
   try {
     const { projectId } = req.params;
     const { fileType, page = 1, limit = 50 } = req.query;
-    const userId = req.user?.userId;
 
     // Validate project exists
     const project = await Project.findByPk(projectId);
@@ -285,28 +269,6 @@ export const getProjectFiles = async (req, res) => {
     if (fileType && fileType !== 'all') {
       whereCondition.fileType = fileType;
     }
-
-    // Check user access permissions
-    let hasFullAccess = false;
-    
-    if (userId) {
-      // Check if user is admin, project creator, or has purchased the project
-      if (req.user.role === 'admin' || project.createdBy === userId) {
-        hasFullAccess = true;
-      } else {
-        // Check if user has purchased the project
-        const purchase = await ProjectPurchase.findOne({
-          where: { projectId: projectId, userId: userId }
-        });
-        hasFullAccess = !!purchase;
-      }
-    }
-
-    // If no access, only show preview files
-    if (!hasFullAccess) {
-      whereCondition.isPreview = true;
-    }
-
     // Calculate pagination
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -328,10 +290,6 @@ export const getProjectFiles = async (req, res) => {
         hasNext: offset + files.length < totalFiles,
         hasPrev: parseInt(page) > 1
       },
-      access: {
-        hasFullAccess,
-        isPreviewOnly: !hasFullAccess
-      }
     };
 
     sendSuccess(res, "Project files retrieved successfully", response);
@@ -483,71 +441,5 @@ export const deleteProjectFile = async (req, res) => {
     await transaction.rollback();
     console.error("Delete project file error:", error);
     sendServerError(res, "Failed to delete file", error.message);
-  }
-};
-
-/**
- * Download project file (Purchased users only)
- */
-export const downloadProjectFile = async (req, res) => {
-  try {
-    const { fileId } = req.params;
-    const userId = req.user?.userId;
-
-    // Find the file
-    const projectFile = await ProjectFile.findOne({
-      where: { fileId },
-      include: [
-        {
-          model: Project,
-          as: "project",
-          attributes: ["projectId", "createdBy", "title"],
-        },
-      ],
-    });
-
-    if (!projectFile) {
-      return sendNotFound(res, "File not found");
-    }
-
-    const project = projectFile.project;
-
-    // Check access permissions
-    let hasAccess = false;
-
-    if (userId) {
-      // Admin or creator has full access
-      if (req.user.role === 'admin' || project.createdBy === userId) {
-        hasAccess = true;
-      } else {
-        // Check if user has purchased the project
-        const purchase = await ProjectPurchase.findOne({
-          where: { projectId: project.projectId, userId: userId }
-        });
-        hasAccess = !!purchase;
-      }
-    }
-
-    // If no access and not a preview file, deny
-    if (!hasAccess && !projectFile.isPreview) {
-      return sendForbidden(res, "You need to purchase this project to download files");
-    }
-
-    // Increment download count
-    await projectFile.increment('downloadCount');
-
-    // Send file info or redirect to download URL
-    if (projectFile.fileUrl) {
-      // If it's an S3 URL, redirect to it
-      res.redirect(projectFile.fileUrl);
-    } else if (projectFile.filePath && fs.existsSync(projectFile.filePath)) {
-      // If it's a local file, serve it
-      res.download(projectFile.filePath, projectFile.fileName);
-    } else {
-      return sendNotFound(res, "File not accessible");
-    }
-  } catch (error) {
-    console.error("Download project file error:", error);
-    sendServerError(res, "Failed to download file", error.message);
   }
 };

@@ -132,27 +132,17 @@ export const updateCourseFile = async (req, res) => {
   try {
     transaction = await sequelize.transaction();
     const { courseId, sectionId, lessonId, fileId } = req.params;
-    const { description, fileType, order } = req.body;
-    const userId = req.user.userId;
     // Find file with all params
     const courseFile = await CourseFile.findOne({
       where: { fileId, courseId, sectionId, lessonId },
-      include: [{ model: Course, as: "course", attributes: ["courseId", "createdBy"] }],
+      include: [{ model: Course, as: "course", attributes: ["courseId"] }],
     });
     if (!courseFile) {
       await transaction.rollback();
       return sendNotFound(res, "File not found");
     }
-    // Check if user is creator or admin
-    if (courseFile.course.createdBy !== userId && req.user.role !== "admin") {
-      await transaction.rollback();
-      return sendForbidden(res, "Not authorized to update this file");
-    }
     // Update file details
     const updateData = {};
-    if (description !== undefined) updateData.description = description;
-    if (fileType !== undefined) updateData.fileType = fileType;
-    if (order !== undefined) updateData.order = parseInt(order);
     await courseFile.update(updateData, { transaction });
     await transaction.commit();
     // Fetch updated file with associations
@@ -172,20 +162,14 @@ export const updateCourseFileData = async (req, res) => {
     transaction = await sequelize.transaction();
     const { courseId, sectionId, lessonId, fileId } = req.params;
     const { description, fileType, order } = req.body;
-    const userId = req.user.userId;
     // Find file with all params
     const courseFile = await CourseFile.findOne({
       where: { fileId, courseId, sectionId, lessonId },
-      include: [{ model: Course, as: "course", attributes: ["courseId", "createdBy"] }],
+      include: [{ model: Course, as: "course", attributes: ["courseId"] }],
     });
     if (!courseFile) {
       await transaction.rollback();
       return sendNotFound(res, "File not found");
-    }
-    // Check if user is creator or admin
-    if (courseFile.course.createdBy !== userId && req.user.role !== "admin") {
-      await transaction.rollback();
-      return sendForbidden(res, "Not authorized to update this file");
     }
     // Update file details
     const updateData = {};
@@ -210,20 +194,14 @@ export const deleteCourseFile = async (req, res) => {
   try {
     transaction = await sequelize.transaction();
     const { courseId, sectionId, lessonId, fileId } = req.params;
-    const userId = req.user.userId;
     // Find file with all params
     const courseFile = await CourseFile.findOne({
       where: { fileId, courseId, sectionId, lessonId },
-      include: [{ model: Course, as: "course", attributes: ["courseId", "createdBy"] }],
+      include: [{ model: Course, as: "course", attributes: ["courseId"] }],
     });
     if (!courseFile) {
       await transaction.rollback();
       return sendNotFound(res, "File not found");
-    }
-    // Check if user is creator or admin
-    if (courseFile.course.createdBy !== userId && req.user.role !== "admin") {
-      await transaction.rollback();
-      return sendForbidden(res, "Not authorized to delete this file");
     }
     // Delete file from disk if it exists
     if (fs.existsSync(courseFile.fileUrl)) {

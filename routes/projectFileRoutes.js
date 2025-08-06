@@ -2,7 +2,6 @@ import express from "express";
 import {
   uploadProjectFiles,
   getProjectFiles,
-  downloadProjectFile,
   updateProjectFile,
   deleteProjectFile,
   saveProjectFiles,
@@ -37,14 +36,6 @@ router.get(
   "/:projectId/files",
   isAdmin, // Add authentication for admin access, remove for public access
   getProjectFiles,
-);
-
-// Download project file (Purchased users only)
-router.get(
-  "/files/:fileId/download",
-  isAdmin, // Add authentication - only purchased users should download
-  validateSchema(projectFileValidation.fileIdParam, "params"),
-  downloadProjectFile,
 );
 
 // Update project file details (Admin/Creator only)
