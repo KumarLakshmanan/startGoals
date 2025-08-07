@@ -34,6 +34,8 @@ app.use(
       "https://psychometrics.onrender.com",
       "http://startgoals.in",
       "https://startgoals.in",
+      "http://56.228.37.122:3030",
+      "http://56.228.37.122",
     ],
     credentials: true,
   })
