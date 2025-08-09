@@ -11,7 +11,6 @@ import Banner from '../model/banner.js';
 import Goal from '../model/goal.js';
 import Skill from '../model/skill.js';
 import Exam from '../model/exam.js';
-import Batch from '../model/batch.js';
 import Section from '../model/section.js';
 import Lesson from '../model/lesson.js';
 import CourseRating from '../model/courseRating.js';
@@ -74,11 +73,9 @@ async function validateSeedData() {
     console.log(` Total sections: ${totalSections}`);
     console.log(`📝 Total lessons: ${totalLessons}`);
 
-    // Live sessions and batches
-    const batchCount = await Batch.count();
+    // Live sessions
     const liveSessionCount = await LiveSession.count();
     
-    console.log(`👥 Batches: ${batchCount}`);
     console.log(`📺 Live sessions: ${liveSessionCount}`);
 
     // Project Validation

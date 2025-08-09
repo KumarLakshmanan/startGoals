@@ -19,15 +19,6 @@ const CourseTest = sequelize.define(
         key: "course_id",
       },
     },
-    batchId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      references: {
-        model: "batches",
-        key: "batch_id",
-      },
-      comment: "For live courses, can be associated with a specific batch",
-    },
     title: {
       type: DataTypes.STRING,
       allowNull: false,

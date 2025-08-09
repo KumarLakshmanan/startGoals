@@ -21,10 +21,6 @@ import {
   sendForbidden
 } from "../utils/responseHelper.js";
 import CourseTeacher from "../model/courseTeacher.js";
-import Batch from "../model/batch.js";
-// import BatchTeacher from "../model/batchTeacher.js"; // Commented out unused import
-import BatchSchedule from "../model/batchSchedule.js";
-// import BatchStudents from "../model/batchStudents.js"; // Commented out unused import
 import CourseTest from "../model/courseTest.js";
 import CourseCertificate from "../model/courseCertificate.js";
 import CourseRating from "../model/courseRating.js";
@@ -90,9 +86,9 @@ export const getLiveCourses = async (req, res) => {
     } else if (sortBy === 'level') {
       orderClause = [['level', 'name', sortOrder]];
     } else if (sortBy === 'startDate') {
-      orderClause = [['batches', 'startDate', sortOrder]];
+      orderClause = [['startDate', sortOrder]];
     } else if (sortBy === 'endDate') {
-      orderClause = [['batches', 'endDate', sortOrder]];
+      orderClause = [['endDate', sortOrder]];
     } else {
       orderClause = [[sortBy, sortOrder]];
     }
@@ -102,7 +98,6 @@ export const getLiveCourses = async (req, res) => {
       include: [
         { model: Category, as: "category", attributes: ["categoryId", "categoryName"] },
         { model: CourseLevel, as: "level", attributes: ["levelId", "name"] },
-        { model: Batch, as: "batches", attributes: ["batchId", "startDate", "endDate", "status"], required: false },
         {
           model: CourseTechStack,
           as: "techStack",
@@ -307,7 +302,7 @@ export const getCourseById = async (req, res) => {
               include: [
                 {
                   model: CourseFile,
-                  as: "resources",
+                  as: "files",
                 },
               ],
               attributes: [
@@ -328,6 +323,18 @@ export const getCourseById = async (req, res) => {
             "title",
             "description",
             "order",
+          ]
+        },
+        {
+          model: CourseFile,
+          as: "files",
+          attributes: [
+            "fileId",
+            "fileName", 
+            "fileUrl",
+            "fileType",
+            "fileSize",
+            "description"
           ]
         },
       ],
@@ -1622,11 +1629,6 @@ export const createLiveCourse = async (req, res) => {
       introVideoUrl: _introVideoUrl, // Prefixed with underscore
       teacherIds: _teacherIds = [], // Prefixed with underscore
       visibility = "public",
-      batchSettings = {
-        minStudentsToCreateBatch: 10,
-        maxStudentsPerBatch: 50,
-        autoCreateBatch: true,
-      },
     } = req.body;
 
     const createdBy = req.user.userId;
@@ -1654,7 +1656,6 @@ export const createLiveCourse = async (req, res) => {
         price,
         status: "draft",
         visibility,
-        batchSettings: JSON.stringify(batchSettings),
       },
       { transaction },
     );
@@ -1794,115 +1795,6 @@ export const createRecordedCourse = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("Create recorded course error:", error);
-    return sendServerError(res, error);
-  }
-};
-
-// Create course batch
-export const createCourseBatch = async (req, res) => {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const { courseId } = req.params;
-    const {
-      batchName,
-      maxStudents,
-      startDate,
-      endDate,
-      schedule = []
-    } = req.body;
-
-    const createdBy = req.user?.userId;
-
-    // Validate course exists and is live type
-    const course = await Course.findByPk(courseId);
-    if (!course) {
-      await transaction.rollback();
-      return sendNotFound(res, "Course not found");
-    }
-
-    if (course.type !== 'live') {
-      await transaction.rollback();
-      return sendError(res, 400, "Batches can only be created for live courses");
-    }
-
-    // Create batch
-    const batch = await Batch.create({
-      courseId,
-      batchName,
-      maxStudents: maxStudents || 50,
-      currentStudents: 0,
-      status: 'planned',
-      startDate,
-      endDate,
-      createdBy
-    }, { transaction });
-
-    // Create batch schedule
-    if (schedule.length > 0) {
-      const scheduleData = schedule.map(scheduleItem => ({
-        batchId: batch.batchId,
-        dayOfWeek: scheduleItem.dayOfWeek,
-        startTime: scheduleItem.startTime,
-        endTime: scheduleItem.endTime,
-        timeZone: scheduleItem.timeZone || 'UTC'
-      }));
-      await BatchSchedule.bulkCreate(scheduleData, { transaction });
-    }
-
-    await transaction.commit();
-
-    const createdBatch = await Batch.findByPk(batch.batchId, {
-      include: [
-        { model: BatchSchedule, as: "schedules" },
-        { model: Course, as: "course", attributes: ["courseId", "title"] }
-      ]
-    });
-
-    return sendSuccess(res, "Batch created successfully", createdBatch);
-
-  } catch (error) {
-    await transaction.rollback();
-    console.error("Create batch error:", error);
-    return sendServerError(res, error);
-  }
-};
-
-// Get course batches
-export const getCourseBatches = async (req, res) => {
-  try {
-    const { courseId } = req.params;
-    const { page = 1, limit = 10, status } = req.query;
-
-    const whereClause = { courseId };
-    if (status) {
-      whereClause.status = status;
-    }
-
-    const offset = (page - 1) * limit;
-    const { count, rows } = await Batch.findAndCountAll({
-      where: whereClause,
-      include: [
-        { model: BatchSchedule, as: "schedules" },
-        { model: Course, as: "course", attributes: ["courseId", "title"] },
-      ],
-      order: [["createdAt", "DESC"]],
-      limit: parseInt(limit),
-      offset
-    });
-
-    return sendSuccess(res, "Batches retrieved successfully", {
-      batches: rows,
-      pagination: {
-        total: count,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(count / limit)
-      }
-    });
-
-  } catch (error) {
-    console.error("Get course batches error:", error);
     return sendServerError(res, error);
   }
 };
@@ -2360,7 +2252,6 @@ export const deleteCourseAdmin = async (req, res) => {
     await Section.destroy({ where: { courseId }, transaction });
     await CourseTeacher.destroy({ where: { courseId }, transaction });
     await CourseRating.destroy({ where: { courseId }, transaction });
-    await Batch.destroy({ where: { courseId }, transaction });
 
     // Delete the course
     await course.destroy({ transaction });
@@ -2468,57 +2359,6 @@ export const replyToRating = async (req, res) => {
   }
 };
 
-// Batch update rating status (Admin only)
-export const batchUpdateRatingStatus = async (req, res) => {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const { courseId } = req.params;
-    const { ratingIds, status } = req.body;
-
-    // Validate inputs
-    if (!ratingIds || !Array.isArray(ratingIds) || ratingIds.length === 0) {
-      await transaction.rollback();
-      return sendValidationError(res, "Rating IDs array is required");
-    }
-
-    if (!['approved', 'rejected', 'pending'].includes(status)) {
-      await transaction.rollback();
-      return sendValidationError(res, "Invalid status. Must be 'approved', 'rejected', or 'pending'");
-    }
-
-    // Verify course exists
-    const course = await Course.findByPk(courseId);
-    if (!course) {
-      await transaction.rollback();
-      return sendNotFound(res, "Course not found");
-    }
-
-    // Update ratings
-    const [updatedCount] = await CourseRating.update(
-      { status },
-      {
-        where: {
-          id: ratingIds,
-          courseId: courseId
-        },
-        transaction
-      }
-    );
-
-    await transaction.commit();
-
-    sendSuccess(res, {
-      message: `Successfully updated ${updatedCount} ratings`,
-      updatedCount
-    });
-
-  } catch (error) {
-    await transaction.rollback();
-    console.error('Error in batchUpdateRatingStatus:', error);
-    sendServerError(res, "Failed to update rating status");
-  }
-};
 
 // Export course data (Admin only)
 export const exportCourseData = async (req, res) => {

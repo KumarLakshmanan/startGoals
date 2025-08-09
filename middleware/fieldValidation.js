@@ -552,39 +552,6 @@ export const sectionValidation = {
   }),
 };
 
-// Batch validation schemas
-export const batchValidation = {
-  create: Joi.object({
-    courseId: commonSchemas.id.required(),
-    batchName: Joi.string().min(3).max(100).required(),
-    description: Joi.string().max(500),
-    startDate: Joi.date().min("now").required(),
-    endDate: Joi.date().min(Joi.ref("startDate")).required(),
-    maxStudents: Joi.number().min(1).max(1000).required(),
-    schedule: Joi.object({
-      days: Joi.array().items(
-        Joi.string().valid(
-          "monday",
-          "tuesday",
-          "wednesday",
-          "thursday",
-          "friday",
-          "saturday",
-          "sunday",
-        ),
-      ),
-      startTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-      endTime: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/),
-      timezone: Joi.string().max(50),
-    }),
-    autoEnrollmentCriteria: Joi.object({
-      enabled: Joi.boolean().default(false),
-      skills: Joi.array().items(commonSchemas.id),
-      experience: Joi.string().valid("beginner", "intermediate", "advanced"),
-      location: Joi.string().max(100),
-    }),
-  }),
-};
 
 // ===================== SEARCH VALIDATION SCHEMAS =====================
 export const searchValidation = {
@@ -1056,7 +1023,6 @@ export default {
   courseValidation,
   projectValidation,
   otpValidation,
-  batchValidation,
   searchValidation,
   projectFileValidation,
 };

@@ -96,9 +96,12 @@ const Project = sequelize.define(
       comment: "HTML formatted files/resources included",
     },
     licenseType: {
-      type: DataTypes.ENUM("personal", "commercial", "one_time", "unlimited"),
-      defaultValue: "personal",
-      allowNull: false,
+      type: DataTypes.STRING(50),
+defaultValue: "personal",
+      validate: {
+        isIn: [['personal', 'commercial', 'one_time', 'unlimited']]
+      },
+allowNull: false,
     },
     downloadLimit: {
       type: DataTypes.INTEGER,
@@ -131,9 +134,12 @@ const Project = sequelize.define(
       defaultValue: "1.0",
     },
     status: {
-      type: DataTypes.ENUM("draft", "published", "archived", "rejected", "hidden"),
-      defaultValue: "draft",
-      allowNull: false,
+      type: DataTypes.STRING(50),
+defaultValue: "draft",
+      validate: {
+        isIn: [['draft', 'published', 'archived', 'rejected', 'hidden']]
+      },
+allowNull: false,
     },
     publishedAt: {
       type: DataTypes.DATE,

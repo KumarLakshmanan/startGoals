@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import router from "./routes/router.js";
 import { configurePassport } from "./utils/passport.js";
+import webRoutes from "./routes/webRoutes.js";
 import passport from "passport";
 import session from "express-session"; // Import express-session
 import { Server } from "socket.io";
@@ -124,6 +125,9 @@ app.post('/sync-db', syncDbMiddleware, async (req, res) => {
 });
 
 app.use("/api", router);
+
+// Web routes (for video player, live sessions, etc.)
+app.use("/", webRoutes);
 
 // 404 handler for undefined routes
 app.use(notFoundHandler);

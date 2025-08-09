@@ -30,7 +30,6 @@ const Order = sequelize.define(
     razorpayOrderId: {
       type: DataTypes.STRING,
       allowNull: false,
-      unique: true,
       comment: "Razorpay order ID",
     },
     razorpayPaymentId: {
@@ -54,10 +53,13 @@ const Order = sequelize.define(
       defaultValue: "INR",
     },
     status: {
-      type: DataTypes.ENUM("created", "pending", "paid", "failed", "cancelled", "refunded"),
+      type: DataTypes.STRING(50),
       allowNull: false,
       defaultValue: "created",
-    },
+      validate: {
+        isIn: [['created', 'pending', 'paid', 'failed', 'cancelled', 'refunded']]
+      },
+},
     paymentMethod: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -111,6 +113,7 @@ const Order = sequelize.define(
       },
       {
         fields: ["razorpay_order_id"],
+        unique: true,
       },
       {
         fields: ["status"],

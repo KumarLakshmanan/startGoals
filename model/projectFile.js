@@ -29,24 +29,13 @@ const ProjectFile = sequelize.define(
       comment: "Secure download URL",
     },
     fileType: {
-      type: DataTypes.ENUM(
-        "video",
-        "document",
-        "image",
-        "audio",
-        "archive",
-        "source_code",
-        "presentation",
-        "spreadsheet",
-        "resource",
-        "documentation",
-        "assets",
-        "demo",
-        "other",
-      ),
+      type: DataTypes.STRING(50),
       allowNull: false,
       defaultValue: "source_code",
-    },
+      validate: {
+        isIn: [['video', 'document', 'image', 'audio', 'archive', 'source_code', 'presentation', 'spreadsheet', 'resource', 'documentation', 'assets', 'demo', 'other', '']]
+      },
+},
     fileSize: {
       type: DataTypes.BIGINT,
       allowNull: true,

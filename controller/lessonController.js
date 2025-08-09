@@ -3,6 +3,9 @@ import Section from "../model/section.js";
 import Course from "../model/course.js";
 import { sendSuccess, sendValidationError, sendNotFound, sendServerError, sendUnauthorized } from "../utils/responseHelper.js";
 import sequelize from "../config/db.js";
+import liveStreamService from "../services/liveStreamService.js";
+import zoomService from "../services/zoomService.js";
+import agoraService from "../services/agoraService.js";
 
 // Get all lessons for a section
 export const getSectionLessons = async (req, res) => {
@@ -162,6 +165,21 @@ export const createLesson = async (req, res) => {
     }
 
     const lesson = await Lesson.create(lessonData, { transaction });
+
+    // Generate live streaming links if lesson type is live
+    if (type === 'live') {
+      try {
+        const streamData = await liveStreamService.generateStreamLinks(lesson, req.user?.userId);
+        
+        // Update lesson with stream data
+        await lesson.update(streamData, { transaction });
+        
+        console.log(`Generated live stream links for lesson: ${lesson.lessonId}`);
+      } catch (streamError) {
+        console.error('Failed to generate stream links:', streamError);
+        // Don't fail the lesson creation if stream generation fails
+      }
+    }
 
     await transaction.commit();
 

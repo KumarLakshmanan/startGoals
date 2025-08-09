@@ -18,9 +18,12 @@ const UserSkills = sequelize.define(
       field: "skill_id",
     },
     proficiencyLevel: {
-      type: DataTypes.ENUM("beginner", "intermediate", "advanced", "expert"),
+      type: DataTypes.STRING(50),
       allowNull: true,
       defaultValue: "intermediate",
+      validate: {
+        isIn: [['beginner', 'intermediate', 'advanced', 'expert']]
+      },
       field: "proficiency_level",
     },
     ...commonFields,

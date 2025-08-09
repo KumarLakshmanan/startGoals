@@ -20,9 +20,12 @@ const RatingHelpful = sequelize.define(
       comment: "The user voting",
     },
     ratingType: {
-      type: DataTypes.ENUM("course", "project", "instructor"),
+      type: DataTypes.STRING(50),
       allowNull: false,
-      comment: "Type of rating being voted on",
+comment: "Type of rating being voted on",
+      validate: {
+        isIn: [['course', 'project', 'instructor']]
+      },
     },
     isHelpful: {
       type: DataTypes.BOOLEAN,

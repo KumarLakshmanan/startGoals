@@ -86,7 +86,10 @@ const Address = sequelize.define(
       comment: "Country name",
     },
     addressType: {
-      type: DataTypes.ENUM("home", "office", "other"),
+      type: DataTypes.STRING(20),
+      validate: {
+        isIn: [['home', 'office', 'other']],
+      },
       allowNull: false,
       defaultValue: "home",
       comment: "Type of address",

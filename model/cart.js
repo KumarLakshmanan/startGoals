@@ -19,7 +19,10 @@ const Cart = sequelize.define(
       },
     },
     itemType: {
-      type: DataTypes.ENUM("course", "project"),
+      type: DataTypes.STRING(20),
+      validate: {
+        isIn: [['course', 'project']],
+      },
       allowNull: false,
       comment: "Type of item in cart",
     },
@@ -45,6 +48,10 @@ const Cart = sequelize.define(
       defaultValue: DataTypes.NOW,
     },
     ...commonFields,
+  },
+  {
+    tableName: "carts",
+    ...commonOptions, // includes timestamps, paranoid, underscored
   },
 );
 

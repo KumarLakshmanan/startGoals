@@ -48,8 +48,11 @@ const CourseEnhanced = sequelize.define(
       },
     },
     type: {
-      type: DataTypes.ENUM("recorded", "live"),
+      type: DataTypes.STRING(20),
       allowNull: false,
+      validate: {
+        isIn: [['recorded', 'live']]
+      }
     },
     isPaid: {
       type: DataTypes.BOOLEAN,
@@ -144,9 +147,17 @@ const CourseEnhanced = sequelize.define(
       comment: "HTML formatted resources included in the course",
     },
     status: {
-      type: DataTypes.ENUM("active", "draft", "archived", "rejected", "hidden"),
+      type: DataTypes.STRING(20),
       defaultValue: "draft",
       allowNull: false,
+      validate: {
+        isIn: [['active', 'draft', 'archived', 'rejected', 'hidden']]
+      }
+    },
+    isPublished: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: "Whether course is published and visible to students",
     },
     publishedAt: {
       type: DataTypes.DATE,

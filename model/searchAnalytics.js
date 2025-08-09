@@ -26,10 +26,13 @@ const SearchAnalytics = sequelize.define(
       },
     },
     searchType: {
-      type: DataTypes.ENUM("courses", "instructors", "projects", "global"),
+      type: DataTypes.STRING(50),
       allowNull: false,
       defaultValue: "courses",
-    },
+      validate: {
+        isIn: [['courses', 'instructors', 'projects', 'global']]
+      },
+},
     filters: {
       type: DataTypes.JSON,
       allowNull: true,
@@ -49,9 +52,12 @@ const SearchAnalytics = sequelize.define(
       comment: "ID of the result that was clicked (course, instructor, etc.)",
     },
     clickedResultType: {
-      type: DataTypes.ENUM("course", "instructor", "project"),
+      type: DataTypes.STRING(50),
       allowNull: true,
-    },
+      validate: {
+        isIn: [['course', 'instructor', 'project']]
+      },
+},
     sessionId: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -71,10 +77,13 @@ const SearchAnalytics = sequelize.define(
       comment: "Time spent on search results page in seconds",
     },
     conversionType: {
-      type: DataTypes.ENUM("enrollment", "inquiry", "view", "none"),
+      type: DataTypes.STRING(50),
       allowNull: false,
       defaultValue: "none",
-      // comment: "Type of conversion after search", // Temporarily commented to avoid Sequelize SQL generation bug
+      validate: {
+        isIn: [['enrollment', 'inquiry', 'view', 'none']]
+      },
+// comment: "Type of conversion after search", // Temporarily commented to avoid Sequelize SQL generation bug
     },
     conversionValue: {
       type: DataTypes.DECIMAL(10, 2),

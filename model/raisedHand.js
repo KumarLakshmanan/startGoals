@@ -26,9 +26,12 @@ const RaisedHand = sequelize.define(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM("pending", "accepted", "rejected", "addressed"),
-      defaultValue: "pending",
-      allowNull: false,
+      type: DataTypes.STRING(50),
+defaultValue: "pending",
+      validate: {
+        isIn: [['pending', 'accepted', 'rejected', 'addressed']]
+      },
+allowNull: false,
     },
     respondedAt: {
       type: DataTypes.DATE,

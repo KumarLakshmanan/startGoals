@@ -24,9 +24,12 @@ const Lesson = sequelize.define(
       allowNull: false,
     },
     type: {
-      type: DataTypes.ENUM("video", "live", "quiz", "assignment", "document"),
+      type: DataTypes.STRING(50),
       allowNull: false,
-    },
+      validate: {
+        isIn: [['video', 'live', 'quiz', 'assignment', 'document']]
+      },
+},
     content: {
       type: DataTypes.TEXT,
       allowNull: true,
@@ -51,6 +54,48 @@ const Lesson = sequelize.define(
     isPreview: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
+    },
+    // Live streaming integration fields
+    agoraChannelName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Agora channel name for live streaming",
+    },
+    agoraToken: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "Agora token for authentication",
+    },
+    agoraAppId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Agora app ID",
+    },
+    zoomMeetingId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Zoom meeting ID",
+    },
+    zoomJoinUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "Zoom meeting join URL",
+    },
+    zoomStartUrl: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      comment: "Zoom meeting start URL for hosts",
+    },
+    zoomPassword: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Zoom meeting password",
+    },
+    liveStreamStatus: {
+      type: DataTypes.STRING(50),
+      allowNull: true,
+      defaultValue: "scheduled",
+      comment: "Current status of live stream",
     },
     ...commonFields,
   },

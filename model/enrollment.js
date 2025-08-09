@@ -39,19 +39,14 @@ const Enrollment = sequelize.define(
       type: DataTypes.DATE,
       allowNull: true,
     },
-    batchId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      references: {
-        model: "batches",
-        key: "batch_id",
-      },
-    },
     // Payment related fields
     paymentStatus: {
-      type: DataTypes.ENUM("pending", "completed", "failed", "refunded"),
+      type: DataTypes.STRING(20),
       defaultValue: "pending",
       allowNull: false,
+      validate: {
+        isIn: [['pending', 'completed', 'failed', 'refunded']]
+      }
     },
     paymentId: {
       type: DataTypes.STRING,
@@ -75,14 +70,12 @@ const Enrollment = sequelize.define(
     },
     // Course progress fields
     completionStatus: {
-      type: DataTypes.ENUM(
-        "not_started",
-        "in_progress",
-        "completed",
-        "dropped",
-      ),
+      type: DataTypes.STRING(20),
       defaultValue: "not_started",
       allowNull: false,
+      validate: {
+        isIn: [['not_started', 'in_progress', 'completed', 'dropped']]
+      }
     },
     progressPercentage: {
       type: DataTypes.INTEGER,
@@ -94,9 +87,12 @@ const Enrollment = sequelize.define(
       },
     },
     enrollmentType: {
-      type: DataTypes.ENUM("live", "recorded"),
+      type: DataTypes.STRING(20),
       allowNull: true,
       comment: "Type of course enrolled in",
+      validate: {
+        isIn: [['live', 'recorded']]
+      }
     },
     isActive: {
       type: DataTypes.BOOLEAN,

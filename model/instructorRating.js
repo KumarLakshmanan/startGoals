@@ -73,9 +73,12 @@ const InstructorRating = sequelize.define(
       comment: "Whether the user was actually taught by this instructor",
     },
     moderationStatus: {
-      type: DataTypes.ENUM("pending", "approved", "rejected", "hidden"),
-      defaultValue: "pending",
-      // comment: "Review moderation status", // Temporarily commented to avoid Sequelize SQL generation bug
+      type: DataTypes.STRING(50),
+defaultValue: "pending",
+      validate: {
+        isIn: [['pending', 'approved', 'rejected', 'hidden']]
+      },
+// comment: "Review moderation status", // Temporarily commented to avoid Sequelize SQL generation bug
     },
     moderatedBy: {
       type: DataTypes.UUID,

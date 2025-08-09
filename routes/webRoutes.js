@@ -61,6 +61,35 @@ router.get("/video-player", (req, res) => {
   res.sendFile(path.join(__dirname, "../web/video-player.html"));
 });
 
+// Enhanced proxy HLS files from S3 to bypass CORS
+router.get('/proxy/hls', async (req, res) => {
+  const fileUrl = req.query.url;
+  if (!fileUrl) return res.status(400).send('Missing url parameter');
+  try {
+    const response = await fetch(fileUrl);
+    if (!response.ok) return res.status(response.status).send('Failed to fetch file');
+    
+    // Set appropriate headers for HLS streaming
+    res.set({
+      'Content-Type': fileUrl.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/MP2T',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': 'Range, Content-Type',
+      'Cache-Control': 'public, max-age=31536000'
+    });
+    
+    response.body.pipe(res);
+  } catch (err) {
+    console.error('HLS proxy error:', err);
+    res.status(500).send('Proxy error');
+  }
+});
+
+// Proxy route for S3 videos to handle CORS (general video files)
+// router.get("/proxy/video/*", async (req, res) => {
+//   // Temporarily disabled due to route syntax issue
+// });
+
 // API endpoint to get session configuration
 router.get("/api/session-config/:sessionId", async (req, res) => {
   try {
@@ -181,20 +210,6 @@ router.get("/api/dashboard/popular-courses", authenticateToken, isAdmin, (req, r
   ];
   
   res.json({ success: true, data: popularCourses });
-});
-
-// Proxy HLS files from S3 to bypass CORS
-router.get('/proxy/hls', async (req, res) => {
-  const fileUrl = req.query.url;
-  if (!fileUrl) return res.status(400).send('Missing url parameter');
-  try {
-    const response = await fetch(fileUrl);
-    if (!response.ok) return res.status(response.status).send('Failed to fetch file');
-    res.set('Content-Type', fileUrl.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/MP2T');
-    response.body.pipe(res);
-  } catch (err) {
-    res.status(500).send('Proxy error');
-  }
 });
 
 export default router;

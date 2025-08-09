@@ -14,13 +14,10 @@ import Section from "./section.js";
 import UserGoals from "./userGoals.js";
 import UserSkills from "./userSkills.js";
 import Lesson from "./lesson.js";
-import Batch from "./batch.js";
-import BatchStudents from "./batchStudents.js";
 import Enrollment from "./enrollment.js";
 import LiveSession from "./liveSession.js";
 import LiveSessionParticipant from "./liveSessionParticipant.js";
 import RaisedHand from "./raisedHand.js";
-import RecordedSession from "./recordedSession.js";
 import Settings from "./settings.js";
 import SearchAnalytics from "./searchAnalytics.js";
 import CourseRating from "./courseRating.js";
@@ -37,8 +34,6 @@ import Exam from "./exam.js";
 import UserExams from "./userExams.js";
 import CourseTeacher from "./courseTeacher.js";
 import CourseTest from "./courseTest.js";
-import BatchTeacher from "./batchTeacher.js";
-import BatchSchedule from "./batchSchedule.js";
 import CourseCertificate from "./courseCertificate.js";
 import Wishlist from "./wishlist.js";
 import Cart from "./cart.js";
@@ -71,14 +66,11 @@ const models = {
   CourseLevel,
   Section,
   Lesson,
-  Batch,
   Address,
-  BatchStudents,
   Enrollment,
   LiveSession,
   LiveSessionParticipant,
   RaisedHand,
-  RecordedSession,
   Settings,
   SearchAnalytics,
   CourseRating,
@@ -92,8 +84,6 @@ const models = {
   DiscountUsage,
   CourseTeacher,
   CourseTest,
-  BatchTeacher,
-  BatchSchedule,
   CourseCertificate,
   Wishlist,
   Cart,
@@ -257,61 +247,10 @@ Course.belongsTo(CourseLevel, {
   as: "level",
 });
 
-// Removed Course-Language association - no languageId column exists in courses table
-// Batch belongs to Course
-Batch.belongsTo(Course, {
-  foreignKey: "courseId", // foreignKey in the Batch model
-  targetKey: "courseId", // primaryKey in the Course model
-});
-
-// Course has many Batches
-Course.hasMany(Batch, {
-  foreignKey: "courseId",
-  as: "batches",
-});
-
-// A Batch can have many Students (many-to-many relationship through BatchStudents)
-Batch.belongsToMany(User, {
-  through: BatchStudents,
-  foreignKey: "batchId",
-  otherKey: "user_id",
-  as: "users",
-});
-
-User.belongsToMany(Batch, {
-  through: BatchStudents,
-  foreignKey: "user_id",
-  otherKey: "batchId",
-  as: "batches",
-});
-
-// BatchStudents direct associations
-BatchStudents.belongsTo(Batch, {
-  foreignKey: "batchId",
-  as: "batch",
-});
-
-BatchStudents.belongsTo(User, {
-  foreignKey: "user_id",
-  as: "student",
-});
-
-Batch.hasMany(BatchStudents, {
-  foreignKey: "batchId",
-  as: "batchStudents",
-});
-
-User.hasMany(BatchStudents, {
-  foreignKey: "user_id",
-  as: "studentBatches",
-});
-
 
 // enrolement Associations with User and Course models
 Enrollment.belongsTo(User, { foreignKey: "user_id" });
 Enrollment.belongsTo(Course, { foreignKey: "courseId" });
-//enrollment
-Enrollment.belongsTo(Batch, { foreignKey: "batchId" });
 
 // Reverse associations for Enrollment
 User.hasMany(Enrollment, {
@@ -332,22 +271,6 @@ Course.hasMany(LiveSession, {
 LiveSession.belongsTo(Course, {
   foreignKey: "courseId",
   as: "course",
-});
-
-// Batch → LiveSessions
-Batch.hasMany(LiveSession, {
-  foreignKey: "batchId",
-  as: "liveSessions",
-});
-LiveSession.belongsTo(Batch, {
-  foreignKey: "batchId",
-  as: "batch",
-});
-
-// LiveSessions -> RecordeddSession
-RecordedSession.belongsTo(LiveSession, {
-  foreignKey: "sessionId",
-  as: "liveSession",
 });
 
 // SearchAnalytics associations
@@ -808,6 +731,12 @@ CourseFile.belongsTo(Lesson, {
   as: "lesson"
 });
 
+// Add reverse association
+Lesson.hasMany(CourseFile, {
+  foreignKey: "lessonId",
+  as: "files"
+});
+
 Course.hasMany(CourseFile, {
   foreignKey: "courseId",
   as: "files"
@@ -1005,5 +934,12 @@ User.belongsToMany(Project, {
   otherKey: "projectId",
   as: "instructedProjects",
 });
+
+// Direct associations for UserGoals and UserSkills
+UserGoals.belongsTo(User, { foreignKey: "userId", as: "user" });
+UserGoals.belongsTo(Goal, { foreignKey: "goalId", as: "goal" });
+
+UserSkills.belongsTo(User, { foreignKey: "userId", as: "user" });
+UserSkills.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
 
 export default models;

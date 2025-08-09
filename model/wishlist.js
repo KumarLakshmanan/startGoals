@@ -19,9 +19,12 @@ const Wishlist = sequelize.define(
       },
     },
     itemType: {
-      type: DataTypes.ENUM("course", "project"),
+      type: DataTypes.STRING(50),
       allowNull: false,
       comment: "Type of item in wishlist",
+      validate: {
+        isIn: [['course', 'project']]
+      },
     },
     itemId: {
       type: DataTypes.UUID,

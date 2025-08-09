@@ -67,26 +67,20 @@ const sortModelsByDependencies = (modelsArray) => {
     'SearchAnalytics', // Depends on User
     
     'courseGoal',     // Depends on Course (lowercase!)
-    'courseRequirement', // Depends on Course (lowercase!)
     'section',        // Depends on Course (lowercase!)
-    'batch',          // Depends on Course, User (lowercase!)
     
     // Association/junction tables
     'userGoals',       // Depends on User, Goal (lowercase!)
     'userSkills',      // Depends on User, Skill (lowercase!)
     'userLanguages',   // Depends on User, Language (lowercase!)
     
-    // Models that depend on sections/batches
     'lesson',         // Depends on Section (lowercase!)
-    'batch_students', // Depends on Batch, User (exact name!)
-    'enrollment',     // Depends on User, Course, Batch (lowercase!)
-    'liveSession',    // Depends on Batch, Course
+    'enrollment',     // Depends on User, Course (lowercase!)
+    'liveSession',    // Depends on  Course
     
     // Session-related models
     'liveSessionParticipant', // Depends on LiveSession, User
     'raisedHand',     // Depends on LiveSession, LiveSessionParticipant (lowercase!)
-    'recordedSession', // Depends on LiveSession (lowercase!)
-    'RecordedSessionResource', // Depends on RecordedSession (exact name!)
     
     // Rating models
     'CourseRating',   // Depends on Course, User

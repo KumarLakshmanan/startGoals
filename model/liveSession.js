@@ -10,10 +10,6 @@ const LiveSession = sequelize.define(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    batchId: {
-      type: DataTypes.UUID,
-      allowNull: false,
-    },
     courseId: {
       type: DataTypes.UUID,
       allowNull: false,
@@ -43,14 +39,20 @@ const LiveSession = sequelize.define(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM("scheduled", "active", "ended"),
-      defaultValue: "scheduled",
-      allowNull: false,
+      type: DataTypes.STRING(50),
+defaultValue: "scheduled",
+      validate: {
+        isIn: [['scheduled', 'active', 'ended']]
+      },
+allowNull: false,
     },
     platform: {
-      type: DataTypes.ENUM("agora", "zoom"),
+      type: DataTypes.STRING(50),
       allowNull: false,
-    },
+      validate: {
+        isIn: [['agora', 'zoom']]
+      },
+},
     platformSessionId: {
       // Stores Agora channel name or Zoom meeting ID
       type: DataTypes.STRING,

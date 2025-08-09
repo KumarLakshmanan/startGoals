@@ -27,9 +27,12 @@ const ProjectSettings = sequelize.define(
       comment: "Require admin approval for reviews",
     },
     defaultLicenseType: {
-      type: DataTypes.ENUM("personal", "commercial", "one_time", "unlimited"),
-      defaultValue: "personal",
-      allowNull: false,
+      type: DataTypes.STRING(50),
+defaultValue: "personal",
+      validate: {
+        isIn: [['personal', 'commercial', 'one_time', 'unlimited']]
+      },
+allowNull: false,
       comment: "Default license type for new projects",
     },
     autoEmailPurchaseConfirmation: {

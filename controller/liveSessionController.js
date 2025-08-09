@@ -1,19 +1,16 @@
 // controllers/liveSessionController.js
 import sequelize from "../config/db.js";
 import LiveSession from "../model/liveSession.js";
-import Batch from "../model/batch.js";
 import Course from "../model/course.js";
 import LiveSessionParticipant from "../model/liveSessionParticipant.js";
 import RaisedHand from "../model/raisedHand.js";
 import AgoraAccessToken from "agora-access-token";
-import axios from "axios";
 import agoraService from "../services/agoraService.js";
 import zoomService from "../services/zoomService.js";
 import { Op } from "sequelize";
 import {
   formatDateTime,
   validateSessionInput,
-  generateMeetingData,
   handlePlatformErrors,
 } from "../utils/liveSessionUtils.js";
 import {
@@ -28,8 +25,6 @@ import {
 const { RtcRole } = AgoraAccessToken;
 
 export const createLiveSession = async (req, res) => {
-  const io = req.app.get("io");
-
   const t = await sequelize.transaction();
 
   // Helper function to safely rollback transaction
@@ -42,7 +37,6 @@ export const createLiveSession = async (req, res) => {
   try {
     const {
       courseId,
-      batchId,
       title,
       sessionDate,
       startTime,
@@ -66,10 +60,9 @@ export const createLiveSession = async (req, res) => {
 
     // Additional UUID validations
     const courseIdError = validateSessionInput.uuid(courseId, "Course ID");
-    const batchIdError = validateSessionInput.uuid(batchId, "Batch ID");
 
-    if (courseIdError || batchIdError) {
-      return sendValidationError(res, "Invalid ID format", [courseIdError, batchIdError].filter(Boolean));
+    if (courseIdError) {
+      return sendValidationError(res, "Invalid ID format", [courseIdError].filter(Boolean));
     }
 
     // Validate time range
@@ -78,24 +71,13 @@ export const createLiveSession = async (req, res) => {
       return sendValidationError(res, timeRangeError);
     }
 
-    // ✅ Validate course & batch existence
-    // ✅ Validate course & batch existence without fetching full objects
     const course = await Course.count({
       where: { courseId },
-      transaction: t,
-    });
-    const batch = await Batch.count({
-      where: { batchId },
       transaction: t,
     });
     if (!course) {
       await safeRollback();
       return sendNotFound(res, "Course not found");
-    }
-
-    if (!batch) {
-      await safeRollback();
-      return sendNotFound(res, "Batch not found");
     }
 
     // ✅ Optionally calculate duration if not sent
@@ -162,7 +144,6 @@ export const createLiveSession = async (req, res) => {
     const session = await LiveSession.create(
       {
         courseId,
-        batchId,
         title,
         meetingLink: generatedMeetingLink, // Use the generated link
         sessionDate,
@@ -191,8 +172,6 @@ export const createLiveSession = async (req, res) => {
 
 // Start Live Session
 export const startLiveSession = async (req, res) => {
-  const io = req.app.get("io");
-
   const t = await sequelize.transaction();
 
   // Helper function to safely rollback transaction
@@ -263,8 +242,6 @@ export const startLiveSession = async (req, res) => {
 
 // End Live Session
 export const endLiveSession = async (req, res) => {
-  const io = req.app.get("io");
-
   const t = await sequelize.transaction();
   try {
     const { sessionId } = req.params;
@@ -321,8 +298,6 @@ export const endLiveSession = async (req, res) => {
 
 // Get Live Session Details
 export const getLiveSessionDetails = async (req, res) => {
-  const io = req.app.get("io");
-
   try {
     const { sessionId } = req.params;
 
@@ -486,8 +461,6 @@ export const joinLiveSession = async (req, res) => {
 };
 
 export const listSessions = async (req, res) => {
-  const io = req.app.get("io");
-
   try {
     const {
       platform,
@@ -844,8 +817,6 @@ export const raiseHand = async (req, res) => {
 
 // List Raised Hands (for instructor)
 export const listRaisedHands = async (req, res) => {
-  const io = req.app.get("io");
-
   try {
     const { sessionId } = req.params;
 

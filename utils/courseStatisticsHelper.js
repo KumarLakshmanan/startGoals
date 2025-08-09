@@ -54,7 +54,6 @@ export const updateCourseStatistics = async (courseId) => {
       };
     }
     
-    // For live courses, we might want to update batch statistics
     // or other relevant fields
     return null;
   } catch (error) {

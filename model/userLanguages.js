@@ -18,9 +18,12 @@ const UserLanguages = sequelize.define(
       field: "language_id",
     },
     proficiencyLevel: {
-      type: DataTypes.ENUM("beginner", "intermediate", "advanced", "native"),
+      type: DataTypes.STRING(50),
       allowNull: true,
       defaultValue: "intermediate",
+      validate: {
+        isIn: [['beginner', 'intermediate', 'advanced', 'native']]
+      },
       field: "proficiency_level",
     },
     isPrimary: {

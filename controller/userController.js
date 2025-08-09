@@ -2,10 +2,13 @@ import User from "../model/user.js";
 import Skill from "../model/skill.js";
 import Language from "../model/language.js";
 import Goal from "../model/goal.js";
-import Batch from "../model/batch.js";
-import BatchStudents from "../model/batchStudents.js";
 import Enrollment from "../model/enrollment.js";
 import Category from "../model/category.js";
+import CourseLevel from "../model/courseLevel.js";
+import UserGoals from "../model/userGoals.js";
+import UserSkills from "../model/userSkills.js";
+import CourseGoal from "../model/courseGoal.js";
+import CourseTechStack from "../model/courseTechStack.js";
 import { generateToken } from "../utils/jwtToken.js";
 import sequelize from "../config/db.js";
 import { validateEmail, validateMobile } from "../utils/commonUtils.js";
@@ -408,21 +411,7 @@ export const getHomePage = async (req, res) => {
         });
 
         myClasses = enrollments.map((enrollment) => {
-          const course = enrollment.Course;
-          return {
-            id: course.courseId,
-            course_code: course.title.substring(0, 10).toUpperCase(),
-            course_title: course.title,
-            course_sub_title: null,
-            course_description: course.description,
-            category: course.category?.categoryName || null,
-            language: "English",
-            course_price: parseFloat(course.price) || 0,
-            image: course.thumbnailUrl,
-            reviews: 0,
-            rating: 0,
-            purchase_status: true,
-          };
+          return enrollment.Course;
         });
       }
     } catch (err) {
@@ -438,25 +427,138 @@ export const getHomePage = async (req, res) => {
     });
 
     const enrolledCourseIds = myClasses.map((course) => course.id);
-    const recommendedCourses = await Course.findAll({
-      where: {
-        status: "active",
-        ...(enrolledCourseIds.length > 0 && {
-          courseId: { [Op.notIn]: enrolledCourseIds },
-        }),
-      },
-      include: [
-        {
-          model: Category,
-          as: "category",
-          attributes: ["categoryId", "categoryName"],
-        },
-      ],
-      limit: 10,
-      order: [["createdAt", "DESC"]],
-    });
-
-    const recommendedList = recommendedCourses;
+    
+    // Get user's goals and skills for better recommendations
+    let userGoals = [];
+    let userSkills = [];
+    let enrolledCategories = [];
+    
+    try {
+      // Get user's goals
+      const userGoalsData = await UserGoals.findAll({
+        where: { userId: req.user?.userId },
+        include: [{ model: Goal, as: "goal" }]
+      });
+      userGoals = userGoalsData.map(ug => ug.goalId);
+      
+      // Get user's skills
+      const userSkillsData = await UserSkills.findAll({
+        where: { userId: req.user?.userId },
+        include: [{ model: Skill, as: "skill" }]
+      });
+      userSkills = userSkillsData.map(us => us.skillId);
+      
+      // Get categories of enrolled courses
+      enrolledCategories = [...new Set(myClasses.map(course => course.category).filter(Boolean))];
+    } catch (error) {
+      console.log("Error fetching user preferences:", error.message);
+    }
+    
+    // Build recommendation query - start with basic filter
+    let recommendationWhere = {
+      status: "active",
+      isPublished: true,
+      ...(enrolledCourseIds.length > 0 && {
+        courseId: { [Op.notIn]: enrolledCourseIds },
+      }),
+    };
+    
+    // Try to get personalized recommendations first
+    let recommendedCourses = [];
+    
+    // If user has goals or skills, try to get matching courses
+    if (userGoals.length > 0 || userSkills.length > 0) {
+      const personalizedWhere = {
+        ...recommendationWhere,
+        [Op.or]: [
+          // Courses matching user goals
+          ...(userGoals.length > 0 ? [{
+            '$goals.goalId$': { [Op.in]: userGoals }
+          }] : []),
+          // Courses matching user skills
+          ...(userSkills.length > 0 ? [{
+            '$techStack.skillId$': { [Op.in]: userSkills }
+          }] : []),
+          // Courses in same categories as enrolled ones
+          ...(enrolledCategories.length > 0 ? [{
+            '$category.categoryName$': { [Op.in]: enrolledCategories }
+          }] : [])
+        ]
+      };
+      
+      try {
+        recommendedCourses = await Course.findAll({
+          where: personalizedWhere,
+          include: [
+            {
+              model: Category,
+              as: "category",
+              attributes: ["categoryId", "categoryName"],
+            },
+            {
+              model: CourseLevel,
+              as: "level",
+              attributes: ["levelId", "name"],
+            },
+            {
+              model: CourseGoal,
+              as: "goals",
+              required: false
+            },
+            {
+              model: CourseTechStack,
+              as: "techStack",
+              required: false,
+              include: [{
+                model: Skill,
+                as: "skill",
+                attributes: ["skillId", "skillName"]
+              }]
+            }
+          ],
+          limit: 10,
+          order: [
+            ["featured", "DESC"],
+            ["averageRating", "DESC"],
+            ["totalEnrollments", "DESC"],
+            ["createdAt", "DESC"]
+          ],
+        });
+      } catch (error) {
+        console.log("Personalized recommendation error:", error.message);
+      }
+    }
+    
+    // If no personalized courses found, get general recommendations
+    if (recommendedCourses.length === 0) {
+      try {
+        recommendedCourses = await Course.findAll({
+          where: recommendationWhere,
+          include: [
+            {
+              model: Category,
+              as: "category",
+              attributes: ["categoryId", "categoryName"],
+            },
+            {
+              model: CourseLevel,
+              as: "level",
+              attributes: ["levelId", "name"],
+            }
+          ],
+          limit: 10,
+          order: [
+            ["featured", "DESC"],
+            ["averageRating", "DESC"],
+            ["totalEnrollments", "DESC"],
+            ["createdAt", "DESC"]
+          ],
+        });
+      } catch (error) {
+        console.log("General recommendation error:", error.message);
+        recommendedCourses = [];
+      }
+    }
 
     const popularCategories = categories.slice(0, 2);
 
@@ -485,7 +587,7 @@ export const getHomePage = async (req, res) => {
         },
         {
           title: "Recommended Classes",
-          list: recommendedList,
+          list: recommendedCourses,
         },
       ],
       popular: {
@@ -544,12 +646,6 @@ export const getAllStudents = async (req, res) => {
           include: [{ model: Course, attributes: ["title", "thumbnail"] }],
           required: false,
         },
-        {
-          model: BatchStudents,
-          as: "batchEnrollments",
-          include: [{ model: Batch, attributes: ["batchName", "status"] }],
-          required: false,
-        },
       );
     }
 
@@ -578,14 +674,10 @@ export const getAllStudents = async (req, res) => {
             },
           });
 
-          const batchCount = await BatchStudents.count({
-            where: { userId: student.userId },
-          });
 
           studentData.stats = {
             totalEnrollments: enrollmentCount,
             completedCourses,
-            activeBatches: batchCount,
             completionRate:
               enrollmentCount > 0
                 ? ((completedCourses / enrollmentCount) * 100).toFixed(1)
@@ -645,22 +737,6 @@ export const getStudentById = async (req, res) => {
                 "category",
                 "level",
                 "duration",
-              ],
-            },
-          ],
-        },
-        {
-          model: BatchStudents,
-          as: "batchEnrollments",
-          include: [
-            {
-              model: Batch,
-              attributes: [
-                "batchId",
-                "batchName",
-                "status",
-                "startDate",
-                "endDate",
               ],
             },
           ],
@@ -898,10 +974,6 @@ export const deleteStudent = async (req, res) => {
     }
 
     if (permanent === "true") {
-      await BatchStudents.destroy({
-        where: { userId: studentId },
-        transaction,
-      });
       await Enrollment.destroy({ where: { userId: studentId }, transaction });
       await student.destroy({ transaction });
     } else {
@@ -957,12 +1029,6 @@ export const bulkDeleteStudents = async (req, res) => {
     const studentIds = students.map(s => s.userId);
 
     if (permanent === "true") {
-      // Hard delete - remove all related records first
-      await BatchStudents.destroy({
-        where: { userId: { [Op.in]: studentIds } },
-        transaction,
-      });
-      
       await Enrollment.destroy({ 
         where: { userId: { [Op.in]: studentIds } }, 
         transaction 

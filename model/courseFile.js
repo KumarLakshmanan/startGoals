@@ -30,24 +30,12 @@ const CourseFile = sequelize.define(
       comment: "Secure download URL",
     },
     fileType: {
-      type: DataTypes.ENUM(
-        "video",
-        "document",
-        "assignment",
-        "image",
-        "audio",
-        "archive",
-        "source_code",
-        "presentation",
-        "spreadsheet",
-        "resource",
-        "documentation",
-        "assets",
-        "demo",
-        "other",
-      ),
-      defaultValue: "other",
-      allowNull: false,
+      type: DataTypes.STRING(50),
+defaultValue: "other",
+      validate: {
+        isIn: [['video', 'document', 'assignment', 'image', 'audio', 'archive', 'source_code', 'presentation', 'spreadsheet', 'resource', 'documentation', 'assets', 'demo', 'other', '']]
+      },
+allowNull: false,
     },
     fileSize: {
       type: DataTypes.INTEGER,

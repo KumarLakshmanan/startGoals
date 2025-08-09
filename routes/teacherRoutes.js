@@ -7,10 +7,7 @@ import {
   createTeacher,
   updateTeacher,
   deleteTeacher,
-  // Course & batch assignment
   assignTeacherToCourse,
-  assignTeacherToBatch,
-  // Performance & analytics
   getTeacherPerformanceReport,
   getTeacherStudentFeedback,
   getTeacherAssignedCourses,
@@ -31,8 +28,6 @@ router.delete("/:teacherId", isAdmin, deleteTeacher); // Delete teacher (soft/ha
 
 // Assignment operations
 router.post("/assign-course", isAdmin, assignTeacherToCourse); // Assign teacher to course
-router.post("/assign-batch", isAdmin, assignTeacherToBatch); // Assign teacher to batch
-
 // Analytics and performance
 router.get("/:teacherId/performance", isAdmin, getTeacherPerformanceReport); // Teacher performance
 router.get("/:teacherId/feedback", isAdmin, getTeacherStudentFeedback); // Student feedback

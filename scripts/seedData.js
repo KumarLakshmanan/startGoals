@@ -14,13 +14,13 @@ import Banner from '../model/banner.js';
 import Goal from '../model/goal.js';
 import Skill from '../model/skill.js';
 import Exam from '../model/exam.js';
-import Batch from '../model/batch.js';
 import Section from '../model/section.js';
 import Lesson from '../model/lesson.js';
 import CourseRating from '../model/courseRating.js';
 import ProjectRating from '../model/projectRating.js';
 import Enrollment from '../model/enrollment.js';
 import ProjectPurchase from '../model/projectPurchase.js';
+import CourseFile from '../model/courseFile.js';
 import { faker } from '@faker-js/faker';
 import bcrypt from 'bcrypt';
 import sequelize from '../config/db.js';
@@ -31,19 +31,56 @@ import CourseLanguage from '../model/courseLanguage.js';
 import ProjectLanguage from '../model/projectLanguage.js';
 import CourseInstructor from '../model/courseInstructor.js';
 import ProjectInstructor from '../model/projectInstructor.js';
+import { uploadSampleFiles } from './uploadSampleMedia.js';
 
-// Configure environment variables - use path relative to this file
+// Configure environment variables
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-dotenv.config({ path: path.join(__dirname, '.env') });
-console.log('Environment loaded from:', path.join(__dirname, '.env'));
+dotenv.config({ path: path.join(__dirname, '../.env') });
 
-// Set up some constants - ensure we create exactly 10 of each
+// Set up some constants
 const NUM_LIVE_COURSES = 10;
 const NUM_RECORDED_COURSES = 10;
 const NUM_PROJECTS = 10;
 const NUM_STUDENTS = 10;
 const DEFAULT_PASSWORD = 'SecurePassword@123';
+
+// Sample media URLs (will be set by uploadSampleFiles)
+let SAMPLE_IMAGE_URL = 'https://picsum.photos/800/600?random=1';
+let SAMPLE_VIDEO_URL = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+
+/**
+ * Generate a random image URL using sample or fallback
+ */
+function getRandomImageUrl() {
+  const randomSeed = Math.floor(Math.random() * 1000);
+  return SAMPLE_IMAGE_URL.includes('picsum') 
+    ? `https://picsum.photos/800/600?random=${randomSeed}`
+    : SAMPLE_IMAGE_URL;
+}
+
+/**
+ * Generate a random video URL using sample or fallback
+ */
+function getRandomVideoUrl() {
+  return SAMPLE_VIDEO_URL;
+}
+
+/**
+ * Generate live streaming URLs for lessons
+ */
+function generateLiveStreamingUrls(lessonTitle) {
+  const channelName = `lesson_${uuidv4().slice(0, 8)}`;
+  return {
+    agoraChannelName: channelName,
+    agoraAppId: process.env.AGORA_APP_ID || '35c27e25ef06461aa0af5cc32cfce885',
+    zoomMeetingId: faker.string.numeric(10),
+    zoomJoinUrl: `https://zoom.us/j/${faker.string.numeric(10)}`,
+    zoomStartUrl: `https://zoom.us/s/${faker.string.numeric(10)}`,
+    zoomPassword: faker.string.alphanumeric(6),
+    liveStreamStatus: 'scheduled'
+  };
+}
 
 /**
  * Initialize basic categories and levels if they don't exist
@@ -215,7 +252,7 @@ async function initBasicData() {
 }
 
 /**
- * Create live courses with sessions
+ * Create live courses with sessions and real media
  */
 async function createLiveCourses(teachers, categories, goals, languages, levels, skills) {
   console.log('Creating live courses...');
@@ -234,14 +271,18 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + faker.number.int({ min: 30, max: 90 }));
 
+      // Use sample image URLs
+      let thumbnailUrl = getRandomImageUrl();
+      let coverImage = getRandomImageUrl();
+
       // Create course
       const course = await Course.create({
         courseId: uuidv4(),
         title: `${faker.company.buzzPhrase()}`,
         description: faker.lorem.paragraphs(3),
         shortDescription: faker.lorem.sentence(),
-        thumbnailUrl: `https://picsum.photos/seed/${i + 1}/640/480`,
-        coverImage: `https://picsum.photos/seed/${i + 50}/1200/600`,
+        thumbnailUrl,
+        coverImage,
         levelId: level.levelId,
         categoryId: category.categoryId,
         isPublished: true,
@@ -291,20 +332,6 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
         }
       }
 
-      // Create a batch for this course
-      const batch = await Batch.create({
-        batchId: uuidv4(),
-        courseId: course.courseId,
-        title: `Batch for ${course.title}`,
-        startDate: startDate,
-        endDate: endDate,
-        status: 'ongoing',
-        createdBy: teacher.userId,
-        enrollmentCapacity: faker.number.int({ min: 20, max: 50 }),
-        currentEnrollment: faker.number.int({ min: 0, max: 15 }),
-        hasChatEnabled: true,
-      });
-
       // Assign instructors to the course via junction table
       const courseInstructors = faker.helpers.arrayElements(teachers, { min: 1, max: 2 });
       for (const instructor of courseInstructors) {
@@ -321,34 +348,6 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
         await CourseLanguage.create({
           courseId: course.courseId,
           languageId: lang.languageId
-        });
-      }
-
-      // Create 5-10 live sessions for each course
-      const numSessions = faker.number.int({ min: 5, max: 10 });
-
-      for (let j = 0; j < numSessions; j++) {
-        const sessionDate = new Date(startDate);
-        sessionDate.setDate(sessionDate.getDate() + (j * 2)); // Every 2 days
-
-        // Use fixed times for start and end (Postgres TIME expects 'HH:MM:SS')
-        const startTime = '18:00:00'; // 6 PM
-        const endTime = '20:00:00';   // 8 PM
-
-        await LiveSession.create({
-          sessionId: uuidv4(),
-          batchId: batch.batchId,
-          courseId: course.courseId,
-          title: `Session ${j + 1}: ${faker.company.buzzNoun()}`,
-          meetingLink: `https://meet.example.com/${faker.string.alphanumeric(10)}`,
-          sessionDate,
-          startTime,
-          endTime,
-          durationMinutes: 120,
-          status: 'scheduled',
-          platform: faker.helpers.arrayElement(['zoom', 'agora']),
-          platformSessionId: faker.string.alphanumeric(10),
-          recordingUrl: j < 2 ? `https://storage.example.com/recordings/session_${j + 1}_${faker.string.alphanumeric(8)}.mp4` : null,
         });
       }
 
@@ -375,7 +374,7 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
 }
 
 /**
- * Create recorded courses
+ * Create recorded courses with real media
  */
 async function createRecordedCourses(teachers, categories, goals, languages, levels, skills) {
   console.log('Creating recorded courses...');
@@ -389,14 +388,18 @@ async function createRecordedCourses(teachers, categories, goals, languages, lev
       const level = levels[Math.floor(Math.random() * levels.length)];
       const category = categories[Math.floor(Math.random() * categories.length)];
 
+      // Use sample image URLs
+      let thumbnailUrl = getRandomImageUrl();
+      let coverImage = getRandomImageUrl();
+
       // Create course
       const course = await Course.create({
         courseId: uuidv4(),
         title: `${faker.company.buzzPhrase()}`,
         description: faker.lorem.paragraphs(3),
         shortDescription: faker.lorem.sentence(),
-        thumbnailUrl: `https://picsum.photos/seed/${i + 100}/640/480`,
-        coverImage: `https://picsum.photos/seed/${i + 150}/1200/600`,
+        thumbnailUrl,
+        coverImage,
         levelId: level.levelId,
         categoryId: category.categoryId,
         isPublished: true,
@@ -509,16 +512,22 @@ async function createRecordedCourses(teachers, categories, goals, languages, lev
                 isPreview: k === 0, // First lesson is preview
               };
 
-              // Add type-specific fields
+              // Add type-specific fields with simple media URLs
               if (lessonType === 'live') {
                 const startDateTime = faker.date.future();
                 lessonData.streamStartDateTime = startDateTime;
                 lessonData.streamEndDateTime = new Date(startDateTime.getTime() + lessonDuration * 60000);
+                
+                // Add live streaming integration
+                const streamingUrls = generateLiveStreamingUrls(lessonData.title);
+                Object.assign(lessonData, streamingUrls);
+                
               } else if (lessonType === 'video') {
-                lessonData.videoUrl = `https://storage.example.com/videos/course_${i}_section_${j}_lesson_${k}.mp4`;
+                // Use sample video URL
+                lessonData.videoUrl = getRandomVideoUrl();
+                
               } else if (lessonType === 'document' || lessonType === 'assignment') {
-                // For document/assignment lessons, we would typically have fileUrl and fileName
-                // These would be populated when files are actually uploaded via courseFile model
+                // For document/assignment lessons
                 lessonData.fileUrl = `https://storage.example.com/files/course_${i}_section_${j}_lesson_${k}.pdf`;
                 lessonData.fileName = `${lessonType}_${k + 1}.pdf`;
               }
@@ -843,21 +852,47 @@ async function createExams(levels) {
 
   const createdExams = [];
   for (const examData of examsData) {
-    // Find the matching level
-    const level = levels.find(l => l.name === examData.level);
+    try {
+      // Use individual transaction for each exam creation
+      const transaction = await sequelize.transaction();
+      
+      try {
+        // Find the matching level
+        const level = levels.find(l => l.name === examData.level);
+        
+        if (!level) {
+          console.warn(`Level '${examData.level}' not found for exam '${examData.name}', skipping...`);
+          await transaction.rollback();
+          continue;
+        }
 
-    const [exam] = await Exam.findOrCreate({
-      where: { examName: examData.name },
-      defaults: {
-        examId: uuidv4(),
-        examName: examData.name,
-        description: `Assessment for ${examData.name}`,
-        levelId: level.levelId
+        const [exam] = await Exam.findOrCreate({
+          where: { examName: examData.name },
+          defaults: {
+            examId: uuidv4(),
+            examName: examData.name,
+            description: `Assessment for ${examData.name}`,
+            levelId: level.levelId
+          },
+          transaction
+        });
+        
+        await transaction.commit();
+        createdExams.push(exam);
+        console.log(`✅ Created exam: ${examData.name}`);
+        
+      } catch (error) {
+        await transaction.rollback();
+        console.error(`❌ Error creating exam '${examData.name}':`, error.message);
+        // Continue with next exam instead of failing completely
       }
-    });
-    createdExams.push(exam);
+      
+    } catch (error) {
+      console.error(`❌ Transaction error for exam '${examData.name}':`, error.message);
+    }
   }
 
+  console.log(`Successfully created ${createdExams.length} exams`);
   return createdExams;
 }
 
@@ -1057,6 +1092,14 @@ async function createLanguageAssociations(courses, projects, languages) {
 async function seedDatabase() {
   try {
     console.log('Starting database seeding...');
+
+    // Upload sample media files to S3 or use placeholders
+    console.log('Step 0: Uploading sample media files...');
+    const { SAMPLE_IMAGE_URL: imageUrl, SAMPLE_VIDEO_URL: videoUrl } = await uploadSampleFiles();
+    SAMPLE_IMAGE_URL = imageUrl;
+    SAMPLE_VIDEO_URL = videoUrl;
+    console.log(`✅ Using image URL: ${SAMPLE_IMAGE_URL}`);
+    console.log(`✅ Using video URL: ${SAMPLE_VIDEO_URL}`);
 
     // Initialize basic data
     console.log('Step 1: Initializing basic data...');

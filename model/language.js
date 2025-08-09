@@ -41,10 +41,13 @@ const Language = sequelize.define(
       },
     },
     languageType: {
-      type: DataTypes.ENUM("user_preference", "course_language", "both"),
+      type: DataTypes.STRING(50),
       allowNull: false,
       defaultValue: "both",
-    },
+      validate: {
+        isIn: [['user_preference', 'course_language', 'both']]
+      },
+},
     ...commonFields,
   },
   {

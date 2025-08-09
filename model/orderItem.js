@@ -19,9 +19,12 @@ const OrderItem = sequelize.define(
       },
     },
     itemType: {
-      type: DataTypes.ENUM("course", "project"),
+      type: DataTypes.STRING(50),
       allowNull: false,
-      comment: "Type of item purchased",
+comment: "Type of item purchased",
+      validate: {
+        isIn: [['course', 'project']]
+      },
     },
     itemId: {
       type: DataTypes.UUID,

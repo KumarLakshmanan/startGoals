@@ -28,17 +28,23 @@ const Notification = sequelize.define(
       allowNull: false,
     },
     type: {
-      type: DataTypes.ENUM("info", "success", "warning", "error", "system"),
-      defaultValue: "info",
-    },
+      type: DataTypes.STRING(50),
+defaultValue: "info",
+      validate: {
+        isIn: [['info', 'success', 'warning', 'error', 'system']]
+      },
+},
     isRead: {
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
     priority: {
-      type: DataTypes.ENUM("low", "medium", "high", "urgent"),
-      defaultValue: "medium",
-    },
+      type: DataTypes.STRING(50),
+defaultValue: "medium",
+      validate: {
+        isIn: [['low', 'medium', 'high', 'urgent']]
+      },
+},
     link: {
       type: DataTypes.STRING,
       allowNull: true,

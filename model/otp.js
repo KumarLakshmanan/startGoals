@@ -19,18 +19,24 @@ const Otp = sequelize.define(
       allowNull: false,
     },
     deliveryMethod: {
-      type: DataTypes.ENUM("email", "sms", "whatsapp", "app"),
+      type: DataTypes.STRING(50),
       allowNull: false,
       defaultValue: "email",
-    },
+      validate: {
+        isIn: [['email', 'sms', 'whatsapp', 'app']]
+      },
+},
     expiresAt: {
       type: DataTypes.DATE,
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM("active", "expired", "used"),
-      defaultValue: "active",
-    },
+      type: DataTypes.STRING(50),
+defaultValue: "active",
+      validate: {
+        isIn: [['active', 'expired', 'used']]
+      },
+},
     ...commonFields,
   },
   {

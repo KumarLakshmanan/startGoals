@@ -27,9 +27,12 @@ const Settings = sequelize.define(
       allowNull: true,
     },
     dataType: {
-      type: DataTypes.ENUM("string", "number", "boolean", "json"),
-      defaultValue: "string",
-      allowNull: false,
+      type: DataTypes.STRING(50),
+defaultValue: "string",
+      validate: {
+        isIn: [['string', 'number', 'boolean', 'json']]
+      },
+allowNull: false,
     },
     isActive: {
       type: DataTypes.BOOLEAN,

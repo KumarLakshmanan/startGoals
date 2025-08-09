@@ -28,15 +28,6 @@ const CourseCertificate = sequelize.define(
       },
       comment: "Student who received the certificate",
     },
-    batchId: {
-      type: DataTypes.UUID,
-      allowNull: true,
-      references: {
-        model: "batches",
-        key: "batch_id",
-      },
-      comment: "For live courses with batches",
-    },
     certificateNumber: {
       type: DataTypes.STRING,
       allowNull: false,
@@ -66,9 +57,12 @@ const CourseCertificate = sequelize.define(
       comment: "Admin/teacher who issued the certificate",
     },
     status: {
-      type: DataTypes.ENUM("active", "revoked"),
-      defaultValue: "active",
-      allowNull: false,
+      type: DataTypes.STRING(50),
+defaultValue: "active",
+      validate: {
+        isIn: [['active', 'revoked']]
+      },
+allowNull: false,
     },
     ...commonFields,
   },

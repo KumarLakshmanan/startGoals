@@ -68,9 +68,12 @@ const ProjectRating = sequelize.define(
       comment: "Number of users who found review not helpful",
     },
     moderationStatus: {
-      type: DataTypes.ENUM("pending", "approved", "rejected", "hidden"),
+      type: DataTypes.STRING(20),
       defaultValue: "approved",
       comment: "Auto-approve for purchased users",
+      validate: {
+        isIn: [['pending', 'approved', 'rejected', 'hidden']]
+      }
     },
     moderatedBy: {
       type: DataTypes.UUID,

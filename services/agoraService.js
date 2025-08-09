@@ -224,7 +224,7 @@ class AgoraService {
   // Add other Agora-specific methods here (e.g., recording)
 
   // Cloud Recording
-  async startCloudRecording(channelName, userId, token) {
+  async startCloudRecording(channelName) {
     // Placeholder for starting cloud recording
     console.log(
       `AgoraService: Starting cloud recording for channel ${channelName}`,
@@ -239,7 +239,7 @@ class AgoraService {
     };
   }
 
-  async stopCloudRecording(channelName, recordingId, userId) {
+  async stopCloudRecording(channelName, recordingId) {
     // Placeholder for stopping cloud recording
     console.log(
       `AgoraService: Stopping cloud recording ${recordingId} for channel ${channelName}`,

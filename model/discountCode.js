@@ -26,9 +26,12 @@ const DiscountCode = sequelize.define(
       comment: "Internal description for admin",
     },
     discountType: {
-      type: DataTypes.ENUM("percentage", "fixed"),
+      type: DataTypes.STRING(20),
       allowNull: false,
       defaultValue: "percentage",
+      validate: {
+        isIn: [['percentage', 'fixed']]
+      }
     },
     discountValue: {
       type: DataTypes.DECIMAL(10, 2),
@@ -39,10 +42,13 @@ const DiscountCode = sequelize.define(
       comment: "Percentage (e.g., 10.00) or fixed amount (e.g., 100.00)",
     },
     applicableType: {
-      type: DataTypes.ENUM("course", "project", "both"),
+      type: DataTypes.STRING(20),
       allowNull: false,
       defaultValue: "both",
       comment: "What this discount can be applied to",
+      validate: {
+        isIn: [['course', 'project', 'both']]
+      }
     },
     maxDiscountAmount: {
       type: DataTypes.DECIMAL(10, 2),

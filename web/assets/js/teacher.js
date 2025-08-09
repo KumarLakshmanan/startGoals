@@ -263,7 +263,6 @@ async function createSession() {
         const sessionData = {
             title: formData.get('title'),
             courseId: formData.get('courseId'),
-            batchId: formData.get('batchId'),
             sessionDate: formData.get('sessionDate'),
             startTime: formData.get('startTime'),
             endTime: formData.get('endTime'),

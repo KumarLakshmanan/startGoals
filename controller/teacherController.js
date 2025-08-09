@@ -2,8 +2,6 @@
 import sequelize from "../config/db.js";
 import User from "../model/user.js";
 import Course from "../model/course.js";
-import Batch from "../model/batch.js";
-import BatchStudents from "../model/batchStudents.js";
 import Enrollment from "../model/enrollment.js";
 import InstructorRating from "../model/instructorRating.js";
 import CourseRating from "../model/courseRating.js";
@@ -16,6 +14,7 @@ import {
   sendValidationError,
   sendNotFound,
   sendServerError,
+  sendConflict,
 } from "../utils/responseHelper.js";
 
 /**
@@ -290,10 +289,6 @@ export const updateTeacher = async (req, res) => {
   }
 };
 
-/**
- * Delete Teacher (Admin/Owner only)
- * Soft delete teacher and handle course/batch reassignment
- */
 export const deleteTeacher = async (req, res) => {
   const transaction = await sequelize.transaction();
 
@@ -313,7 +308,7 @@ export const deleteTeacher = async (req, res) => {
       return sendNotFound(res, "Teacher not found");
     }
 
-    // Check if teacher has active courses or batches
+    // Check if teacher has active courses
     const activeCourses = await Course.count({
       where: {
         createdBy: teacherId,
@@ -321,27 +316,18 @@ export const deleteTeacher = async (req, res) => {
       },
     });
 
-    const activeBatches = await Batch.count({
-      where: {
-        createdBy: teacherId,
-        status: "active",
-      },
-    });
-
-    if ((activeCourses > 0 || activeBatches > 0) && !reassignToTeacherId) {
+    if ((activeCourses > 0) && !reassignToTeacherId) {
       await transaction.rollback();
       return sendError(
         res,
         400,
-        "Teacher has active courses or batches. Please provide reassignToTeacherId or deactivate all content first",
+        "Teacher has active courses. Please provide reassignToTeacherId or deactivate all content first",
         {
           activeCourses,
-          activeBatches,
         }
       );
     }
 
-    // Reassign courses and batches if specified
     if (reassignToTeacherId) {
       const newTeacher = await User.findOne({
         where: { userId: reassignToTeacherId, role: "teacher" },
@@ -353,11 +339,6 @@ export const deleteTeacher = async (req, res) => {
       }
 
       await Course.update(
-        { createdBy: reassignToTeacherId },
-        { where: { createdBy: teacherId }, transaction },
-      );
-
-      await Batch.update(
         { createdBy: reassignToTeacherId },
         { where: { createdBy: teacherId }, transaction },
       );
@@ -378,7 +359,6 @@ export const deleteTeacher = async (req, res) => {
       `Teacher ${permanent === "true" ? "permanently deleted" : "deleted"} successfully`,
       {
         reassignedCourses: reassignToTeacherId ? activeCourses : 0,
-        reassignedBatches: reassignToTeacherId ? activeBatches : 0,
       }
     );
   } catch (error) {
@@ -387,10 +367,6 @@ export const deleteTeacher = async (req, res) => {
     return sendServerError(res, error);
   }
 };
-
-/**
- * ===================== COURSE & BATCH ASSIGNMENT =====================
- */
 
 /**
  * Assign Teacher to Course (Admin/Owner only)
@@ -438,56 +414,6 @@ export const assignTeacherToCourse = async (req, res) => {
   } catch (error) {
     await transaction.rollback();
     console.error("Assign teacher to course error:", error);
-    return sendServerError(res, error);
-  }
-};
-
-/**
- * Assign Teacher to Batch (Admin/Owner only)
- * Assign or reassign batch ownership
- */
-export const assignTeacherToBatch = async (req, res) => {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const { teacherId, batchId } = req.body;
-
-    // Validate teacher exists and is a teacher
-    const teacher = await User.findOne({
-      where: { userId: teacherId, role: "teacher" },
-    });
-
-    if (!teacher) {
-      await transaction.rollback();
-      return sendNotFound(res, "Teacher not found");
-    }
-
-    // Validate batch exists
-    const batch = await Batch.findByPk(batchId);
-    if (!batch) {
-      await transaction.rollback();
-      return sendNotFound(res, "Batch not found");
-    }
-
-    // Update batch assignment
-    const previousTeacherId = batch.createdBy;
-    await batch.update({ createdBy: teacherId }, { transaction });
-
-    await transaction.commit();
-
-    return sendSuccess(res,  "Teacher assigned to batch successfully", {
-      batchId,
-      batchTitle: batch.title,
-      newTeacher: {
-        id: teacher.userId,
-        name: teacher.username,
-        email: teacher.email,
-      },
-      previousTeacherId,
-    });
-  } catch (error) {
-    await transaction.rollback();
-    console.error("Assign teacher to batch error:", error);
     return sendServerError(res, error);
   }
 };

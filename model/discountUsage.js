@@ -32,9 +32,12 @@ const DiscountUsage = sequelize.define(
       comment: "Order ID where discount was applied",
     },
     itemType: {
-      type: DataTypes.ENUM("course", "project"),
+      type: DataTypes.STRING(50),
       allowNull: false,
-    },
+      validate: {
+        isIn: [['course', 'project']]
+      },
+},
     itemId: {
       type: DataTypes.UUID,
       allowNull: false,

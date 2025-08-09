@@ -5,9 +5,18 @@ import { s3, bucketName } from "../config/awsS3Config.js";
 import path from "path";
 import crypto from "crypto";
 import ffmpeg from 'fluent-ffmpeg';
+import ffmpegStatic from 'ffmpeg-static';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import fs from 'fs';
 import os from 'os';
+
+// Set ffmpeg path
+if (ffmpegStatic) {
+  ffmpeg.setFfmpegPath(ffmpegStatic);
+  console.log(`FFmpeg path set to: ${ffmpegStatic}`);
+} else {
+  console.warn('FFmpeg static binary not found, HLS conversion may fail');
+}
 
 // Allowed field names and their S3 folder paths
 const folderMap = {
@@ -65,27 +74,46 @@ class S3Storage {
       const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upload-'));
       const tempVideoPath = path.join(tempDir, fileName);
       const writeStream = fs.createWriteStream(tempVideoPath);
+      
       file.stream.pipe(writeStream);
+      
       writeStream.on('finish', () => {
         // Convert to HLS using ffmpeg
         const hlsOutputDir = path.join(tempDir, 'hls');
-        fs.mkdirSync(hlsOutputDir);
+        fs.mkdirSync(hlsOutputDir, { recursive: true });
         const playlistName = `${path.parse(fileName).name}.m3u8`;
+        
+        console.log(`Converting video to HLS: ${tempVideoPath}`);
+        
         ffmpeg(tempVideoPath)
           .outputOptions([
+            '-c:v libx264',
+            '-c:a aac',
             '-profile:v baseline',
             '-level 3.0',
             '-start_number 0',
             '-hls_time 10',
             '-hls_list_size 0',
+            '-hls_flags independent_segments',
             '-f hls'
           ])
           .output(path.join(hlsOutputDir, playlistName))
+          .on('start', (commandLine) => {
+            console.log('Spawned Ffmpeg with command: ' + commandLine);
+          })
+          .on('stderr', (stderrLine) => {
+            console.log('FFmpeg stderr: ' + stderrLine);
+          })
+          .on('progress', (progress) => {
+            console.log('Processing: ' + progress.percent + '% done');
+          })
           .on('end', async () => {
+            console.log('HLS conversion completed');
             // Upload all HLS files to S3
-            const files = fs.readdirSync(hlsOutputDir);
             try {
-              // Replace S3 upload logic for HLS files
+              const files = fs.readdirSync(hlsOutputDir);
+              console.log(`Found ${files.length} HLS files to upload`);
+              
               for (const hlsFile of files) {
                 const hlsFilePath = path.join(hlsOutputDir, hlsFile);
                 if (!fs.existsSync(hlsFilePath)) {
@@ -99,13 +127,17 @@ class S3Storage {
                   ContentType: hlsFile.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/MP2T',
                   Metadata: {
                     fieldName: file.fieldname,
+                    originalFileName: file.originalname,
                     ...metadata,
                   },
                 };
                 await this.s3.send(new PutObjectCommand(putParams));
+                console.log(`Uploaded HLS file: ${s3Key}`);
               }
+              
               // Generate public URL for playlist
               const publicUrl = `https://${this.bucket}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${folder}${path.parse(fileName).name}/hls/${playlistName}`;
+              
               cb(null, {
                 bucket: this.bucket,
                 key: `${folder}${path.parse(fileName).name}/hls/${playlistName}`,
@@ -113,20 +145,43 @@ class S3Storage {
                 location: publicUrl,
                 etag: null,
                 hls: true,
+                type: 'hls_video'
               });
             } catch (err) {
+              console.error('Error uploading HLS files:', err);
               cb(err);
             } finally {
               // Clean up temp files
-              fs.rmSync(tempDir, { recursive: true, force: true });
+              try {
+                fs.rmSync(tempDir, { recursive: true, force: true });
+                console.log('Temporary files cleaned up');
+              } catch (cleanupErr) {
+                console.warn('Failed to cleanup temp files:', cleanupErr);
+              }
             }
           })
           .on('error', (err) => {
-            cb(err);
-            fs.rmSync(tempDir, { recursive: true, force: true });
+            console.error('FFmpeg error:', err);
+            cb(new Error(`Video conversion failed: ${err.message}`));
+            try {
+              fs.rmSync(tempDir, { recursive: true, force: true });
+            } catch (cleanupErr) {
+              console.warn('Failed to cleanup temp files after error:', cleanupErr);
+            }
           })
           .run();
       });
+      
+      writeStream.on('error', (err) => {
+        console.error('Error writing temp video file:', err);
+        cb(err);
+        try {
+          fs.rmSync(tempDir, { recursive: true, force: true });
+        } catch (cleanupErr) {
+          console.warn('Failed to cleanup temp files after write error:', cleanupErr);
+        }
+      });
+      
       return;
     }
 

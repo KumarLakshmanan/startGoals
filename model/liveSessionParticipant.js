@@ -21,10 +21,13 @@ const LiveSessionParticipant = sequelize.define(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM("instructor", "student", "moderator"),
+      type: DataTypes.STRING(50),
       allowNull: false,
       defaultValue: "student",
-    },
+      validate: {
+        isIn: [['instructor', 'student', 'moderator']]
+      },
+},
     joinedAt: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,

@@ -72,15 +72,12 @@ const ProjectPurchase = sequelize.define(
       comment: "Payment gateway transaction ID",
     },
     paymentStatus: {
-      type: DataTypes.ENUM(
-        "pending",
-        "processing",
-        "completed",
-        "failed",
-        "refunded",
-      ),
-      defaultValue: "pending",
-      allowNull: false,
+      type: DataTypes.STRING(50),
+defaultValue: "pending",
+      validate: {
+        isIn: [['pending', 'processing', 'completed', 'failed', 'refunded', '']]
+      },
+allowNull: false,
     },
     purchaseDate: {
       type: DataTypes.DATE,
