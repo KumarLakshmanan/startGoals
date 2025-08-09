@@ -601,7 +601,12 @@ export const getTeacherStudentFeedback = async (req, res) => {
     const { teacherId } = req.params;
     const { page = 1, limit = 20, rating, courseId } = req.query;
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    // Robust page/limit parsing
+    let safeLimit = parseInt(limit);
+    if (Number.isNaN(safeLimit) || safeLimit <= 0) safeLimit = 20;
+    let safePage = parseInt(page);
+    if (Number.isNaN(safePage) || safePage <= 0) safePage = 1;
+    const offset = (safePage - 1) * safeLimit;
 
     // Build where conditions for instructor ratings
     const whereConditions = { instructorId: teacherId };
@@ -622,7 +627,7 @@ export const getTeacherStudentFeedback = async (req, res) => {
         },
       ],
       order: [["createdAt", "DESC"]],
-      limit: parseInt(limit),
+      limit: safeLimit,
       offset: offset,
     });
 
@@ -658,10 +663,10 @@ export const getTeacherStudentFeedback = async (req, res) => {
       feedback: ratings.rows,
       summary,
       pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(ratings.count / parseInt(limit)),
+        currentPage: safePage,
+        totalPages: Math.ceil(ratings.count / safeLimit),
         totalItems: ratings.count,
-        itemsPerPage: parseInt(limit),
+        itemsPerPage: safeLimit,
       },
     });
   } catch (error) {
@@ -679,7 +684,12 @@ export const getTeacherAssignedCourses = async (req, res) => {
     const { teacherId } = req.params;
     const { page = 1, limit = 20, status } = req.query;
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    // Robust page/limit parsing
+    let safeLimit2 = parseInt(limit);
+    if (Number.isNaN(safeLimit2) || safeLimit2 <= 0) safeLimit2 = 20;
+    let safePage2 = parseInt(page);
+    if (Number.isNaN(safePage2) || safePage2 <= 0) safePage2 = 1;
+    const offset2 = (safePage2 - 1) * safeLimit2;
 
     // Build where conditions
     const whereConditions = { createdBy: teacherId };
@@ -700,8 +710,8 @@ export const getTeacherAssignedCourses = async (req, res) => {
         },
       ],
       order: [["createdAt", "DESC"]],
-      limit: parseInt(limit),
-      offset: offset,
+      limit: safeLimit2,
+      offset: offset2,
       distinct: true,
     });
 
@@ -726,10 +736,10 @@ export const getTeacherAssignedCourses = async (req, res) => {
     return sendSuccess(res,  "Teacher assigned courses fetched successfully", {
       courses: coursesWithStats,
       pagination: {
-        currentPage: parseInt(page),
-        totalPages: Math.ceil(courses.count / parseInt(limit)),
+        currentPage: safePage2,
+        totalPages: Math.ceil(courses.count / safeLimit2),
         totalItems: courses.count,
-        itemsPerPage: parseInt(limit),
+        itemsPerPage: safeLimit2,
       },
     });
   } catch (error) {

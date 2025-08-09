@@ -57,7 +57,12 @@ export const getAdminUsers = async (req, res) => {
       };
     }
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    // Robust page/limit parsing
+    let safeLimit = parseInt(limit);
+    if (Number.isNaN(safeLimit) || safeLimit <= 0) safeLimit = 20;
+    let safePage = parseInt(page);
+    if (Number.isNaN(safePage) || safePage <= 0) safePage = 1;
+    const offset = (safePage - 1) * safeLimit;
 
     // Since we may not have admin role fields yet, let's create mock data
     const mockAdminUsers = [
@@ -208,10 +213,7 @@ export const getAdminUsers = async (req, res) => {
 
     // Apply pagination
     const totalCount = filteredAdmins.length;
-    const paginatedAdmins = filteredAdmins.slice(
-      offset,
-      offset + parseInt(limit),
-    );
+    const paginatedAdmins = filteredAdmins.slice(offset, offset + safeLimit);
 
     // Calculate analytics
     const analytics = {
@@ -253,10 +255,10 @@ export const getAdminUsers = async (req, res) => {
     return sendSuccess(res,  "Admin users retrieved successfully", {
         admins: paginatedAdmins,
         pagination: {
-          currentPage: parseInt(page),
-          totalPages: Math.ceil(totalCount / parseInt(limit)),
+          currentPage: safePage,
+          totalPages: Math.ceil(totalCount / safeLimit),
           totalRecords: totalCount,
-          recordsPerPage: parseInt(limit),
+          recordsPerPage: safeLimit,
         },
         analytics,
       });
@@ -633,10 +635,6 @@ export const changeAdminPassword = async (req, res) => {
         return sendValidationError(res, "Current password is incorrect", { currentPassword: "Current password is incorrect" });
       }
     }
-
-    // Hash new password
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
     // In real implementation, update password in database
     const passwordUpdate = {
@@ -1072,7 +1070,6 @@ export const exportAdminData = async (req, res) => {
       format = "json", // json, csv
       dateFrom,
       dateTo,
-      includePasswords = false,
     } = req.query;
 
     let exportData = {};
@@ -1178,34 +1175,4 @@ export const exportAdminData = async (req, res) => {
 function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
-}
-
-/**
- * Log admin activity
- */
-async function logAdminActivity(
-  userId,
-  action,
-  module,
-  details,
-  targetId = null,
-  targetType = null,
-  ipAddress = null,
-  risk = "low",
-) {
-  // In real implementation, save to activity log table
-  const activityLog = {
-    userId,
-    action,
-    module,
-    details,
-    targetId,
-    targetType,
-    timestamp: new Date(),
-    ipAddress,
-    risk,
-  };
-
-  console.log("Admin Activity:", activityLog);
-  return activityLog;
 }

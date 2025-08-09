@@ -214,7 +214,7 @@ const Project = sequelize.define(
         type: "BTREE",
       },
       {
-        fields: ["total_sales"],
+        fields: ["total_entrollments"],
         type: "BTREE",
       },
       {

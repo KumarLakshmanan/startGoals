@@ -100,66 +100,6 @@ export const deleteSetting = async (req, res) => {
   }
 };
 
-// Bulk insert default settings
-export const initializeDefaultSettings = async (req, res) => {
-  try {
-    const defaultSettings = [
-      {
-        key: "contact_phone",
-        value: "1234567890",
-        description: "Contact phone number for customer support",
-        dataType: "string",
-      },
-      {
-        key: "contact_email",
-        value: "support@example.com",
-        description: "Contact email for customer support",
-        dataType: "string",
-      },
-      {
-        key: "company_name",
-        value: "StartGoals",
-        description: "Company name",
-        dataType: "string",
-      },
-      {
-        key: "app_version",
-        value: "1.0.0",
-        description: "Current app version",
-        dataType: "string",
-      },
-      {
-        key: "maintenance_mode",
-        value: "false",
-        description: "Enable/disable maintenance mode",
-        dataType: "boolean",
-      },
-    ];
-
-    const createdSettings = [];
-
-    for (const settingData of defaultSettings) {
-      const existingSetting = await Settings.findOne({
-        where: { key: settingData.key },
-      });
-
-      if (!existingSetting) {
-        const setting = await Settings.create(settingData);
-        createdSettings.push(setting);
-      }
-    }
-
-    sendSuccess(
-      res,
-      `Initialized ${createdSettings.length} default settings`,
-      createdSettings
-    );
-  } catch (error) {
-    console.error("Initialize settings error:", error);
-    sendServerError(res, error);
-  }
-};
-
 // ===================== COMPREHENSIVE ADMIN SETTINGS MANAGEMENT =====================
 
 /**

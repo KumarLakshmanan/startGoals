@@ -19,6 +19,10 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
   try {
     const { query, limit = 10, type = "all" } = req.query;
 
+    // Robust limit parsing
+    let safeLimit = parseInt(limit);
+    if (Number.isNaN(safeLimit) || safeLimit <= 0) safeLimit = 10;
+
     if (!query || query.length < 2) {
       return sendSuccess(res,  "Query too short", { suggestions: [] });
     }
@@ -34,7 +38,7 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
           status: "active",
         },
         attributes: ["courseId", "title", "type", "thumbnailImage"],
-        limit: Math.floor(parseInt(limit) / 3),
+        limit: Math.floor(safeLimit / 3),
         order: [["title", "ASC"]],
       });
 
@@ -67,7 +71,7 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
           "previewImages",
           "price",
         ],
-        limit: Math.floor(parseInt(limit) / 3),
+        limit: Math.floor(safeLimit / 3),
         order: [["title", "ASC"]],
       });
 
@@ -98,7 +102,7 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
           "username",
           "profileImage",
         ],
-        limit: Math.floor(parseInt(limit) / 3),
+        limit: Math.floor(safeLimit / 3),
         order: [["username", "ASC"]],
       });
 
@@ -124,7 +128,7 @@ export const getUnifiedSearchSuggestions = async (req, res) => {
         if (!aExact && bExact) return 1;
         return a.title.localeCompare(b.title);
       })
-      .slice(0, parseInt(limit));
+      .slice(0, safeLimit);
 
     res.json({
       success: true,
@@ -156,8 +160,12 @@ export const searchCoursesAndProjects = async (req, res) => {
       limit = 12,
     } = req.query;
 
+    // Robust limit parsing
+    let safeLimit = parseInt(limit);
+    if (Number.isNaN(safeLimit) || safeLimit <= 0) safeLimit = 10;
+
     const userId = req.user?.userId;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const offset = (parseInt(page) - 1) * safeLimit;
 
     let results = { courses: [], projects: [], total: 0 };
 
@@ -365,13 +373,13 @@ export const searchCoursesAndProjects = async (req, res) => {
       }
 
       // Apply pagination to combined results
-      finalResults = finalResults.slice(offset, offset + parseInt(limit));
+      finalResults = finalResults.slice(offset, offset + safeLimit);
     } else {
       finalResults = type === "courses" ? results.courses : results.projects;
     }
 
     const totalResults = results.courses.length + results.projects.length;
-    const totalPages = Math.ceil(totalResults / parseInt(limit));
+    const totalPages = Math.ceil(totalResults / safeLimit);
 
     res.json({
       success: true,
@@ -384,7 +392,7 @@ export const searchCoursesAndProjects = async (req, res) => {
           currentPage: parseInt(page),
           totalPages,
           totalItems: totalResults,
-          itemsPerPage: parseInt(limit),
+          itemsPerPage: safeLimit,
         },
         searchQuery: query,
         searchType: type,

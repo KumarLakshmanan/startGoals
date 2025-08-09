@@ -63,20 +63,4 @@ allowNull: false,
   }
 );
 
-// Create default settings if none exist
-const initializeDefaultSettings = async () => {
-  try {
-    const count = await ProjectSettings.count();
-    if (count === 0) {
-      await ProjectSettings.create({});
-      console.log("Default project settings created");
-    }
-  } catch (error) {
-    console.error("Error initializing project settings:", error);
-  }
-};
-
-// Run initialization on import
-initializeDefaultSettings();
-
 export default ProjectSettings;

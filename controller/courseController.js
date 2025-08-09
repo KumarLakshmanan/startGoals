@@ -313,19 +313,7 @@ export const getCourseById = async (req, res) => {
           attributes: {
             exclude: ["createdAt", "updatedAt", "deletedAt"],
           },
-        },
-        {
-          model: CourseFile,
-          as: "files",
-          attributes: [
-            "fileId",
-            "fileName",
-            "fileUrl",
-            "fileType",
-            "fileSize",
-            "description"
-          ]
-        },
+        }
       ],
       order: [
         [{ model: Section, as: "sections" }, 'order', 'ASC'],
@@ -2474,7 +2462,12 @@ export const getCourseReviews = async (req, res) => {
       return sendNotFound(res, "Course not found");
     }
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    // Ensure limit and page are valid numbers
+    let safeLimit = parseInt(limit);
+    if (Number.isNaN(safeLimit) || safeLimit <= 0) safeLimit = 10;
+    let safePage = parseInt(page);
+    if (Number.isNaN(safePage) || safePage <= 0) safePage = 1;
+    const offset = (safePage - 1) * safeLimit;
     const whereClause = { courseId };
 
     // Filter by rating if provided
@@ -2495,8 +2488,8 @@ export const getCourseReviews = async (req, res) => {
         }
       ],
       order: [[sortBy, sortOrder]],
-      limit: parseInt(limit),
-      offset: parseInt(offset)
+      limit: safeLimit,
+      offset: offset
     });
 
     return sendSuccess(res, "Course reviews retrieved successfully", {

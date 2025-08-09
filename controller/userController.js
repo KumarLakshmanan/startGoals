@@ -620,7 +620,12 @@ export const getAllStudents = async (req, res) => {
       enrollmentStatus: _enrollmentStatus // Fixed: prefixed with underscore
     } = req.query;
 
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    // Robust page/limit parsing
+    let safeLimit = parseInt(limit);
+    if (Number.isNaN(safeLimit) || safeLimit <= 0) safeLimit = 20;
+    let safePage = parseInt(page);
+    if (Number.isNaN(safePage) || safePage <= 0) safePage = 1;
+    const offset = (safePage - 1) * safeLimit;
 
     const whereConditions = {
       role: "student",
@@ -652,7 +657,7 @@ export const getAllStudents = async (req, res) => {
     const { count, rows: students } = await User.findAndCountAll({
       where: whereConditions,
       include,
-      limit: parseInt(limit),
+      limit: safeLimit,
       offset,
       order: [[sortBy, sortOrder]],
       distinct: true,
@@ -689,17 +694,17 @@ export const getAllStudents = async (req, res) => {
       }),
     );
 
-    const totalPages = Math.ceil(count / parseInt(limit));
+    const totalPages = Math.ceil(count / safeLimit);
 
     return sendSuccess(res,  "Students retrieved successfully", {
       students: studentsWithStats,
       pagination: {
-        currentPage: parseInt(page),
+        currentPage: safePage,
         totalPages,
         totalStudents: count,
-        studentsPerPage: parseInt(limit),
-        hasNextPage: parseInt(page) < totalPages,
-        hasPrevPage: parseInt(page) > 1,
+        studentsPerPage: safeLimit,
+        hasNextPage: safePage < totalPages,
+        hasPrevPage: safePage > 1,
       },
       summary: {
         totalStudents: count,
@@ -1234,23 +1239,19 @@ export const getStudentAnalytics = async (req, res) => {
       popularCourses: popularCourses.map((course) => ({
         courseId: course.courseId,
         title: course.title,
-        enrollments: parseInt(course.dataValues.enrollmentCount),
+        enrollments: Number.isNaN(parseInt(course.dataValues.enrollmentCount)) ? 0 : parseInt(course.dataValues.enrollmentCount),
       })),
       registrationTrends: registrationTrends.map((trend) => ({
         month: trend.dataValues.month,
-        count: parseInt(trend.dataValues.count),
+        count: Number.isNaN(parseInt(trend.dataValues.count)) ? 0 : parseInt(trend.dataValues.count),
       })),
       categoryPerformance: categoryStats.map((cat) => ({
         category: cat.categoryName,
-        totalEnrollments: parseInt(cat.dataValues.totalEnrollments),
-        completedEnrollments: parseInt(cat.dataValues.completedEnrollments),
+        totalEnrollments: Number.isNaN(parseInt(cat.dataValues.totalEnrollments)) ? 0 : parseInt(cat.dataValues.totalEnrollments),
+        completedEnrollments: Number.isNaN(parseInt(cat.dataValues.completedEnrollments)) ? 0 : parseInt(cat.dataValues.completedEnrollments),
         completionRate:
           cat.dataValues.totalEnrollments > 0
-            ? (
-              (cat.dataValues.completedEnrollments /
-                cat.dataValues.totalEnrollments) *
-              100
-            ).toFixed(1)
+            ? ((cat.dataValues.completedEnrollments / cat.dataValues.totalEnrollments) * 100).toFixed(1)
             : 0,
       })),
     };

@@ -9,8 +9,6 @@ import {
   getSettings,
   upsertSetting,
   deleteSetting,
-  initializeDefaultSettings,
-  // Admin management functions
   getNotificationTemplates,
   createNotificationTemplate,
   getLegalPages,
@@ -28,9 +26,6 @@ router.post("/", isAdmin, upsertSetting);
 
 // Delete a setting (Admin only)
 router.delete("/:id", isAdmin, deleteSetting);
-
-// Initialize default settings (Admin only)
-router.post("/initialize", isAdmin, initializeDefaultSettings);
 
 // ===================== COMPREHENSIVE ADMIN MANAGEMENT ROUTES =====================
 

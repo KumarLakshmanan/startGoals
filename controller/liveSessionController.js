@@ -383,7 +383,7 @@ export const joinLiveSession = async (req, res) => {
           : RtcRole.SUBSCRIBER;
       // Ensure userId for Agora token is a number
       const numericUserId = parseInt(userId, 10);
-      if (isNaN(numericUserId)) {
+      if (Number.isNaN(numericUserId)) {
         await t.rollback();
         return sendValidationError(res, "User ID must be a number for Agora sessions");
       }

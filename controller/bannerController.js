@@ -14,7 +14,16 @@ export const getAllBanners = async (req, res) => {
       search = "",
       sortBy = "createdAt",
       sortOrder = "DESC",
+      page = 1,
+      limit = 10,
     } = req.query;
+
+    // Robust parsing for page/limit
+    let safePage = parseInt(page);
+    if (Number.isNaN(safePage) || safePage <= 0) safePage = 1;
+    let safeLimit = parseInt(limit);
+    if (Number.isNaN(safeLimit) || safeLimit <= 0 || safeLimit > 100) safeLimit = 10;
+    const offset = (safePage - 1) * safeLimit;
 
     const whereClause = {};
     if (search) {
@@ -23,7 +32,7 @@ export const getAllBanners = async (req, res) => {
       };
     }
 
-    const { count: _count, rows: banners } = await Banner.findAndCountAll({
+    const { count: totalCount, rows: banners } = await Banner.findAndCountAll({
       where: whereClause,
       attributes: [
         "id",
@@ -40,12 +49,19 @@ export const getAllBanners = async (req, res) => {
         ["order", "ASC"],
         [sortBy, sortOrder.toUpperCase()],
       ],
+      limit: safeLimit,
+      offset,
     });
 
-
-    return sendSuccess(res, "Banners fetched successfully",
-      banners,
-    );
+    return sendSuccess(res, "Banners fetched successfully", {
+      items: banners,
+      pagination: {
+        totalCount,
+        page: safePage,
+        limit: safeLimit,
+        totalPages: Math.ceil(totalCount / safeLimit)
+      }
+    });
   } catch (error) {
     console.error("Get all banners error:", error);
     return sendServerError(res, error);
@@ -56,12 +72,11 @@ export const getAllBanners = async (req, res) => {
 export const getBannerById = async (req, res) => {
   try {
     const { id } = req.params;
-
-    if (!id || isNaN(parseInt(id))) {
+    const safeId = parseInt(id);
+    if (!id || Number.isNaN(safeId) || safeId <= 0) {
       return sendValidationError(res, "Valid banner ID is required", { id: "Valid banner ID is required" });
     }
-
-    const banner = await Banner.findByPk(id, {
+    const banner = await Banner.findByPk(safeId, {
       attributes: [
         "id",
         "title",
@@ -74,11 +89,9 @@ export const getBannerById = async (req, res) => {
         "updatedAt",
       ],
     });
-
     if (!banner) {
       return sendNotFound(res, "Banner not found", { id: "Banner not found" });
     }
-
     return sendSuccess(res, "Banner fetched successfully", banner);
   } catch (error) {
     console.error("Get banner by ID error:", error);
@@ -196,7 +209,7 @@ export const createBanner = async (req, res) => {
 export const updateBanner = async (req, res) => {
   try {
     const { id } = req.params;
-
+    const safeId = parseInt(id);
     // Handle multipart/form-data with possible image
     const title = req.body.title;
     const description = req.body.description;
@@ -236,7 +249,7 @@ export const updateBanner = async (req, res) => {
     }
 
     // Validation
-    if (!id || isNaN(parseInt(id))) {
+    if (!id || Number.isNaN(safeId) || safeId <= 0) {
       return sendValidationError(res, "Valid banner ID is required", { id: "Valid banner ID is required" });
     }
 
@@ -285,7 +298,7 @@ export const updateBanner = async (req, res) => {
     }
 
     // Find banner
-    const banner = await Banner.findByPk(id);
+    const banner = await Banner.findByPk(safeId);
     if (!banner) {
       return sendNotFound(res, "Banner not found", {
         id: "Banner not found"
@@ -316,16 +329,14 @@ export const updateBanner = async (req, res) => {
 export const deleteBanner = async (req, res) => {
   try {
     const { id } = req.params;
-
-    // Validation
-    if (!id || isNaN(parseInt(id))) {
+    const safeId = parseInt(id);
+    if (!id || Number.isNaN(safeId) || safeId <= 0) {
       return sendValidationError(res, "Valid banner ID is required", {
         id: "Valid banner ID is required"
       });
     }
-
     // Find banner
-    const banner = await Banner.findByPk(id);
+    const banner = await Banner.findByPk(safeId);
     if (!banner) {
       return sendNotFound(res, "Banner not found", { id: "Banner not found" });
     }
@@ -343,12 +354,14 @@ export const deleteBanner = async (req, res) => {
 // Get active banners (for public use - homepage, etc.)
 export const getActiveBanners = async (req, res) => {
   try {
-    const { limit = 10 } = req.query;
+    let { limit = 10 } = req.query;
+    let safeLimit = parseInt(limit);
+    if (Number.isNaN(safeLimit) || safeLimit <= 0 || safeLimit > 100) safeLimit = 10;
 
     const banners = await Banner.findAll({
       where: { isActive: true },
       attributes: ["id", "title", "description", "imageUrl", "order", "image"],
-      limit: parseInt(limit),
+      limit: safeLimit,
       order: [
         ["order", "ASC"],
         ["createdAt", "DESC"],
@@ -366,41 +379,33 @@ export const getActiveBanners = async (req, res) => {
 export const bulkDeleteBanners = async (req, res) => {
   try {
     const { bannerIds } = req.body;
-
     // Validation
     if (!Array.isArray(bannerIds) || bannerIds.length === 0) {
       return sendValidationError(res, "Request body must contain a non-empty array of banner IDs", { bannerIds: "Request body must contain a non-empty array of banner IDs" });
     }
-
     // Check if all IDs are valid
-    for (const id of bannerIds) {
-      if (isNaN(parseInt(id))) {
-        return sendValidationError(res, `Invalid banner ID: ${id}`, { bannerIds: `Invalid banner ID: ${id}` });
-      }
+    const safeIds = bannerIds.map(id => parseInt(id)).filter(id => !Number.isNaN(id) && id > 0);
+    if (safeIds.length !== bannerIds.length) {
+      return sendValidationError(res, `Invalid banner ID(s) in array`, { bannerIds: `All banner IDs must be valid positive integers.` });
     }
-
     // Find all banners to delete
     const banners = await Banner.findAll({
       where: {
-        id: bannerIds,
+        id: safeIds,
       },
     });
-
     // Check if all banners were found
-    if (banners.length !== bannerIds.length) {
+    if (banners.length !== safeIds.length) {
       const foundIds = banners.map(banner => banner.id);
-      const missingIds = bannerIds.filter(id => !foundIds.includes(parseInt(id)));
-
+      const missingIds = safeIds.filter(id => !foundIds.includes(id));
       return sendNotFound(res, `Some banners were not found`, { missingIds: `Banner IDs not found: ${missingIds.join(', ')}` });
     }
-
     // Delete all banners
     const deletedCount = await Banner.destroy({
       where: {
-        id: bannerIds,
+        id: safeIds,
       },
     });
-
     return sendSuccess(res, `${deletedCount} banners deleted successfully`, { deletedCount });
   } catch (error) {
     console.error("Bulk delete banners error:", error);
