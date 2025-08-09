@@ -14,7 +14,6 @@ import {
   deleteLessonAdmin,
   
   // Lesson content management
-  uploadLessonVideo,
   updateLessonContent,
   toggleLessonPreview,
   bulkUpdateLessons,
@@ -29,7 +28,6 @@ import {
   isStudent,
   isAdmin,
 } from "../middleware/authMiddleware.js";
-import upload from "../middleware/fileUploadMiddleware.js";
 
 const router = express.Router();
 
@@ -48,8 +46,6 @@ router.post("/create", isTeacher, createLesson);
 router.put("/:lessonId", isTeacher, updateLesson);
 router.delete("/:lessonId", isTeacher, deleteLesson);
 
-// Lesson content management
-router.put("/:lessonId/video", isTeacher, upload.single("video"), uploadLessonVideo);
 router.put("/:lessonId/content", isTeacher, updateLessonContent);
 router.put("/:lessonId/preview", isTeacher, toggleLessonPreview);
 

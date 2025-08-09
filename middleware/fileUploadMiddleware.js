@@ -4,6 +4,10 @@ import { Upload } from "@aws-sdk/lib-storage";
 import { s3, bucketName } from "../config/awsS3Config.js";
 import path from "path";
 import crypto from "crypto";
+import ffmpeg from 'fluent-ffmpeg';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import fs from 'fs';
+import os from 'os';
 
 // Allowed field names and their S3 folder paths
 const folderMap = {
@@ -44,33 +48,107 @@ class S3Storage {
       cb(err);
       return;
     });
-    const metadata = this.metadata
-      ? this.metadata(req, file, (err, metadata) => metadata)
-      : {};
+    // Remove duplicate declaration of metadata for video branch
+    let metadata;
+    if (this.metadata) {
+      this.metadata(req, file, (err, meta) => {
+        metadata = meta;
+      });
+    } else {
+      metadata = {};
+    }
+
+    // Detect video file type
+    const videoTypes = [".mp4", ".avi", ".mov", ".wmv", ".flv", ".webm"];
+    if (videoTypes.includes(fileExtension.toLowerCase())) {
+      // Save the uploaded video temporarily
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'upload-'));
+      const tempVideoPath = path.join(tempDir, fileName);
+      const writeStream = fs.createWriteStream(tempVideoPath);
+      file.stream.pipe(writeStream);
+      writeStream.on('finish', () => {
+        // Convert to HLS using ffmpeg
+        const hlsOutputDir = path.join(tempDir, 'hls');
+        fs.mkdirSync(hlsOutputDir);
+        const playlistName = `${path.parse(fileName).name}.m3u8`;
+        ffmpeg(tempVideoPath)
+          .outputOptions([
+            '-profile:v baseline',
+            '-level 3.0',
+            '-start_number 0',
+            '-hls_time 10',
+            '-hls_list_size 0',
+            '-f hls'
+          ])
+          .output(path.join(hlsOutputDir, playlistName))
+          .on('end', async () => {
+            // Upload all HLS files to S3
+            const files = fs.readdirSync(hlsOutputDir);
+            try {
+              // Replace S3 upload logic for HLS files
+              for (const hlsFile of files) {
+                const hlsFilePath = path.join(hlsOutputDir, hlsFile);
+                if (!fs.existsSync(hlsFilePath)) {
+                  throw new Error(`HLS file not found: ${hlsFilePath}`);
+                }
+                const s3Key = `${folder}${path.parse(fileName).name}/hls/${hlsFile}`;
+                const putParams = {
+                  Bucket: this.bucket,
+                  Key: s3Key,
+                  Body: fs.createReadStream(hlsFilePath),
+                  ContentType: hlsFile.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/MP2T',
+                  Metadata: {
+                    fieldName: file.fieldname,
+                    ...metadata,
+                  },
+                };
+                await this.s3.send(new PutObjectCommand(putParams));
+              }
+              // Generate public URL for playlist
+              const publicUrl = `https://${this.bucket}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${folder}${path.parse(fileName).name}/hls/${playlistName}`;
+              cb(null, {
+                bucket: this.bucket,
+                key: `${folder}${path.parse(fileName).name}/hls/${playlistName}`,
+                size: fileSize,
+                location: publicUrl,
+                etag: null,
+                hls: true,
+              });
+            } catch (err) {
+              cb(err);
+            } finally {
+              // Clean up temp files
+              fs.rmSync(tempDir, { recursive: true, force: true });
+            }
+          })
+          .on('error', (err) => {
+            cb(err);
+            fs.rmSync(tempDir, { recursive: true, force: true });
+          })
+          .run();
+      });
+      return;
+    }
+
 
     const uploadParams = {
       Bucket: this.bucket,
       Key: key,
       Body: file.stream,
       ContentType: file.mimetype,
-      // Removed ACL parameter as bucket doesn't allow ACLs
       Metadata: {
         fieldName: file.fieldname,
         ...metadata,
       },
     };
-
     const upload = new Upload({
       client: this.s3,
       params: uploadParams,
     });
-
     upload
       .done()
       .then((result) => {
-        // Generate public URL manually since we can't use ACL
         const publicUrl = `https://${this.bucket}.s3.${process.env.AWS_REGION || "us-east-1"}.amazonaws.com/${key}`;
-
         cb(null, {
           bucket: this.bucket,
           key: key,

@@ -56,6 +56,11 @@ router.get("/payment", (req, res) => {
   res.sendFile(path.join(__dirname, "../web/payment.html"));
 });
 
+// HLS Video Player route
+router.get("/video-player", (req, res) => {
+  res.sendFile(path.join(__dirname, "../web/video-player.html"));
+});
+
 // API endpoint to get session configuration
 router.get("/api/session-config/:sessionId", async (req, res) => {
   try {
@@ -176,6 +181,20 @@ router.get("/api/dashboard/popular-courses", authenticateToken, isAdmin, (req, r
   ];
   
   res.json({ success: true, data: popularCourses });
+});
+
+// Proxy HLS files from S3 to bypass CORS
+router.get('/proxy/hls', async (req, res) => {
+  const fileUrl = req.query.url;
+  if (!fileUrl) return res.status(400).send('Missing url parameter');
+  try {
+    const response = await fetch(fileUrl);
+    if (!response.ok) return res.status(response.status).send('Failed to fetch file');
+    res.set('Content-Type', fileUrl.endsWith('.m3u8') ? 'application/vnd.apple.mpegurl' : 'video/MP2T');
+    response.body.pipe(res);
+  } catch (err) {
+    res.status(500).send('Proxy error');
+  }
 });
 
 export default router;

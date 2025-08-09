@@ -1,14 +1,9 @@
 // controllers/uploadController.js
 import crypto from "crypto";
-import Course from "../model/course.js";
-import Section from "../model/section.js";
-import Lesson from "../model/lesson.js";
 import {
   sendSuccess,
   sendValidationError,
-  sendNotFound,
   sendServerError,
-  sendForbidden,
 } from "../utils/responseHelper.js";
 
 
@@ -307,66 +302,5 @@ export const uploadFieldFiles = async (req, res) => {
   } catch (error) {
     console.error("Upload error:", error);
     return sendServerError(res, error);
-  }
-};
-
-// Upload video for lesson in a course section
-export const uploadLessonVideo = async (req, res) => {
-  try {
-    // Check if file was uploaded
-    if (!req.file) {
-      return sendValidationError(res, "No video file uploaded");
-    }
-
-    const { courseId, sectionId, lessonId } = req.params;
-    
-    // Validate file type
-    const allowedMimeTypes = ['video/mp4', 'video/webm', 'video/avi', 'video/mov', 'video/mpeg'];
-    if (!allowedMimeTypes.includes(req.file.mimetype)) {
-      return sendValidationError(res, "Invalid file type. Only video files are allowed.");
-    }
-
-    // Check if course, section, and lesson exist
-    const lesson = await Lesson.findOne({
-      where: { lessonId },
-      include: [{
-        model: Section,
-        where: { sectionId, courseId }
-      }]
-    });
-
-    if (!lesson) {
-      return sendNotFound(res, "Lesson, section, or course not found");
-    }
-
-    // Check if user is authorized (course creator or admin)
-    const course = await Course.findByPk(courseId);
-    if (!course) {
-      return sendNotFound(res, "Course not found");
-    }
-
-    if (course.createdBy !== req.user.userId && req.user.role !== 'admin') {
-      return sendForbidden(res, "Not authorized to upload videos for this course");
-    }
-
-    // File upload was successful, update lesson with video URL
-    await lesson.update({
-      videoUrl: req.file.location,
-      videoDuration: req.body.duration || null,
-      videoType: 'upload',
-      updatedAt: new Date()
-    });
-
-    return sendSuccess(res, "Video uploaded successfully", {
-      lessonId: lessonId,
-      videoUrl: req.file.location,
-      videoType: 'upload',
-      fileName: req.file.originalname,
-      fileSize: req.file.size,
-      mimeType: req.file.mimetype
-    });
-  } catch (error) {
-    console.error("Error uploading lesson video:", error);
-    return sendServerError(res, "Failed to upload video", error.message);
   }
 };

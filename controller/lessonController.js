@@ -555,45 +555,6 @@ export const deleteLessonAdmin = async (req, res) => {
   }
 };
 
-// Upload lesson video (referenced in project files)
-export const uploadLessonVideo = async (req, res) => {
-  try {
-    const { lessonId } = req.params;
-    
-    if (!req.files || req.files.length === 0) {
-      return sendValidationError(res, "No video file uploaded");
-    }
-
-    const lesson = await Lesson.findByPk(lessonId);
-    if (!lesson) {
-      return sendNotFound(res, "Lesson not found");
-    }
-
-    // Get the uploaded file info
-    const videoFile = req.files[0];
-    const videoUrl = videoFile.location || videoFile.path || videoFile.url;
-
-    if (!videoUrl) {
-      return sendServerError(res, "Failed to get video URL after upload");
-    }
-
-    // Update lesson with video URL (this would typically be handled via courseFiles)
-    await lesson.update({
-      // Note: You may want to store this in CourseFile model instead
-      content: JSON.stringify({ videoUrl, fileName: videoFile.originalname })
-    });
-
-    return sendSuccess(res, "Video uploaded successfully", {
-      lessonId: lesson.lessonId,
-      videoUrl,
-      fileName: videoFile.originalname
-    });
-  } catch (error) {
-    console.error("Error uploading lesson video:", error);
-    return sendServerError(res, "Failed to upload lesson video", error.message);
-  }
-};
-
 export const updateLessonContent = async (req, res) => {
   try {
     const { lessonId } = req.params;
