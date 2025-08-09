@@ -159,7 +159,7 @@ export const getSectionsByCourseId = async (req, res) => {
           include: [
             {
               model: CourseFile,
-              as: "resources",
+              as: "files",
             },
           ],
           attributes: {
@@ -172,13 +172,13 @@ export const getSectionsByCourseId = async (req, res) => {
       },
     });
 
-    // Manual sorting of sections, lessons, and resources
+    // Manual sorting of sections, lessons, and files
     sections.sort((a, b) => a.order - b.order);
     sections.forEach((section) => {
       section.lessons.sort((a, b) => a.order - b.order);
       section.lessons.forEach((lesson) => {
-        if (lesson.resources) {
-          lesson.resources.sort((a, b) => a.order - b.order);
+        if (lesson.files) {
+          lesson.files.sort((a, b) => a.order - b.order);
         }
       });
     });
@@ -204,7 +204,7 @@ export const getSectionById = async (req, res) => {
           include: [
             {
               model: CourseFile,
-              as: "resources",
+              as: "files",
               order: [["order", "ASC"]],
             },
           ],
@@ -220,8 +220,8 @@ export const getSectionById = async (req, res) => {
     // Force nested sorting if Sequelize didn't fully sort nested arrays
     section.lessons.sort((a, b) => a.order - b.order);
     section.lessons.forEach((lesson) => {
-      if (lesson.resources) {
-        lesson.resources.sort((a, b) => a.order - b.order);
+      if (lesson.files) {
+        lesson.files.sort((a, b) => a.order - b.order);
       }
     });
 
@@ -400,7 +400,7 @@ export const deleteSectionAdmin = async (req, res) => {
   try {
     const { sectionId } = req.params;
 
-    // Find section with lessons and resources
+    // Find section with lessons and files
     const section = await Section.findByPk(sectionId, {
       include: [
         {
@@ -409,7 +409,7 @@ export const deleteSectionAdmin = async (req, res) => {
           include: [
             {
               model: CourseFile,
-              as: "resources",
+              as: "files",
             },
           ],
         },
@@ -425,11 +425,11 @@ export const deleteSectionAdmin = async (req, res) => {
     // Count items to be deleted
     const lessonCount = section.lessons.length;
     const resourceCount = section.lessons.reduce(
-      (sum, lesson) => sum + lesson.resources.length,
+      (sum, lesson) => sum + lesson.files.length,
       0,
     );
 
-    // Delete section (cascading will handle lessons and resources)
+    // Delete section (cascading will handle lessons and files)
     await section.destroy({ transaction });
 
     await transaction.commit();
@@ -440,7 +440,7 @@ export const deleteSectionAdmin = async (req, res) => {
         title: section.title,
       },
       deletedLessons: lessonCount,
-      deletedResources: resourceCount,
+      deletedfiles: resourceCount,
     });
   } catch (error) {
     await transaction.rollback();
@@ -519,7 +519,7 @@ export const getCourseContentManagement = async (req, res) => {
               include: [
                 {
                   model: CourseFile,
-                  as: "resources",
+                  as: "files",
                 },
               ],
             },
@@ -553,10 +553,10 @@ export const getCourseContentManagement = async (req, res) => {
         (sum, s) => sum + s.lessons.length,
         0,
       ),
-      totalResources: course.sections.reduce(
+      totalfiles: course.sections.reduce(
         (sum, s) =>
           sum +
-          s.lessons.reduce((lessonSum, l) => lessonSum + l.resources.length, 0),
+          s.lessons.reduce((lessonSum, l) => lessonSum + l.files.length, 0),
         0,
       ),
       totalVideoDuration: course.sections.reduce(
@@ -592,8 +592,8 @@ export const getCourseContentManagement = async (req, res) => {
         videoDuration: lesson.videoDuration,
         isPreview: lesson.isPreview,
         isFree: lesson.isFree,
-        resourceCount: lesson.resources.length,
-        resources: lesson.resources,
+        resourceCount: lesson.files.length,
+        files: lesson.files,
       })),
     }));
 

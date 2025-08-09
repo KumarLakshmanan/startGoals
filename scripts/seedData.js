@@ -20,7 +20,6 @@ import CourseRating from '../model/courseRating.js';
 import ProjectRating from '../model/projectRating.js';
 import Enrollment from '../model/enrollment.js';
 import ProjectPurchase from '../model/projectPurchase.js';
-import CourseFile from '../model/courseFile.js';
 import { faker } from '@faker-js/faker';
 import bcrypt from 'bcrypt';
 import sequelize from '../config/db.js';
@@ -172,7 +171,7 @@ async function initBasicData() {
         firstLogin: false,
         androidRegId: faker.datatype.boolean() ? faker.string.alphanumeric(32) : null, // Random Android registration ID
         iosRegId: faker.datatype.boolean() ? faker.string.uuid() : null, // Random iOS registration ID
-        profileImage: faker.image.avatarLegacy(),
+        profileImage: faker.image.avatar(),
         averageRating: faker.number.float({ min: 3.5, max: 5.0, multipleOf: 0.1 }),
         totalRatings: faker.number.int({ min: 10, max: 100 }),
       }
@@ -196,7 +195,7 @@ async function initBasicData() {
         firstLogin: false,
         androidRegId: faker.datatype.boolean() ? faker.string.alphanumeric(32) : null, // Random Android registration ID
         iosRegId: faker.datatype.boolean() ? faker.string.uuid() : null, // Random iOS registration ID
-        profileImage: faker.image.avatarLegacy(),
+        profileImage: faker.image.avatar(),
         // Removed bio, country, city as they don't exist in the User model
       }
     });

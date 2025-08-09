@@ -78,7 +78,7 @@ export const getLiveCourses = async (req, res) => {
     }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Handle sorting by related fields
     let orderClause;
     if (sortBy === 'category') {
@@ -177,7 +177,7 @@ export const getRecordedCourses = async (req, res) => {
     }
 
     const offset = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Handle sorting by related fields
     let orderClause;
     if (sortBy === 'category') {
@@ -305,32 +305,21 @@ export const getCourseById = async (req, res) => {
                   as: "files",
                 },
               ],
-              attributes: [
-                "lessonId",
-                "title",
-                "streamStartDateTime",
-                "streamEndDateTime",
-                "duration",
-                "content",
-                "type",
-                "order",
-                "isPreview"
-              ]
+              attributes: {
+                exclude: ["createdAt", "updatedAt", "deletedAt"],
+              },
             },
           ],
-          attributes: [
-            "sectionId",
-            "title",
-            "description",
-            "order",
-          ]
+          attributes: {
+            exclude: ["createdAt", "updatedAt", "deletedAt"],
+          },
         },
         {
           model: CourseFile,
           as: "files",
           attributes: [
             "fileId",
-            "fileName", 
+            "fileName",
             "fileUrl",
             "fileType",
             "fileSize",
@@ -358,7 +347,7 @@ export const getCourseById = async (req, res) => {
       assignedAt: ci.createdAt
     })) || [];
     delete courseWithExtras.courseInstructors;
-    
+
     // Format languages array
     courseWithExtras.languages = courseWithExtras.courseLanguages?.map(cl => cl.language) || [];
     delete courseWithExtras.courseLanguages;
@@ -819,6 +808,16 @@ export const getAllCourses = async (req, res) => {
           ],
         },
       ],
+      excludes: ["createdBy", "updatedAt", "deletedAt",
+        "features",
+        "prerequisites",
+        "whatYouGet",
+        "totalSections",
+        "totalLessons",
+        "publishedAt",
+        "lastUpdated",
+        "hasCertificate",
+      ],
       order: [[sortBy, sortOrder]],
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -850,7 +849,7 @@ export const getAllCourses = async (req, res) => {
     const coursesWithPurchaseStatus = courses.map(course => {
       const courseJson = course.toJSON();
       courseJson.purchaseStatus = userPurchases.includes(course.courseId);
-      
+
       // Format instructors array
       courseJson.instructors = courseJson.courseInstructors?.map(ci => ({
         ...ci.instructor,
@@ -858,11 +857,11 @@ export const getAllCourses = async (req, res) => {
         assignedAt: ci.createdAt
       })) || [];
       delete courseJson.courseInstructors;
-      
+
       // Format languages array
       courseJson.languages = courseJson.courseLanguages?.map(cl => cl.language) || [];
       delete courseJson.courseLanguages;
-      
+
       return courseJson;
     });
 
@@ -2645,7 +2644,7 @@ export const addCourseLanguages = async (req, res) => {
     const languages = await Language.findAll({
       where: { languageId: languageIds }
     });
-    
+
     if (languages.length !== languageIds.length) {
       return sendValidationError(res, "One or more languages not found");
     }
@@ -2666,7 +2665,7 @@ export const addCourseLanguages = async (req, res) => {
 
     const newlyAdded = courseLanguages.filter(([_courseLanguage, created]) => created);
     console.log(`Successfully added ${newlyAdded.length} new languages`);
-    
+
     return sendSuccess(res, `Added ${newlyAdded.length} new language(s) to course`, {
       added: newlyAdded.length,
       total: courseLanguages.length
@@ -2748,12 +2747,12 @@ export const addCourseInstructors = async (req, res) => {
 
     // Check if instructors exist and have teacher/admin role
     const instructors = await User.findAll({
-      where: { 
+      where: {
         userId: instructorIds,
         role: { [Op.in]: ['teacher', 'admin'] }
       }
     });
-    
+
     if (instructors.length !== instructorIds.length) {
       return sendValidationError(res, "One or more instructors not found or don't have appropriate role");
     }
@@ -2769,7 +2768,7 @@ export const addCourseInstructors = async (req, res) => {
     );
 
     const newlyAdded = courseInstructors.filter(([_courseInstructor, created]) => created);
-    
+
     return sendSuccess(res, `Added ${newlyAdded.length} new instructor(s) to course`, {
       added: newlyAdded.length,
       total: courseInstructors.length

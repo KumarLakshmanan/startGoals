@@ -23,7 +23,6 @@ const folderMap = {
   thumbnail: "thumbnails/",
   video: "videos/",
   profileImage: "profiles/",
-  resource: "resources/",
   artical: "articals/",
   banner: "banners/",
   projectFiles: "project-files/", // Alternative name for project files

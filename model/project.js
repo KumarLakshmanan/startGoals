@@ -97,11 +97,11 @@ const Project = sequelize.define(
     },
     licenseType: {
       type: DataTypes.STRING(50),
-defaultValue: "personal",
+      defaultValue: "personal",
       validate: {
         isIn: [['personal', 'commercial', 'one_time', 'unlimited']]
       },
-allowNull: false,
+      allowNull: false,
     },
     downloadLimit: {
       type: DataTypes.INTEGER,
@@ -135,20 +135,20 @@ allowNull: false,
     },
     status: {
       type: DataTypes.STRING(50),
-defaultValue: "draft",
+      defaultValue: "draft",
       validate: {
         isIn: [['draft', 'published', 'archived', 'rejected', 'hidden']]
       },
-allowNull: false,
+      allowNull: false,
     },
     publishedAt: {
       type: DataTypes.DATE,
       allowNull: true,
     },
-    totalSales: {
+    totalEnrollments: {
       type: DataTypes.INTEGER,
       defaultValue: 0,
-      comment: "Total number of sales",
+      comment: "Total number of enrollments",
     },
     totalRevenue: {
       type: DataTypes.DECIMAL(12, 2),
@@ -168,6 +168,10 @@ allowNull: false,
       type: DataTypes.INTEGER,
       allowNull: false,
       defaultValue: 0,
+      validate: {
+        min: 0,
+      },
+      comment: "Total number of ratings received",
     },
     featured: {
       type: DataTypes.BOOLEAN,

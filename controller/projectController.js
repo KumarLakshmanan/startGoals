@@ -860,8 +860,8 @@ export const completeProjectPurchase = async (req, res) => {
 
     // If payment completed successfully
     if (paymentStatus === "completed") {
-      // Update project sales count
-      await purchase.project.increment("totalSales", { transaction });
+      // Update project enrollment count
+      await purchase.project.increment("totalEnrollments", { transaction });
 
       // Record discount usage if discount was applied
       if (purchase.discountId) {
@@ -987,8 +987,8 @@ export const getProjectStatistics = async (req, res) => {
       where: { status: "published" },
     });
 
-    // Total sales
-    const totalSales = await ProjectPurchase.count({
+    // Total enrollments
+    const totalEnrollments = await ProjectPurchase.count({
       where: { paymentStatus: "completed" },
     });
 
@@ -1031,12 +1031,12 @@ export const getProjectStatistics = async (req, res) => {
       attributes: [
         "id",
         "title",
-        "totalSales",
+        "totalEnrollments",
         "price",
-        [sequelize.literal('(price * "totalSales")'), "revenue"],
+        [sequelize.literal('(price * "totalEnrollments")'), "revenue"],
       ],
       where: { status: "published" },
-      order: [["totalSales", "DESC"]],
+      order: [["totalEnrollments", "DESC"]],
       limit: 10,
     });
 
@@ -1044,7 +1044,7 @@ export const getProjectStatistics = async (req, res) => {
     const categoryStats = await Project.findAll({
       attributes: [
         [sequelize.fn("COUNT", sequelize.col("Project.id")), "projectCount"],
-        [sequelize.fn("SUM", sequelize.col("totalSales")), "totalSales"],
+        [sequelize.fn("SUM", sequelize.col("totalEnrollments")), "totalEnrollments"],
       ],
       include: [
         {
@@ -1061,7 +1061,7 @@ export const getProjectStatistics = async (req, res) => {
       overview: {
         totalProjects,
         publishedProjects,
-        totalSales,
+        totalEnrollments,
         totalRevenue,
         periodSales,
         periodRevenue,

@@ -509,22 +509,6 @@ export const sectionValidation = {
               .max(20)
               .optional(),
           }).when("type", { is: "exercise", then: Joi.optional() }),
-          resources: Joi.array()
-            .items(
-              Joi.object({
-                title: Joi.string().min(3).max(100).required(),
-                type: Joi.string()
-                  .valid("file", "link", "pdf", "video", "audio")
-                  .required(),
-                fileUrl: commonSchemas.url.required(),
-                description: Joi.string().max(500).optional(),
-                order: Joi.number().integer().min(1).required(),
-                isDownloadable: Joi.boolean().default(true),
-                fileSize: Joi.number().integer().min(0).optional(), // in bytes
-                duration: Joi.number().integer().min(0).optional(), // in seconds for media
-              }),
-            )
-            .optional(),
         }),
       )
       .optional(),
