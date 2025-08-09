@@ -78,7 +78,6 @@ const sortModelsByDependencies = (modelsArray) => {
     
     // Models that depend on sections/batches
     'lesson',         // Depends on Section (lowercase!)
-    'resource',       // Depends on Lesson (lowercase!)
     'batch_students', // Depends on Batch, User (exact name!)
     'enrollment',     // Depends on User, Course, Batch (lowercase!)
     'liveSession',    // Depends on Batch, Course

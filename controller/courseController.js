@@ -5,7 +5,6 @@ import CourseLevel from "../model/courseLevel.js";
 import Category from "../model/category.js";
 import Section from "../model/section.js";
 import Lesson from "../model/lesson.js";
-import Resource from "../model/resource.js";
 import User from "../model/user.js";
 import Enrollment from "../model/enrollment.js";
 import CourseTechStack from "../model/courseTechStack.js";
@@ -35,6 +34,7 @@ import CourseGoal from "../model/courseGoal.js";
 import CourseLanguage from "../model/courseLanguage.js";
 import CourseInstructor from "../model/courseInstructor.js";
 import Language from "../model/language.js";
+import CourseFile from "../model/courseFile.js";
 
 // Get live courses only
 export const getLiveCourses = async (req, res) => {
@@ -306,9 +306,8 @@ export const getCourseById = async (req, res) => {
               as: "lessons",
               include: [
                 {
-                  model: Resource,
+                  model: CourseFile,
                   as: "resources",
-                  attributes: ["resourceId", "type", "fileUrl", "title"],
                 },
               ],
               attributes: [
@@ -1083,7 +1082,6 @@ export const getCourseAnalytics = async (req, res) => {
       engagementAnalytics = {
         averageTimeSpent: Math.floor(Math.random() * 120) + 30, // minutes
         videoCompletionRate: Math.floor(Math.random() * 40) + 60, // percentage
-        resourceDownloads: Math.floor(Math.random() * 500) + 100,
         forumPosts: Math.floor(Math.random() * 50) + 10,
         averageRating: course.averageRating || 0,
         totalRatings: course.totalRatings || 0,

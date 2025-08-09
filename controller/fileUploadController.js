@@ -68,7 +68,6 @@ export const uploadFiles = async (req, res) => {
           thumbnail: "thumbnail",
           video: "video",
           profileImage: "profile_image",
-          resource: "resource",
           artical: "article",
           banner: "banner",
           files: "project_file",
@@ -109,7 +108,7 @@ export const uploadFiles = async (req, res) => {
       },
     };
 
-    return sendSuccess(res,  successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully", responseData);
+    return sendSuccess(res, successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully", responseData);
   } catch (error) {
     console.error("Upload error:", error);
     return sendServerError(res, error);
@@ -129,16 +128,16 @@ export const uploadSingleFile = async (req, res) => {
 
     const file = req.file;
     const fileType = req.body.type || 'other';
-    
+
     // Generate unique file ID
     const fileId = `file_${crypto.randomBytes(8).toString("hex")}`;
-    
+
     // Extract file information
     const originalFileName = file.originalname;
     const uploadedFileName = file.key
       ? file.key.split("/").pop()
       : file.filename || originalFileName;
-    
+
     // Create response with file data
     const fileData = {
       fileId: fileId,
@@ -151,9 +150,9 @@ export const uploadSingleFile = async (req, res) => {
       uploadedAt: new Date().toISOString(),
       uploadedBy: req.user?.userId || null,
     };
-    
+
     // Send successful response
-    return sendSuccess(res,  "File uploaded successfully", fileData);
+    return sendSuccess(res, "File uploaded successfully", fileData);
   } catch (error) {
     console.error("Error uploading single file:", error);
     return sendServerError(res, "Failed to upload file", error);
@@ -178,7 +177,7 @@ export const uploadFieldFiles = async (req, res) => {
 
     // Valid field names for file uploads
     const validFieldNames = [
-      'thumbnail', 'video', 'profileImage', 'resource',
+      'thumbnail', 'video', 'profileImage',
       'artical', 'banner', 'files', 'projectFiles'
     ];
 
@@ -256,7 +255,6 @@ export const uploadFieldFiles = async (req, res) => {
             thumbnail: "thumbnail",
             video: "video",
             profileImage: "profile_image",
-            resource: "resource",
             artical: "article",
             banner: "banner",
             files: "project_file",
@@ -298,7 +296,7 @@ export const uploadFieldFiles = async (req, res) => {
       },
     };
 
-    return sendSuccess(res,  successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully", responseData);
+    return sendSuccess(res, successful > 0 ? "Files uploaded successfully" : "No files were uploaded successfully", responseData);
   } catch (error) {
     console.error("Upload error:", error);
     return sendServerError(res, error);

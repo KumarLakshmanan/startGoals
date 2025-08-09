@@ -1,7 +1,6 @@
 import Section from "../model/section.js";
 import Lesson from "../model/lesson.js";
 import sequelize from "../config/db.js";
-import Resource from "../model/resource.js";
 import Course from "../model/course.js";
 import {
   sendSuccess,
@@ -10,6 +9,7 @@ import {
   sendServerError,
   sendConflict
 } from "../utils/responseHelper.js";
+import CourseFile from "../model/courseFile.js";
 
 //create section
 export const createSection = async (req, res) => {
@@ -45,7 +45,6 @@ export const createSection = async (req, res) => {
       { transaction },
     );
 
-    // Create Lessons with Resources
     for (const lesson of lessons) {
       const {
         title,
@@ -55,7 +54,6 @@ export const createSection = async (req, res) => {
         duration,
         order,
         isPreview,
-        resources,
       } = lesson;
 
       // Lesson validation
@@ -64,7 +62,7 @@ export const createSection = async (req, res) => {
         return sendValidationError(res, "Each lesson must have a valid title and type (video, article, quiz)");
       }
 
-      const newLesson = await Lesson.create(
+      await Lesson.create(
         {
           sectionId: section.sectionId,
           title,
@@ -77,40 +75,13 @@ export const createSection = async (req, res) => {
         },
         { transaction },
       );
-
-      // Create resources if provided
-      if (resources?.length) {
-        for (const resource of resources) {
-          const { title, fileUrl, type } = resource;
-          if (
-            !title ||
-            !fileUrl ||
-            !["pdf", "doc", "zip", "ppt", "xls", "csv", "jpg", "png"].includes(
-              type,
-            )
-          ) {
-            await transaction.rollback();
-            return sendValidationError(res, "Each resource must have a valid title, fileUrl, and allowed type");
-          }
-
-          await Resource.create(
-            {
-              lessonId: newLesson.lessonId,
-              title,
-              fileUrl,
-              type,
-            },
-            { transaction },
-          );
-        }
-      }
     }
 
     await transaction.commit();
 
-    return sendSuccess(res,  "Section, lessons, and resources created successfully", { sectionId: section.sectionId });
+    return sendSuccess(res,  "Section and lessons created successfully", { sectionId: section.sectionId });
   } catch (error) {
-    console.error("Error creating section with lessons/resources:", error);
+    console.error("Error creating section with lessons:", error);
     await transaction.rollback();
     return sendServerError(res, error);
   }
@@ -187,9 +158,8 @@ export const getSectionsByCourseId = async (req, res) => {
           as: "lessons",
           include: [
             {
-              model: Resource,
+              model: CourseFile,
               as: "resources",
-              attributes: ["resourceId", "title", "fileUrl", "type", "order"],
             },
           ],
           attributes: {
@@ -233,7 +203,7 @@ export const getSectionById = async (req, res) => {
           as: "lessons",
           include: [
             {
-              model: Resource,
+              model: CourseFile,
               as: "resources",
               order: [["order", "ASC"]],
             },
@@ -327,7 +297,6 @@ export const createSectionAdmin = async (req, res) => {
         videoUrl,
         videoDuration,
         order: lessonOrder,
-        resources = [],
         isPreview = false,
         isFree = false,
       } = lessonData;
@@ -354,37 +323,8 @@ export const createSectionAdmin = async (req, res) => {
         { transaction },
       );
 
-      // Create resources for lesson
-      const createdResources = [];
-      for (const resource of resources) {
-        const {
-          title: resourceTitle,
-          type: resourceType = "file",
-          url,
-          size,
-          description: resourceDescription,
-        } = resource;
 
-        if (resourceTitle && url) {
-          const createdResource = await Resource.create(
-            {
-              lessonId: lesson.lessonId,
-              title: resourceTitle,
-              type: resourceType,
-              url,
-              size,
-              description: resourceDescription,
-            },
-            { transaction },
-          );
-          createdResources.push(createdResource);
-        }
-      }
-
-      createdLessons.push({
-        ...lesson.toJSON(),
-        resources: createdResources,
-      });
+      createdLessons.push(lesson);
     }
 
     await transaction.commit();
@@ -468,7 +408,7 @@ export const deleteSectionAdmin = async (req, res) => {
           as: "lessons",
           include: [
             {
-              model: Resource,
+              model: CourseFile,
               as: "resources",
             },
           ],
@@ -578,7 +518,7 @@ export const getCourseContentManagement = async (req, res) => {
               as: "lessons",
               include: [
                 {
-                  model: Resource,
+                  model: CourseFile,
                   as: "resources",
                 },
               ],
@@ -653,12 +593,7 @@ export const getCourseContentManagement = async (req, res) => {
         isPreview: lesson.isPreview,
         isFree: lesson.isFree,
         resourceCount: lesson.resources.length,
-        resources: lesson.resources.map((resource) => ({
-          resourceId: resource.resourceId,
-          title: resource.title,
-          type: resource.type,
-          size: resource.size,
-        })),
+        resources: lesson.resources,
       })),
     }));
 

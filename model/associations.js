@@ -14,7 +14,6 @@ import Section from "./section.js";
 import UserGoals from "./userGoals.js";
 import UserSkills from "./userSkills.js";
 import Lesson from "./lesson.js";
-import Resource from "./resource.js";
 import Batch from "./batch.js";
 import BatchStudents from "./batchStudents.js";
 import Enrollment from "./enrollment.js";
@@ -22,7 +21,6 @@ import LiveSession from "./liveSession.js";
 import LiveSessionParticipant from "./liveSessionParticipant.js";
 import RaisedHand from "./raisedHand.js";
 import RecordedSession from "./recordedSession.js";
-import RecordedSessionResource from "./recordedSessionResource.js";
 import Settings from "./settings.js";
 import SearchAnalytics from "./searchAnalytics.js";
 import CourseRating from "./courseRating.js";
@@ -73,7 +71,6 @@ const models = {
   CourseLevel,
   Section,
   Lesson,
-  Resource,
   Batch,
   Address,
   BatchStudents,
@@ -82,7 +79,6 @@ const models = {
   LiveSessionParticipant,
   RaisedHand,
   RecordedSession,
-  RecordedSessionResource,
   Settings,
   SearchAnalytics,
   CourseRating,
@@ -352,17 +348,6 @@ LiveSession.belongsTo(Batch, {
 RecordedSession.belongsTo(LiveSession, {
   foreignKey: "sessionId",
   as: "liveSession",
-});
-
-// Associations RecordedSession-> RecordedSessionResource
-RecordedSession.hasMany(RecordedSessionResource, {
-  foreignKey: "recordedId",
-  as: "resources",
-});
-
-RecordedSessionResource.belongsTo(RecordedSession, {
-  foreignKey: "recordedId",
-  as: "recordedSession",
 });
 
 // SearchAnalytics associations
@@ -834,9 +819,6 @@ Section.belongsTo(Course, { as: "course", foreignKey: "courseId" });
 
 Section.hasMany(Lesson, { as: "lessons", foreignKey: "sectionId" });
 Lesson.belongsTo(Section, { as: "section", foreignKey: "sectionId" });
-
-Lesson.hasMany(Resource, { as: "resources", foreignKey: "lessonId" });
-Resource.belongsTo(Lesson, { as: "lesson", foreignKey: "lessonId" });
 
 // ===================== RATING HELPFUL ASSOCIATIONS =====================
 
