@@ -30,7 +30,6 @@ import CourseLanguage from '../model/courseLanguage.js';
 import ProjectLanguage from '../model/projectLanguage.js';
 import CourseInstructor from '../model/courseInstructor.js';
 import ProjectInstructor from '../model/projectInstructor.js';
-import { uploadSampleFiles } from './uploadSampleMedia.js';
 
 // Configure environment variables
 const __filename = fileURLToPath(import.meta.url);
@@ -44,9 +43,8 @@ const NUM_PROJECTS = 10;
 const NUM_STUDENTS = 10;
 const DEFAULT_PASSWORD = 'SecurePassword@123';
 
-// Sample media URLs (will be set by uploadSampleFiles)
-let SAMPLE_IMAGE_URL = 'https://picsum.photos/800/600?random=1';
-let SAMPLE_VIDEO_URL = 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4';
+let SAMPLE_IMAGE_URL = 'https://startgoals.s3.eu-north-1.amazonaws.com/seed-samples/sample-image.jpg';
+let SAMPLE_VIDEO_URL = 'https://startgoals.s3.eu-north-1.amazonaws.com/course-files/1754741196955-cccc58bfda5c/hls/1754741196955-cccc58bfda5c.m3u8';
 
 /**
  * Generate a random image URL using sample or fallback
@@ -1094,9 +1092,6 @@ async function seedDatabase() {
 
     // Upload sample media files to S3 or use placeholders
     console.log('Step 0: Uploading sample media files...');
-    const { SAMPLE_IMAGE_URL: imageUrl, SAMPLE_VIDEO_URL: videoUrl } = await uploadSampleFiles();
-    SAMPLE_IMAGE_URL = imageUrl;
-    SAMPLE_VIDEO_URL = videoUrl;
     console.log(`✅ Using image URL: ${SAMPLE_IMAGE_URL}`);
     console.log(`✅ Using video URL: ${SAMPLE_VIDEO_URL}`);
 
