@@ -90,13 +90,8 @@ const sortModelsByDependencies = (modelsArray) => {
     'ProjectFile',    // Depends on Project, User
     'ProjectPurchase', // Depends on Project, User, DiscountCode
     'ProjectRating',  // Depends on Project, User, ProjectPurchase
-    
     // Discount-related models
     'DiscountUsage',  // Depends on DiscountCode, User, Course, Project, Enrollment
-    
-    // Many-to-many association tables
-    'discount_categories', // Depends on DiscountCode, Category (exact name!)
-    
     // Course and Project language/instructor associations
     'CourseLanguage',  // Depends on Course, Language
     'ProjectLanguage', // Depends on Project, Language

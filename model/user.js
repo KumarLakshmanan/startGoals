@@ -197,6 +197,15 @@ const User = sequelize.define(
       allowNull: true,
       comment: "iOS device registration ID for push notifications",
     },
+    os: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: "web", // web | android | ios
+      validate: {
+        isIn: [['android', 'ios', 'web']],
+      },
+      comment: "Operating system of the device",
+    },
     firstLogin: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,

@@ -222,7 +222,7 @@ export async function resetPassword(req, res) {
 
 export async function validateOtp(req, res) {
   try {
-    const { identifier, otp, androidRegId, iosRegId } = req.body;
+    const { identifier, otp, androidRegId, iosRegId, os } = req.body;
 
     const isValid = await verifyOtp(identifier, otp);
     if (!isValid) {
@@ -250,7 +250,8 @@ export async function validateOtp(req, res) {
     if (androidRegId || iosRegId) {
       await user.update({
         androidRegId: androidRegId || user.androidRegId,
-        iosRegId: iosRegId || user.iosRegId
+        iosRegId: iosRegId || user.iosRegId,
+        os: os || user.os,
       });
     }
 

@@ -36,7 +36,7 @@ export const userRegistration = async (req, res) => {
   const trans = await sequelize.transaction();
 
   try {
-    const { username, email, mobile, password, role, androidRegId, iosRegId } = req.body;
+    const { username, email, mobile, password, role, androidRegId, iosRegId, os } = req.body;
 
     if (!email && !mobile) {
       await trans.rollback();
@@ -108,6 +108,7 @@ export const userRegistration = async (req, res) => {
         password: hashedPassword,
         androidRegId: androidRegId || null,
         iosRegId: iosRegId || null,
+        os: os || "web",
         role,
         isVerified: false,
         provider: "local",
@@ -139,7 +140,7 @@ export const userRegistration = async (req, res) => {
 // ✅ User Login
 export const userLogin = async (req, res) => {
   try {
-    const { identifier, password, androidRegId, iosRegId } = req.body;
+    const { identifier, password, androidRegId, iosRegId, os } = req.body;
 
     if (!identifier) {
       return sendValidationError(res, "Email or mobile is required.");
@@ -171,7 +172,8 @@ export const userLogin = async (req, res) => {
         if (androidRegId || iosRegId) {
           await user.update({
             androidRegId: androidRegId || user.androidRegId,
-            iosRegId: iosRegId || user.iosRegId
+            iosRegId: iosRegId || user.iosRegId,
+            os: os || user.os,
           });
         }
         

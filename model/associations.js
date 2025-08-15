@@ -500,24 +500,6 @@ DiscountCode.belongsTo(User, {
   foreignKey: "createdBy",
   as: "creator",
 });
-
-// DiscountCode can apply to categories - TEMPORARILY DISABLED
-// DiscountCode.belongsToMany(Category, {
-//   through: "discount_categories",
-//   foreignKey: "discount_id", // Corrected to match actual primary key
-//   otherKey: "category_id",
-//   as: "discountCategories",
-//   onDelete: "CASCADE",
-// });
-
-// Category.belongsToMany(DiscountCode, {
-//   through: "discount_categories",
-//   foreignKey: "category_id",
-//   otherKey: "discount_id", // Corrected to match actual primary key
-//   as: "discountCodes",
-//   onDelete: "CASCADE",
-// });
-
 // DiscountUsage associations
 DiscountCode.hasMany(DiscountUsage, {
   foreignKey: "discountId", // Changed from "discount_id" to match the model definition
