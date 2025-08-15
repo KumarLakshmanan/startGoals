@@ -22,7 +22,7 @@ const RatingHelpful = sequelize.define(
     ratingType: {
       type: DataTypes.STRING(50),
       allowNull: false,
-comment: "Type of rating being voted on",
+      comment: "Type of rating being voted on",
       validate: {
         isIn: [['course', 'project', 'instructor']]
       },

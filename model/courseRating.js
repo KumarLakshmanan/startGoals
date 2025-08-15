@@ -62,11 +62,11 @@ const CourseRating = sequelize.define(
     },
     moderationStatus: {
       type: DataTypes.STRING(50),
-defaultValue: "pending",
+      defaultValue: "pending",
       validate: {
         isIn: [['pending', 'approved', 'rejected', 'hidden']]
       },
-// comment: "Review moderation status", // Temporarily commented to avoid Sequelize SQL generation bug
+      // comment: "Review moderation status", // Temporarily commented to avoid Sequelize SQL generation bug
     },
     moderatedBy: {
       type: DataTypes.UUID,

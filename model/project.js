@@ -48,6 +48,10 @@ const Project = sequelize.define(
       },
       comment: "Level of difficulty (beginner, intermediate, advanced)",
     },
+    isPaid: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
     price: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: false,
@@ -137,7 +141,7 @@ const Project = sequelize.define(
       type: DataTypes.STRING(50),
       defaultValue: "draft",
       validate: {
-        isIn: [['draft', 'published', 'archived', 'rejected', 'hidden']]
+        isIn: [['active', 'draft', 'archived', 'rejected', 'hidden']]
       },
       allowNull: false,
     },

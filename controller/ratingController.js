@@ -100,7 +100,6 @@ const updateAverageRating = async (entityType, entityId, transaction = null) => 
   const stats = await RatingModel.findOne({
     where: { 
       [entityType === 'instructor' ? 'instructorId' : `${entityType}Id`]: entityId,
-      moderationStatus: 'approved'
     },
     attributes: [
       [sequelize.fn('AVG', sequelize.col('rating')), 'avgRating'],
@@ -147,6 +146,8 @@ export const getRatingsStats = async (req, res) => {
     if (!['course', 'project', 'instructor'].includes(entityType)) {
       return sendValidationError(res, "Invalid entity type");
     }
+
+    console.log(`Fetching ratings stats for ${entityType} with ID: ${entityId}`);
     
     const RatingModel = getRatingModel(entityType);
     const entityIdField = entityType === 'instructor' ? 'instructorId' : `${entityType}Id`;
@@ -154,8 +155,7 @@ export const getRatingsStats = async (req, res) => {
     // Get overall stats
     const overallStats = await RatingModel.findOne({
       where: { 
-        [entityIdField]: entityId,
-        moderationStatus: 'approved'
+        [entityIdField]: entityId
       },
       attributes: [
         [sequelize.fn('AVG', sequelize.col('rating')), 'averageRating'],
@@ -167,7 +167,6 @@ export const getRatingsStats = async (req, res) => {
     const ratingDistribution = await RatingModel.findAll({
       where: { 
         [entityIdField]: entityId,
-        moderationStatus: 'approved'
       },
       attributes: [
         'rating',
@@ -238,7 +237,6 @@ export const getReviews = async (req, res) => {
     // Build where conditions
     const whereClause = {
       [entityIdField]: entityId,
-      moderationStatus: 'approved',
       review: { [Op.ne]: null } // Only include reviews with text
     };
     
@@ -371,7 +369,6 @@ export const createReview = async (req, res) => {
       rating: parseFloat(rating),
       review: review?.trim() || null,
       isVerified: true,
-      moderationStatus: 'approved'
     };
     
     // For instructor ratings, include courseId if provided
@@ -878,6 +875,10 @@ export const getCourseRatingsStats = (req, res) => {
   if (!isValidUUID(req.params.entityId)) {
     return sendValidationError(res, "Invalid ID format");
   }
+  console.log({
+    entityType: req.params.entityType,
+    entityId: req.params.entityId
+  })
   return getRatingsStats(req, res);
 };
 

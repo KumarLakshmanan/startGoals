@@ -316,7 +316,6 @@ export const getAllProjects = async (req, res) => {
         model: ProjectRating,
         as: "ratings",
         attributes: ["rating"],
-        where: { moderationStatus: "approved" },
         required: false,
       },
       {

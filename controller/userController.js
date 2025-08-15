@@ -411,7 +411,10 @@ export const getHomePage = async (req, res) => {
         });
 
         myClasses = enrollments.map((enrollment) => {
-          return enrollment.Course;
+          return {
+            ...enrollment.Course,
+            purchaseStatus: true,
+          };
         });
       }
     } catch (err) {
