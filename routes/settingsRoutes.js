@@ -14,6 +14,9 @@ import {
   getLegalPages,
   getSystemConfig,
   updateSystemConfig,
+  getLanguageSettings,
+  upsertLanguageSetting,
+  getContactInfo,
 } from "../controller/settingsController.js";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
 
@@ -78,5 +81,10 @@ router.put(
   isAdmin,
   updateSystemConfig,
 );
+
+// Language-specific settings routes
+router.get("/language/:languageCode", isAdmin, getLanguageSettings);
+router.post("/language/:languageCode", isAdmin, upsertLanguageSetting);
+router.get("/contact/:languageCode", authenticateToken, getContactInfo);
 
 export default router;

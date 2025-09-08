@@ -59,6 +59,9 @@ export const createProject = async (req, res) => {
       discountEnabled = true,
       featured = false,
       status = "draft",
+      
+      
+      
     } = req.body;
 
     const userId = req.user.userId; // From auth middleware
@@ -185,6 +188,7 @@ export const createProject = async (req, res) => {
         featured: featured || false,
         status: status || 'draft',
         createdBy: userId,
+        
       },
       { transaction }
     );

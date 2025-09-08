@@ -237,6 +237,11 @@ const User = sequelize.define(
       },
       comment: "Total number of instructor ratings received",
     },
+    isPro: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      comment: "Whether user has pro status after purchasing courses",
+    },
     ...commonFields, // ✅ createdAt, updatedAt, deletedAt
   },
   {

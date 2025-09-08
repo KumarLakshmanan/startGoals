@@ -482,4 +482,110 @@ export const updateSystemConfig = async (req, res) => {
   }
 };
 
+// Get language-specific settings
+export const getLanguageSettings = async (req, res) => {
+  try {
+    const { languageCode } = req.params;
+
+    const settings = await Settings.findAll({
+      where: {
+        languageCode,
+        isActive: true
+      },
+      attributes: ["id", "key", "value", "description", "dataType", "languageCode"],
+      order: [["key", "ASC"]],
+    });
+
+    sendSuccess(res, "Language settings retrieved successfully", settings);
+  } catch (error) {
+    console.error("Get language settings error:", error);
+    sendServerError(res, error);
+  }
+};
+
+// Create or update language-specific setting
+export const upsertLanguageSetting = async (req, res) => {
+  try {
+    const { languageCode } = req.params;
+    const { key, value, description, dataType = "string" } = req.body;
+
+    if (!key) {
+      return sendValidationError(res, "Setting key is required");
+    }
+
+    // Check if setting exists
+    const existingSetting = await Settings.findOne({
+      where: {
+        key,
+        languageCode
+      }
+    });
+
+    let setting;
+    if (existingSetting) {
+      // Update existing setting
+      await existingSetting.update({
+        value,
+        description,
+        dataType,
+      });
+      setting = existingSetting;
+    } else {
+      // Create new setting
+      setting = await Settings.create({
+        key,
+        value,
+        description,
+        dataType,
+        languageCode,
+      });
+    }
+
+    sendSuccess(
+      res,
+      existingSetting
+        ? "Language setting updated successfully"
+        : "Language setting created successfully",
+      setting
+    );
+  } catch (error) {
+    console.error("Upsert language setting error:", error);
+    sendServerError(res, error);
+  }
+};
+
+// Get contact information for a specific language
+export const getContactInfo = async (req, res) => {
+  try {
+    const { languageCode } = req.params;
+
+    const callUsSetting = await Settings.findOne({
+      where: {
+        key: "call_us_number",
+        languageCode,
+        isActive: true
+      }
+    });
+
+    const whatsappSetting = await Settings.findOne({
+      where: {
+        key: "whatsapp_number",
+        languageCode,
+        isActive: true
+      }
+    });
+
+    const contactInfo = {
+      callUsNumber: callUsSetting ? callUsSetting.value : null,
+      whatsappNumber: whatsappSetting ? whatsappSetting.value : null,
+      languageCode
+    };
+
+    sendSuccess(res, "Contact information retrieved successfully", contactInfo);
+  } catch (error) {
+    console.error("Get contact info error:", error);
+    sendServerError(res, error);
+  }
+};
+
 // All functions are exported individually above using 'export const'

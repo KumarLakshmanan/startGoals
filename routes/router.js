@@ -19,6 +19,7 @@ import searchRoutes from "./searchRoutes.js";
 import ratingRoutes from "./ratingRoutes.js";
 import projectRoutes from "./projectRoutes.js";
 import discountRoutes from "./discountRoutes.js";
+import redeemCodeRoutes from "./redeemCodeRoutes.js";
 import projectFileRoutes from "./projectFileRoutes.js";
 import fileUploadRoutes from "./fileUploadRoutes.js";
 import teacherRoutes from "./teacherRoutes.js";
@@ -31,6 +32,9 @@ import wishlistRoutes from "./wishlistRoutes.js";
 import courseFileRoutes from "./courseFileRoutes.js";
 import addressRoutes from "./addressRoutes.js";
 import userAddressRoutes from "./userAddressRoutes.js";
+import newsRoutes from "./newsRoutes.js";
+import walletRoutes from "./walletRoutes.js";
+import courseChatRoutes from "./courseChatRoutes.js";
 
 const router = express.Router();
 
@@ -68,6 +72,7 @@ router.use("/banners", bannerRoutes);
 router.use("/search", searchRoutes);
 router.use("/ratings", ratingRoutes);
 router.use("/discounts", discountRoutes);
+router.use("/redeem-codes", redeemCodeRoutes);
 router.use("/upload", fileUploadRoutes);
 router.use("/teachers", teacherRoutes);
 router.use("/notifications", notificationRoutes);
@@ -78,5 +83,8 @@ router.use("/cart", cartRoutes);
 router.use("/wishlist", wishlistRoutes);
 router.use("/address", addressRoutes);
 router.use("/user-addresses", userAddressRoutes);
+router.use("/news", newsRoutes);
+router.use("/wallet", walletRoutes);
+router.use("/course-chat", courseChatRoutes);
 
 export default router;

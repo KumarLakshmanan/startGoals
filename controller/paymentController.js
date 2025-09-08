@@ -96,6 +96,12 @@ export const verifyPayment = async (req, res) => {
             },
             transaction
           });
+
+          // Update user to pro status after course purchase
+          await User.update(
+            { isPro: true },
+            { where: { userId }, transaction }
+          );
         } else if (item.itemType === 'project') {
           await ProjectPurchase.findOrCreate({
             where: {
@@ -220,6 +226,12 @@ export const handleWebhook = async (req, res) => {
               },
               transaction
             });
+
+            // Update user to pro status after course purchase
+            await User.update(
+              { isPro: true },
+              { where: { userId: order.userId }, transaction }
+            );
           } else if (item.itemType === 'project') {
             await ProjectPurchase.findOrCreate({
               where: {
@@ -435,6 +447,12 @@ export const verifyPaymentAndEnroll = async (req, res) => {
         isActive: true,
       },
       { transaction },
+    );
+
+    // Update user to pro status after course purchase
+    await User.update(
+      { isPro: true },
+      { where: { userId }, transaction }
     );
 
     await transaction.commit();

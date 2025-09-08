@@ -16,6 +16,7 @@ export const getAllBanners = async (req, res) => {
       sortOrder = "DESC",
       page = 1,
       limit = 10,
+      bannerType,
     } = req.query;
 
     // Robust parsing for page/limit
@@ -31,6 +32,9 @@ export const getAllBanners = async (req, res) => {
         [Op.iLike]: `%${search}%`,
       };
     }
+    if (bannerType && ['primary', 'secondary', 'tertiary'].includes(bannerType)) {
+      whereClause.bannerType = bannerType;
+    }
 
     const { count: totalCount, rows: banners } = await Banner.findAndCountAll({
       where: whereClause,
@@ -42,6 +46,10 @@ export const getAllBanners = async (req, res) => {
         "isActive",
         "order",
         "image",
+        "bannerType",
+        "navigationUrl",
+        "navigationType",
+        "navigationTargetId",
         "createdAt",
         "updatedAt",
       ],
@@ -85,6 +93,10 @@ export const getBannerById = async (req, res) => {
         "isActive",
         "order",
         "image",
+        "bannerType",
+        "navigationUrl",
+        "navigationType",
+        "navigationTargetId",
         "createdAt",
         "updatedAt",
       ],
@@ -111,6 +123,10 @@ export const createBanner = async (req, res) => {
     const description = req.body.description;
     let isActive = req.body.isActive !== undefined ? req.body.isActive : true;
     const order = parseInt(req.body.order || 1, 10);
+    const bannerType = req.body.bannerType || "primary";
+    const navigationUrl = req.body.navigationUrl;
+    const navigationType = req.body.navigationType || "external";
+    const navigationTargetId = req.body.navigationTargetId;
 
     console.log("Parsed form data:", { title, description, isActive, order });
 
@@ -184,6 +200,24 @@ export const createBanner = async (req, res) => {
       return sendValidationError(res, "Order must be a positive integer", { order: "Order must be a positive integer" });
     }
 
+    // Validate bannerType
+    const validBannerTypes = ['primary', 'secondary', 'tertiary'];
+    if (!validBannerTypes.includes(bannerType)) {
+      console.log("Validation failed: Invalid banner type");
+      return sendValidationError(res, "Invalid banner type. Must be one of: primary, secondary, tertiary", {
+        bannerType: "Invalid banner type"
+      });
+    }
+
+    // Validate navigationType
+    const validNavigationTypes = ['external', 'internal', 'recorded_course', 'live_course', 'project', 'category'];
+    if (!validNavigationTypes.includes(navigationType)) {
+      console.log("Validation failed: Invalid navigation type");
+      return sendValidationError(res, "Invalid navigation type. Must be one of: external, internal, recorded_course, live_course, project, category", {
+        navigationType: "Invalid navigation type"
+      });
+    }
+
     // Create banner data object
     const bannerData = {
       title,
@@ -192,6 +226,10 @@ export const createBanner = async (req, res) => {
       isActive,
       order,
       image: imageUrl, // Keep for backward compatibility
+      bannerType,
+      navigationUrl,
+      navigationType,
+      navigationTargetId,
     };
     await Banner.create(bannerData);
 
@@ -215,6 +253,10 @@ export const updateBanner = async (req, res) => {
     const description = req.body.description;
     let isActive = req.body.isActive;
     const order = req.body.order ? parseInt(req.body.order, 10) : undefined;
+    const bannerType = req.body.bannerType;
+    const navigationUrl = req.body.navigationUrl;
+    const navigationType = req.body.navigationType;
+    const navigationTargetId = req.body.navigationTargetId;
 
     // Convert isActive to boolean if it's a string
     if (isActive !== undefined && typeof isActive === "string") {
@@ -297,6 +339,28 @@ export const updateBanner = async (req, res) => {
       });
     }
 
+    // Validate bannerType
+    if (bannerType && typeof bannerType !== "string") {
+      return sendValidationError(res, "bannerType must be a string", {
+        bannerType: "bannerType must be a string"
+      });
+    }
+
+    const validBannerTypes = ['primary', 'secondary', 'tertiary'];
+    if (bannerType && !validBannerTypes.includes(bannerType)) {
+      return sendValidationError(res, "Invalid banner type. Must be one of: primary, secondary, tertiary", {
+        bannerType: "Invalid banner type"
+      });
+    }
+
+    // Validate navigationType
+    const validNavigationTypes = ['external', 'internal', 'recorded_course', 'live_course', 'project', 'category'];
+    if (navigationType && !validNavigationTypes.includes(navigationType)) {
+      return sendValidationError(res, "Invalid navigation type. Must be one of: external, internal, recorded_course, live_course, project, category", {
+        navigationType: "Invalid navigation type"
+      });
+    }
+
     // Find banner
     const banner = await Banner.findByPk(safeId);
     if (!banner) {
@@ -315,6 +379,10 @@ export const updateBanner = async (req, res) => {
     }
     if (isActive !== undefined) updateData.isActive = isActive;
     if (parsedOrder !== undefined) updateData.order = parsedOrder;
+    if (bannerType !== undefined) updateData.bannerType = bannerType;
+    if (navigationUrl !== undefined) updateData.navigationUrl = navigationUrl;
+    if (navigationType !== undefined) updateData.navigationType = navigationType;
+    if (navigationTargetId !== undefined) updateData.navigationTargetId = navigationTargetId;
 
     await banner.update(updateData);
 
@@ -354,13 +422,18 @@ export const deleteBanner = async (req, res) => {
 // Get active banners (for public use - homepage, etc.)
 export const getActiveBanners = async (req, res) => {
   try {
-    let { limit = 10 } = req.query;
+    let { limit = 10, bannerType } = req.query;
     let safeLimit = parseInt(limit);
     if (Number.isNaN(safeLimit) || safeLimit <= 0 || safeLimit > 100) safeLimit = 10;
 
+    const whereClause = { isActive: true };
+    if (bannerType && ['primary', 'secondary', 'tertiary'].includes(bannerType)) {
+      whereClause.bannerType = bannerType;
+    }
+
     const banners = await Banner.findAll({
-      where: { isActive: true },
-      attributes: ["id", "title", "description", "imageUrl", "order", "image"],
+      where: whereClause,
+      attributes: ["id", "title", "description", "imageUrl", "order", "image", "bannerType", "navigationUrl", "navigationType", "navigationTargetId"],
       limit: safeLimit,
       order: [
         ["order", "ASC"],

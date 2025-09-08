@@ -28,15 +28,30 @@ const Settings = sequelize.define(
     },
     dataType: {
       type: DataTypes.STRING(50),
-defaultValue: "string",
+      defaultValue: "string",
       validate: {
         isIn: [['string', 'number', 'boolean', 'json']]
       },
-allowNull: false,
+      allowNull: false,
     },
     isActive: {
       type: DataTypes.BOOLEAN,
       defaultValue: true,
+    },
+    languageCode: {
+      type: DataTypes.STRING(10),
+      allowNull: true,
+      comment: "Language code for localized settings (e.g., 'en', 'es', 'hi')",
+    },
+    callUsNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "Call us phone number for specific language",
+    },
+    whatsappNumber: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      comment: "WhatsApp phone number for specific language",
     },
     ...commonFields, // includes createdAt, updatedAt, deletedAt
   },

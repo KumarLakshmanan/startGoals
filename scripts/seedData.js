@@ -30,6 +30,7 @@ import CourseLanguage from '../model/courseLanguage.js';
 import ProjectLanguage from '../model/projectLanguage.js';
 import CourseInstructor from '../model/courseInstructor.js';
 import ProjectInstructor from '../model/projectInstructor.js';
+import { uploadSampleMedia, generateAgoraToken, createZoomMeeting } from '../utils/mediaUtils.js';
 
 // Configure environment variables
 const __filename = fileURLToPath(import.meta.url);
@@ -43,40 +44,72 @@ const NUM_PROJECTS = 10;
 const NUM_STUDENTS = 10;
 const DEFAULT_PASSWORD = 'SecurePassword@123';
 
-let SAMPLE_IMAGE_URL = 'https://startgoals.s3.eu-north-1.amazonaws.com/seed-samples/sample-image.jpg';
-let SAMPLE_VIDEO_URL = 'https://startgoals.s3.eu-north-1.amazonaws.com/course-files/1754741196955-cccc58bfda5c/hls/1754741196955-cccc58bfda5c.m3u8';
+// Global variables for media URLs (will be set after upload)
+let SAMPLE_IMAGE_URL = null;
+let SAMPLE_VIDEO_URL = null;
 
 /**
- * Generate a random image URL using sample or fallback
+ * Generate a random image URL using uploaded sample or fallback
  */
 function getRandomImageUrl() {
+  if (SAMPLE_IMAGE_URL) {
+    return SAMPLE_IMAGE_URL;
+  }
+  // Fallback to picsum if upload failed
   const randomSeed = Math.floor(Math.random() * 1000);
-  return SAMPLE_IMAGE_URL.includes('picsum') 
-    ? `https://picsum.photos/800/600?random=${randomSeed}`
-    : SAMPLE_IMAGE_URL;
+  return `https://picsum.photos/800/600?random=${randomSeed}`;
 }
 
 /**
- * Generate a random video URL using sample or fallback
+ * Generate a random video URL using uploaded sample or fallback
  */
 function getRandomVideoUrl() {
-  return SAMPLE_VIDEO_URL;
+  if (SAMPLE_VIDEO_URL) {
+    return SAMPLE_VIDEO_URL;
+  }
+  // Fallback URL
+  return 'https://sample-videos.com/zip/10/mp4/SampleVideo_1280x720_1mb.mp4';
 }
 
 /**
- * Generate live streaming URLs for lessons
+ * Generate live streaming URLs for lessons with real integrations
  */
-function generateLiveStreamingUrls(lessonTitle) {
-  const channelName = `lesson_${uuidv4().slice(0, 8)}`;
-  return {
-    agoraChannelName: channelName,
-    agoraAppId: process.env.AGORA_APP_ID || '35c27e25ef06461aa0af5cc32cfce885',
-    zoomMeetingId: faker.string.numeric(10),
-    zoomJoinUrl: `https://zoom.us/j/${faker.string.numeric(10)}`,
-    zoomStartUrl: `https://zoom.us/s/${faker.string.numeric(10)}`,
-    zoomPassword: faker.string.alphanumeric(6),
-    liveStreamStatus: 'scheduled'
-  };
+async function generateLiveStreamingUrls(lessonTitle) {
+  try {
+    const channelName = `lesson_${uuidv4().slice(0, 8)}`;
+
+    // Generate Agora token
+    const agoraData = generateAgoraToken(channelName, 0, 1); // Host role
+
+    // Create Zoom meeting
+    const startTime = new Date();
+    startTime.setHours(startTime.getHours() + 1); // Start in 1 hour
+    const zoomData = await createZoomMeeting(lessonTitle, startTime, 60);
+
+    return {
+      agoraChannelName: channelName,
+      agoraAppId: agoraData.appId,
+      agoraToken: agoraData.token,
+      zoomMeetingId: zoomData.meetingId,
+      zoomJoinUrl: zoomData.joinUrl,
+      zoomStartUrl: zoomData.startUrl,
+      zoomPassword: zoomData.password,
+      liveStreamStatus: 'scheduled'
+    };
+  } catch (error) {
+    console.error('Error generating live streaming URLs:', error);
+    // Fallback to mock data if integrations fail
+    return {
+      agoraChannelName: `lesson_${uuidv4().slice(0, 8)}`,
+      agoraAppId: process.env.AGORA_APP_ID || 'fallback_app_id',
+      agoraToken: 'fallback_token',
+      zoomMeetingId: faker.string.numeric(10),
+      zoomJoinUrl: `https://zoom.us/j/${faker.string.numeric(10)}`,
+      zoomStartUrl: `https://zoom.us/s/${faker.string.numeric(10)}`,
+      zoomPassword: faker.string.alphanumeric(6),
+      liveStreamStatus: 'scheduled'
+    };
+  }
 }
 
 /**
@@ -268,7 +301,7 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
       const endDate = new Date(startDate);
       endDate.setDate(endDate.getDate() + faker.number.int({ min: 30, max: 90 }));
 
-      // Use sample image URLs
+      // Use uploaded sample image URLs
       let thumbnailUrl = getRandomImageUrl();
       let coverImage = getRandomImageUrl();
 
@@ -294,8 +327,8 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
         introVideoUrl: `https://www.youtube.com/watch?v=${faker.string.alphanumeric(11)}`,
         demoUrl: faker.datatype.boolean() ? `https://demo.example.com/course-${i}` : null,
         screenshots: [
-          `https://picsum.photos/seed/${i + 101}/800/600`,
-          `https://picsum.photos/seed/${i + 102}/800/600`,
+          getRandomImageUrl(),
+          getRandomImageUrl(),
         ],
         features: faker.lorem.paragraphs(1),
         prerequisites: faker.lorem.paragraphs(1),
@@ -360,9 +393,85 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
           });
         }
       }
+
+      // Create sections and lessons for live courses
+      let totalSections = 0;
+      let totalLessons = 0;
+      let totalDuration = 0;
+
+      const numSections = faker.number.int({ min: 2, max: 5 });
+      totalSections = numSections;
+
+      for (let j = 0; j < numSections; j++) {
+        try {
+          const section = await Section.create({
+            sectionId: uuidv4(),
+            courseId: course.courseId,
+            title: `Section ${j + 1}: ${faker.company.buzzNoun()}`,
+            description: faker.lorem.paragraph(),
+            order: j,
+          });
+
+          const numLessons = faker.number.int({ min: 2, max: 4 });
+          totalLessons += numLessons;
+
+          for (let k = 0; k < numLessons; k++) {
+            try {
+              const lessonDuration = faker.number.int({ min: 30, max: 90 });
+              totalDuration += lessonDuration;
+
+              const lessonType = faker.helpers.arrayElement(['live', 'video', 'document']);
+
+              const lessonData = {
+                lessonId: uuidv4(),
+                sectionId: section.sectionId,
+                title: `Lesson ${k + 1}: ${faker.company.buzzVerb()}`,
+                content: faker.lorem.paragraphs(2),
+                duration: lessonDuration,
+                order: k,
+                type: lessonType,
+                isPreview: k === 0,
+              };
+
+              if (lessonType === 'live') {
+                const startDateTime = faker.date.future();
+                lessonData.streamStartDateTime = startDateTime;
+                lessonData.streamEndDateTime = new Date(startDateTime.getTime() + lessonDuration * 60000);
+
+                // Generate real Agora and Zoom integrations
+                const streamingUrls = await generateLiveStreamingUrls(lessonData.title);
+                Object.assign(lessonData, streamingUrls);
+
+              } else if (lessonType === 'video') {
+                lessonData.videoUrl = getRandomVideoUrl();
+
+              } else if (lessonType === 'document') {
+                lessonData.fileUrl = `https://storage.example.com/files/course_${i}_section_${j}_lesson_${k}.pdf`;
+                lessonData.fileName = `lesson_${k + 1}.pdf`;
+              }
+
+              await Lesson.create(lessonData);
+            } catch (error) {
+              console.error(`Error creating lesson ${k + 1} for section ${j + 1} of live course ${i + 1}:`, error.message);
+              totalLessons--;
+            }
+          }
+        } catch (error) {
+          console.error(`Error creating section ${j + 1} for live course ${i + 1}:`, error.message);
+          totalSections--;
+        }
+      }
+
+      // Update course with actual statistics
+      await course.update({
+        totalSections,
+        totalLessons,
+        durationMinutes: totalDuration,
+        lastUpdated: new Date()
+      });
+
     } catch (error) {
       console.error(`Error creating live course ${i + 1}:`, error.message);
-      // Continue with the next course
     }
   }
 
@@ -408,8 +517,8 @@ async function createRecordedCourses(teachers, categories, goals, languages, lev
         introVideoUrl: `https://www.youtube.com/watch?v=${faker.string.alphanumeric(11)}`,
         demoUrl: faker.datatype.boolean() ? `https://demo.example.com/course-${i + 100}` : null,
         screenshots: [
-          `https://picsum.photos/seed/${i + 201}/800/600`,
-          `https://picsum.photos/seed/${i + 202}/800/600`,
+          getRandomImageUrl(),
+          getRandomImageUrl(),
         ],
         features: faker.lorem.paragraphs(1),
         prerequisites: faker.lorem.paragraphs(1),
@@ -509,20 +618,20 @@ async function createRecordedCourses(teachers, categories, goals, languages, lev
                 isPreview: k === 0, // First lesson is preview
               };
 
-              // Add type-specific fields with simple media URLs
+              // Add type-specific fields with real media URLs
               if (lessonType === 'live') {
                 const startDateTime = faker.date.future();
                 lessonData.streamStartDateTime = startDateTime;
                 lessonData.streamEndDateTime = new Date(startDateTime.getTime() + lessonDuration * 60000);
-                
-                // Add live streaming integration
-                const streamingUrls = generateLiveStreamingUrls(lessonData.title);
+
+                // Add live streaming integration with real tokens/meetings
+                const streamingUrls = await generateLiveStreamingUrls(lessonData.title);
                 Object.assign(lessonData, streamingUrls);
-                
+
               } else if (lessonType === 'video') {
-                // Use sample video URL
+                // Use uploaded sample video URL
                 lessonData.videoUrl = getRandomVideoUrl();
-                
+
               } else if (lessonType === 'document' || lessonType === 'assignment') {
                 // For document/assignment lessons
                 lessonData.fileUrl = `https://storage.example.com/files/course_${i}_section_${j}_lesson_${k}.pdf`;
@@ -612,19 +721,19 @@ async function createProjects(teachers, categories, goals, languages, levels, sk
         levelId: level.levelId,
         price: faker.number.float({ min: 99, max: 2999, multipleOf: 0.01 }),
         discountEnabled: faker.datatype.boolean(),
-        coverImage: `https://picsum.photos/seed/${i + 200}/800/600`,
+        coverImage: getRandomImageUrl(),
         previewVideo: `https://www.youtube.com/watch?v=${faker.string.alphanumeric(11)}`,
         demoUrl: faker.internet.url(),
         screenshots: [
-          `https://picsum.photos/seed/${i + 201}/800/600`,
-          `https://picsum.photos/seed/${i + 202}/800/600`,
-          `https://picsum.photos/seed/${i + 203}/800/600`,
+          getRandomImageUrl(),
+          getRandomImageUrl(),
+          getRandomImageUrl(),
         ],
         features: faker.lorem.paragraphs(2),
         requirements: faker.lorem.paragraph(),
         whatYouGet: faker.lorem.paragraphs(2),
         version: '1.0',
-        status: 'published',
+        status: 'active',
         publishedAt: new Date(),
         supportIncluded: faker.datatype.boolean(),
         supportDuration: faker.number.int({ min: 30, max: 365 }),
@@ -693,35 +802,35 @@ async function createBanners() {
     {
       title: 'Learn New Skills',
       description: 'Master in-demand skills with our comprehensive courses',
-      imageUrl: 'https://picsum.photos/seed/banner1/1200/400',
+      imageUrl: getRandomImageUrl(),
       isActive: true,
       order: 1
     },
     {
       title: 'Live Training Sessions',
       description: 'Join interactive live sessions with industry experts',
-      imageUrl: 'https://picsum.photos/seed/banner2/1200/400',
+      imageUrl: getRandomImageUrl(),
       isActive: true,
       order: 2
     },
     {
       title: 'Download Ready-Made Projects',
       description: 'Access professionally built projects to kickstart your development',
-      imageUrl: 'https://picsum.photos/seed/banner3/1200/400',
+      imageUrl: getRandomImageUrl(),
       isActive: true,
       order: 3
     },
     {
       title: 'Special Offers',
       description: 'Limited time discounts on all premium courses',
-      imageUrl: 'https://picsum.photos/seed/banner4/1200/400',
+      imageUrl: getRandomImageUrl(),
       isActive: false,
       order: 4
     },
     {
       title: 'Certification Programs',
       description: 'Get certified and boost your career prospects',
-      imageUrl: 'https://picsum.photos/seed/banner5/1200/400',
+      imageUrl: getRandomImageUrl(),
       isActive: true,
       order: 5
     }
@@ -1090,8 +1199,12 @@ async function seedDatabase() {
   try {
     console.log('Starting database seeding...');
 
-    // Upload sample media files to S3 or use placeholders
+    // Upload sample media files to S3 first
     console.log('Step 0: Uploading sample media files...');
+    const mediaResult = await uploadSampleMedia();
+    SAMPLE_IMAGE_URL = mediaResult.sampleImageUrl;
+    SAMPLE_VIDEO_URL = mediaResult.sampleVideoUrl;
+
     console.log(`✅ Using image URL: ${SAMPLE_IMAGE_URL}`);
     console.log(`✅ Using video URL: ${SAMPLE_VIDEO_URL}`);
 
@@ -1100,23 +1213,23 @@ async function seedDatabase() {
     const { teachers, students, levels, categories, languages } = await initBasicData();
 
     // Create goals
-    console.log('Step 4: Creating goals...');
+    console.log('Step 2: Creating goals...');
     const goals = await createGoals(levels);
 
     // Create skills
-    console.log('Step 5: Creating skills...');
+    console.log('Step 3: Creating skills...');
     const skills = await createSkills(levels);
 
     // Create projects
-    console.log('Step 6: Creating projects...');
+    console.log('Step 4: Creating projects...');
     const projects = await createProjects(teachers, categories, goals, languages, levels, skills);
 
     // Create live courses
-    console.log('Step 2: Creating live courses...');
+    console.log('Step 5: Creating live courses...');
     const liveCourses = await createLiveCourses(teachers, categories, goals, languages, levels, skills);
 
     // Create recorded courses
-    console.log('Step 3: Creating recorded courses...');
+    console.log('Step 6: Creating recorded courses...');
     const recordedCourses = await createRecordedCourses(teachers, categories, goals, languages, levels, skills);
 
     // Create banners

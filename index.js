@@ -14,6 +14,9 @@ import requestLogger from "./middleware/requestLogger.js";
 import { notFoundHandler } from './middleware/globalErrorHandler.js';
 import { sendServerError, sendSuccess } from "./utils/responseHelper.js";
 
+// Import associations to establish model relationships
+import "./model/associations/index.js";
+
 // to use  .env file atributes
 dotenv.config();
 

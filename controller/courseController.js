@@ -31,6 +31,7 @@ import CourseLanguage from "../model/courseLanguage.js";
 import CourseInstructor from "../model/courseInstructor.js";
 import Language from "../model/language.js";
 import CourseFile from "../model/courseFile.js";
+import Goal from "../model/goal.js";
 
 // Get live courses only
 export const getLiveCourses = async (req, res) => {
@@ -413,16 +414,10 @@ export const createCourse = async (req, res) => {
       levelId,
       categoryId,
       type,
-      isPaid = false,
-      price = 0,
-      discountEnabled = true,
-      isMonthlyPayment = false,
       liveStartDate,
       liveEndDate,
       thumbnailUrl,
       coverImage,
-      hasIntroVideo = false,
-      introVideoUrl,
       demoUrl,
       screenshots = [],
       hasCertificate = false,
@@ -432,7 +427,6 @@ export const createCourse = async (req, res) => {
       prerequisites,
       whatYouGet,
       status = 'draft',
-      version = '1.0',
       supportIncluded = false,
       supportDuration,
       supportEmail,
@@ -478,16 +472,10 @@ export const createCourse = async (req, res) => {
       categoryId,
       createdBy: userId,
       type,
-      isPaid,
-      price: isPaid ? parseFloat(price) : 0,
-      discountEnabled,
-      isMonthlyPayment,
       liveStartDate: liveStartDate ? new Date(liveStartDate) : null,
       liveEndDate: liveEndDate ? new Date(liveEndDate) : null,
       thumbnailUrl,
       coverImage,
-      hasIntroVideo,
-      introVideoUrl,
       demoUrl,
       screenshots: Array.isArray(screenshots) ? screenshots : [],
       hasCertificate,
@@ -496,7 +484,6 @@ export const createCourse = async (req, res) => {
       prerequisites,
       whatYouGet,
       status,
-      version,
       supportIncluded,
       supportDuration,
       supportEmail,
@@ -583,16 +570,10 @@ export const updateCourse = async (req, res) => {
       shortDescription,
       levelId,
       categoryId,
-      isPaid,
-      price,
-      discountEnabled,
-      isMonthlyPayment,
       liveStartDate,
       liveEndDate,
       thumbnailUrl,
       coverImage,
-      hasIntroVideo,
-      introVideoUrl,
       demoUrl,
       screenshots,
       hasCertificate,
@@ -602,7 +583,6 @@ export const updateCourse = async (req, res) => {
       prerequisites,
       whatYouGet,
       status,
-      version,
       supportIncluded,
       supportDuration,
       supportEmail,
@@ -616,16 +596,10 @@ export const updateCourse = async (req, res) => {
       ...(shortDescription !== undefined && { shortDescription }),
       ...(levelId && { levelId }),
       ...(categoryId && { categoryId }),
-      ...(isPaid !== undefined && { isPaid }),
-      ...(price !== undefined && { price: isPaid ? parseFloat(price) : 0 }),
-      ...(discountEnabled !== undefined && { discountEnabled }),
-      ...(isMonthlyPayment !== undefined && { isMonthlyPayment }),
       ...(liveStartDate !== undefined && { liveStartDate: liveStartDate ? new Date(liveStartDate) : null }),
       ...(liveEndDate !== undefined && { liveEndDate: liveEndDate ? new Date(liveEndDate) : null }),
       ...(thumbnailUrl !== undefined && { thumbnailUrl }),
       ...(coverImage !== undefined && { coverImage }),
-      ...(hasIntroVideo !== undefined && { hasIntroVideo }),
-      ...(introVideoUrl !== undefined && { introVideoUrl }),
       ...(demoUrl !== undefined && { demoUrl }),
       ...(screenshots !== undefined && { screenshots: Array.isArray(screenshots) ? screenshots : [] }),
       ...(hasCertificate !== undefined && { hasCertificate }),
@@ -635,7 +609,6 @@ export const updateCourse = async (req, res) => {
       ...(prerequisites !== undefined && { prerequisites }),
       ...(whatYouGet !== undefined && { whatYouGet }),
       ...(status && { status }),
-      ...(version !== undefined && { version }),
       ...(supportIncluded !== undefined && { supportIncluded }),
       ...(supportDuration !== undefined && { supportDuration }),
       ...(supportEmail !== undefined && { supportEmail }),
@@ -1593,6 +1566,38 @@ export const getCoursesStats = async (req, res) => {
   }
 };
 
+// Helper function to handle goal creation and linking
+const handleCourseGoals = async (whatYoullLearn, courseId, transaction) => {
+  if (whatYoullLearn.length === 0) return;
+
+  const goalPromises = whatYoullLearn.map(async (goal, index) => {
+    const goalName = goal.title || goal;
+    const goalDescription = goal.description || null;
+
+    // Find or create the goal in the goals table
+    const [goalRecord, _created] = await Goal.findOrCreate({
+      where: { goalName },
+      defaults: {
+        goalName,
+        description: goalDescription,
+      },
+      transaction,
+    });
+
+    // Create the course-goal association
+    await CourseGoal.create({
+      courseId,
+      goalId: goalRecord.goalId,
+      goalName: goalRecord.goalName,
+      order: index + 1,
+    }, { transaction });
+
+    return goalRecord;
+  });
+
+  await Promise.all(goalPromises);
+};
+
 // ===================== ADMIN/OWNER COURSE MANAGEMENT =====================
 
 export const createLiveCourse = async (req, res) => {
@@ -1603,8 +1608,6 @@ export const createLiveCourse = async (req, res) => {
       title,
       description,
       languageId: _languageId, // Prefixed with underscore to indicate unused
-      price,
-      requirements: _requirements = [], // Prefixed with underscore
       skillLevel,
       whatYoullLearn = [],
       prerequisites: _prerequisites = [], // Prefixed with underscore
@@ -1616,13 +1619,12 @@ export const createLiveCourse = async (req, res) => {
 
     const createdBy = req.user.userId;
 
-    if (!title || !description || !_languageId || !skillLevel || !price) {
-      return sendValidationError(res, "Missing required fields: title, description, languageId, skillLevel, price", {
+    if (!title || !description || !_languageId || !skillLevel) {
+      return sendValidationError(res, "Missing required fields: title, description, languageId, skillLevel", {
         title: !title ? "Required" : undefined,
         description: !description ? "Required" : undefined,
         languageId: !_languageId ? "Required" : undefined,
         skillLevel: !skillLevel ? "Required" : undefined,
-        price: !price ? "Required" : undefined,
       });
     }
 
@@ -1635,8 +1637,6 @@ export const createLiveCourse = async (req, res) => {
         categoryId: req.body.categoryId,
         createdBy,
         type: "live",
-        isPaid: price > 0,
-        price,
         status: "draft",
         visibility,
       },
@@ -1644,18 +1644,7 @@ export const createLiveCourse = async (req, res) => {
     );
 
     if (whatYoullLearn.length > 0) {
-      const goalPromises = whatYoullLearn.map((goal, index) =>
-        CourseGoal.create(
-          {
-            courseId: course.courseId,
-            goalText: goal.title || goal,
-            description: goal.description || null,
-            order: index + 1,
-          },
-          { transaction },
-        ),
-      );
-      await Promise.all(goalPromises);
+      await handleCourseGoals(whatYoullLearn, course.courseId, transaction);
     }
 
 
@@ -1665,12 +1654,29 @@ export const createLiveCourse = async (req, res) => {
       courseId: course.courseId,
       title: course.title,
       type: course.type,
-      price: course.price,
       status: course.status,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Create live course error:", error);
+
+    // Handle Sequelize validation errors
+    if (error.name === 'SequelizeValidationError') {
+      const validationErrors = error.errors.map(err => ({
+        field: err.path,
+        message: err.message,
+        value: err.value
+      }));
+      return sendValidationError(res, "Validation failed", validationErrors);
+    }
+
+    // Handle Sequelize unique constraint errors
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return sendValidationError(res, "Duplicate entry found", {
+        error: "A course with similar data already exists"
+      });
+    }
+
     return sendServerError(res, error);
   }
 };
@@ -1683,7 +1689,6 @@ export const createRecordedCourse = async (req, res) => {
       title,
       description,
       languageId: _languageId, // Prefixed with underscore
-      price,
       skillLevel,
       whatYoullLearn = [],
       prerequisites: _prerequisites = [], // Prefixed with underscore
@@ -1706,8 +1711,6 @@ export const createRecordedCourse = async (req, res) => {
         categoryId: req.body.categoryId,
         createdBy,
         type: "recorded",
-        isPaid: price > 0,
-        price,
         status: "draft",
         visibility,
         enableReviews,
@@ -1718,18 +1721,7 @@ export const createRecordedCourse = async (req, res) => {
     );
 
     if (whatYoullLearn.length > 0) {
-      const goalPromises = whatYoullLearn.map((goal, index) =>
-        CourseGoal.create(
-          {
-            courseId: course.courseId,
-            goalText: goal.title || goal,
-            description: goal.description || null,
-            order: index + 1,
-          },
-          { transaction },
-        ),
-      );
-      await Promise.all(goalPromises);
+      await handleCourseGoals(whatYoullLearn, course.courseId, transaction);
     }
 
     if (sections.length > 0) {
@@ -1771,13 +1763,30 @@ export const createRecordedCourse = async (req, res) => {
       courseId: course.courseId,
       title: course.title,
       type: course.type,
-      price: course.price,
       status: course.status,
       sectionsCount: sections.length,
     });
   } catch (error) {
     await transaction.rollback();
     console.error("Create recorded course error:", error);
+
+    // Handle Sequelize validation errors
+    if (error.name === 'SequelizeValidationError') {
+      const validationErrors = error.errors.map(err => ({
+        field: err.path,
+        message: err.message,
+        value: err.value
+      }));
+      return sendValidationError(res, "Validation failed", validationErrors);
+    }
+
+    // Handle Sequelize unique constraint errors
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      return sendValidationError(res, "Duplicate entry found", {
+        error: "A course with similar data already exists"
+      });
+    }
+
     return sendServerError(res, error);
   }
 };
