@@ -1,17 +1,12 @@
 // Import all association setup functions
 import {
-  setupUserDiscountCodeAssociations,
-  setupUserDiscountUsageAssociations,
-  setupUserCourseChatAssociations,
-  setupUserProjectFileAssociations,
-  setupUserRedeemCodeAssociations,
   setupUserWalletTransactionAssociations,
-  setupUserRatingHelpfulAssociations,
 } from './userAssociations.js';
 
 import {
   setupCourseBannerAssociations,
   setupCourseTeacherAssociations,
+  setupCourseChatAssociations,
 } from './courseAssociations.js';
 
 import {
@@ -45,17 +40,12 @@ import {
 // Function to setup all associations
 export const setupAllAssociations = () => {
   // User associations
-  setupUserDiscountCodeAssociations();
-  setupUserDiscountUsageAssociations();
-  setupUserCourseChatAssociations();
-  setupUserProjectFileAssociations();
-  setupUserRedeemCodeAssociations();
   setupUserWalletTransactionAssociations();
-  setupUserRatingHelpfulAssociations();
 
   // Course associations
   setupCourseBannerAssociations();
   setupCourseTeacherAssociations();
+  setupCourseChatAssociations();
 
   // Project associations
   setupProjectBannerAssociations();

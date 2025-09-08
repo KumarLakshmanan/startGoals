@@ -46,11 +46,6 @@ allowNull: false,
   },
 );
 
-// Define associations
-RaisedHand.belongsTo(LiveSession, { foreignKey: "sessionId" });
-RaisedHand.belongsTo(LiveSessionParticipant, { foreignKey: "participantId" });
-
-LiveSession.hasMany(RaisedHand, { foreignKey: "sessionId" });
-LiveSessionParticipant.hasMany(RaisedHand, { foreignKey: "participantId" });
+// Associations are defined in systemAssociations.js
 
 export default RaisedHand;

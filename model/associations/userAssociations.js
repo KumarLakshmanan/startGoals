@@ -19,9 +19,6 @@ import InstructorRating from "../instructorRating.js";
 import ProjectRating from "../projectRating.js";
 import RatingHelpful from "../ratingHelpful.js";
 import SearchAnalytics from "../searchAnalytics.js";
-import Wallet from "../wallet.js";
-import WalletTransaction from "../walletTransaction.js";
-import RedeemCode from "../redeemCode.js";
 import CourseChat from "../courseChat.js";
 import ProjectFile from "../projectFile.js";
 import ProjectPurchase from "../projectPurchase.js";
@@ -29,6 +26,8 @@ import ProjectInstructor from "../projectInstructor.js";
 import CourseInstructor from "../courseInstructor.js";
 import DiscountCode from "../discountCode.js";
 import DiscountUsage from "../discountUsage.js";
+import RedeemCode from "../redeemCode.js";
+import Enrollment from "../enrollment.js";
 
 // User to Language many-to-many
 User.belongsToMany(Language, {
@@ -144,19 +143,9 @@ User.hasMany(CourseRating, {
   as: "courseRatings",
 });
 
-User.hasMany(CourseRating, {
-  foreignKey: "moderatedBy",
-  as: "moderatedCourseRatings",
-});
-
 CourseRating.belongsTo(User, {
   foreignKey: "userId",
   as: "user",
-});
-
-CourseRating.belongsTo(User, {
-  foreignKey: "moderatedBy",
-  as: "moderator",
 });
 
 // User to InstructorRating
@@ -172,11 +161,6 @@ User.hasMany(InstructorRating, {
   onDelete: "CASCADE",
 });
 
-User.hasMany(InstructorRating, {
-  foreignKey: "moderatedBy",
-  as: "moderatedInstructorRatings",
-});
-
 InstructorRating.belongsTo(User, {
   foreignKey: "instructorId",
   as: "instructor",
@@ -187,11 +171,6 @@ InstructorRating.belongsTo(User, {
   as: "user",
 });
 
-InstructorRating.belongsTo(User, {
-  foreignKey: "moderatedBy",
-  as: "moderator",
-});
-
 // User to ProjectRating
 User.hasMany(ProjectRating, {
   foreignKey: "user_id",
@@ -199,19 +178,9 @@ User.hasMany(ProjectRating, {
   onDelete: "CASCADE",
 });
 
-User.hasMany(ProjectRating, {
-  foreignKey: "moderatedBy",
-  as: "moderatedProjectRatings",
-});
-
 ProjectRating.belongsTo(User, {
   foreignKey: "user_id",
   as: "user",
-});
-
-ProjectRating.belongsTo(User, {
-  foreignKey: "moderatedBy",
-  as: "moderator",
 });
 
 // User to RatingHelpful
@@ -236,71 +205,6 @@ SearchAnalytics.belongsTo(User, {
   foreignKey: "user_id",
   as: "user",
   onDelete: "SET NULL",
-});
-
-
-// User to Wallet
-User.hasOne(Wallet, {
-  foreignKey: "userId",
-  as: "wallet",
-  onDelete: "CASCADE",
-});
-
-Wallet.belongsTo(User, {
-  foreignKey: "userId",
-  as: "user",
-});
-
-// User to WalletTransaction
-Wallet.hasMany(WalletTransaction, {
-  foreignKey: "walletId",
-  as: "transactions",
-  onDelete: "CASCADE",
-});
-
-WalletTransaction.belongsTo(Wallet, {
-  foreignKey: "walletId",
-  as: "wallet",
-});
-
-WalletTransaction.belongsTo(User, {
-  foreignKey: "userId",
-  as: "user",
-});
-
-// User to RedeemCode
-User.hasMany(RedeemCode, {
-  foreignKey: "createdBy",
-  as: "createdRedeemCodes",
-  onDelete: "SET NULL",
-});
-
-RedeemCode.belongsTo(User, {
-  foreignKey: "createdBy",
-  as: "creator",
-});
-
-// User to CourseChat
-User.hasMany(CourseChat, {
-  foreignKey: "senderId",
-  as: "sentMessages",
-  onDelete: "CASCADE",
-});
-
-CourseChat.belongsTo(User, {
-  foreignKey: "senderId",
-  as: "sender",
-});
-
-// User to ProjectFile
-User.hasMany(ProjectFile, {
-  foreignKey: "uploadedBy",
-  as: "uploadedProjectFiles",
-});
-
-ProjectFile.belongsTo(User, {
-  foreignKey: "uploadedBy",
-  as: "uploader",
 });
 
 // User to ProjectPurchase
@@ -382,92 +286,13 @@ DiscountUsage.belongsTo(User, {
   as: "user",
 });
 
-// User to DiscountCode
-User.hasMany(DiscountCode, {
-  foreignKey: "createdBy",
-  as: "createdDiscountCodes",
+// User to Enrollment
+User.hasMany(Enrollment, {
+  foreignKey: "user_id",
+  as: "enrollments",
 });
 
-DiscountCode.belongsTo(User, {
-  foreignKey: "createdBy",
-  as: "creator",
-});
-
-// User to DiscountUsage
-User.hasMany(DiscountUsage, {
-  foreignKey: "userId",
-  as: "discountUsages",
-  onDelete: "CASCADE",
-});
-
-DiscountUsage.belongsTo(User, {
-  foreignKey: "userId",
-  as: "user",
-});
-
-// User to CourseChat
-User.hasMany(CourseChat, {
-  foreignKey: "senderId",
-  as: "sentMessages",
-  onDelete: "CASCADE",
-});
-
-CourseChat.belongsTo(User, {
-  foreignKey: "senderId",
-  as: "sender",
-});
-
-// User to ProjectFile
-User.hasMany(ProjectFile, {
-  foreignKey: "uploadedBy",
-  as: "uploadedProjectFiles",
-});
-
-ProjectFile.belongsTo(User, {
-  foreignKey: "uploadedBy",
-  as: "uploader",
-});
-
-// User to RedeemCode
-User.hasMany(RedeemCode, {
-  foreignKey: "createdBy",
-  as: "createdRedeemCodes",
-  onDelete: "SET NULL",
-});
-
-RedeemCode.belongsTo(User, {
-  foreignKey: "createdBy",
-  as: "creator",
-});
-
-// User to WalletTransaction
-Wallet.hasMany(WalletTransaction, {
-  foreignKey: "walletId",
-  as: "transactions",
-  onDelete: "CASCADE",
-});
-
-WalletTransaction.belongsTo(Wallet, {
-  foreignKey: "walletId",
-  as: "wallet",
-});
-
-WalletTransaction.belongsTo(User, {
-  foreignKey: "userId",
-  as: "user",
-});
-
-// User to RatingHelpful
-User.hasMany(RatingHelpful, {
-  foreignKey: "userId",
-  as: "helpfulVotes",
-  onDelete: "CASCADE",
-});
-
-RatingHelpful.belongsTo(User, {
-  foreignKey: "userId",
-  as: "user",
-});
+Enrollment.belongsTo(User, { foreignKey: "user_id" });
 
 // Direct associations for UserGoals and UserSkills
 UserGoals.belongsTo(User, { foreignKey: "userId", as: "user" });
@@ -477,98 +302,8 @@ UserSkills.belongsTo(User, { foreignKey: "userId", as: "user" });
 UserSkills.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
 
 // Setup functions for new associations
-export const setupUserDiscountCodeAssociations = () => {
-  User.hasMany(DiscountCode, {
-    foreignKey: "createdBy",
-    as: "createdDiscountCodes",
-  });
-
-  DiscountCode.belongsTo(User, {
-    foreignKey: "createdBy",
-    as: "creator",
-  });
-};
-
-export const setupUserDiscountUsageAssociations = () => {
-  User.hasMany(DiscountUsage, {
-    foreignKey: "userId",
-    as: "discountUsages",
-    onDelete: "CASCADE",
-  });
-
-  DiscountUsage.belongsTo(User, {
-    foreignKey: "userId",
-    as: "user",
-  });
-};
-
-export const setupUserCourseChatAssociations = () => {
-  User.hasMany(CourseChat, {
-    foreignKey: "senderId",
-    as: "sentMessages",
-    onDelete: "CASCADE",
-  });
-
-  CourseChat.belongsTo(User, {
-    foreignKey: "senderId",
-    as: "sender",
-  });
-};
-
-export const setupUserProjectFileAssociations = () => {
-  User.hasMany(ProjectFile, {
-    foreignKey: "uploadedBy",
-    as: "uploadedProjectFiles",
-  });
-
-  ProjectFile.belongsTo(User, {
-    foreignKey: "uploadedBy",
-    as: "uploader",
-  });
-};
-
-export const setupUserRedeemCodeAssociations = () => {
-  User.hasMany(RedeemCode, {
-    foreignKey: "createdBy",
-    as: "createdRedeemCodes",
-    onDelete: "SET NULL",
-  });
-
-  RedeemCode.belongsTo(User, {
-    foreignKey: "createdBy",
-    as: "creator",
-  });
-};
-
 export const setupUserWalletTransactionAssociations = () => {
-  Wallet.hasMany(WalletTransaction, {
-    foreignKey: "walletId",
-    as: "transactions",
-    onDelete: "CASCADE",
-  });
-
-  WalletTransaction.belongsTo(Wallet, {
-    foreignKey: "walletId",
-    as: "wallet",
-  });
-
-  WalletTransaction.belongsTo(User, {
-    foreignKey: "userId",
-    as: "user",
-  });
+  // Wallet associations are handled in walletAssociations.js
 };
 
-export const setupUserRatingHelpfulAssociations = () => {
-  User.hasMany(RatingHelpful, {
-    foreignKey: "userId",
-    as: "helpfulVotes",
-    onDelete: "CASCADE",
-  });
-
-  RatingHelpful.belongsTo(User, {
-    foreignKey: "userId",
-    as: "user",
-  });
-};
-
-export { User, Language, UserLanguages, UserGoals, UserSkills, Goal, Skill, Exam, UserExams, Wishlist, Cart, Order, Address, CourseRating, InstructorRating, ProjectRating, RatingHelpful, SearchAnalytics, Wallet, WalletTransaction, RedeemCode, CourseChat, ProjectFile, ProjectPurchase, ProjectInstructor, CourseInstructor, DiscountCode, DiscountUsage };
+export { User, Language, UserLanguages, UserGoals, UserSkills, Goal, Skill, Exam, UserExams, Wishlist, Cart, Order, Address, CourseRating, InstructorRating, ProjectRating, RatingHelpful, SearchAnalytics, CourseChat, ProjectFile, ProjectPurchase, ProjectInstructor, CourseInstructor, DiscountCode, DiscountUsage, RedeemCode, Enrollment };

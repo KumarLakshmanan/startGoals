@@ -357,7 +357,7 @@ export const getAllCertificates = async (req, res) => {
       endDate,
       search
     } = req.query;
-    const offset = (page - 1) * limit;
+    // const offset = (page - 1) * limit; // Commented out as not used in mock implementation
     
     // Build query conditions
     const where = {};

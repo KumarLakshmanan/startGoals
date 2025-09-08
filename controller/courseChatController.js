@@ -1,5 +1,4 @@
 import CourseChat from "../model/courseChat.js";
-import Course from "../model/course.js";
 import User from "../model/user.js";
 import Enrollment from "../model/enrollment.js";
 
@@ -135,77 +134,6 @@ export const getCourseMessages = async (req, res) => {
   }
 };
 
-export const sendAnnouncement = async (req, res) => {
-  try {
-    const { courseId } = req.params;
-    const { message, messageType = "text", fileUrl, fileName } = req.body;
-    const senderId = req.user.userId;
-
-    // Check if user is instructor or admin for this course
-    const course = await Course.findByPk(courseId, {
-      include: [
-        {
-          model: User,
-          as: "instructors",
-          where: { userId: senderId },
-          required: false,
-        },
-      ],
-    });
-
-    if (!course) {
-      return res.status(404).json({
-        success: false,
-        message: "Course not found",
-      });
-    }
-
-    // Check if user is admin or course instructor
-    const isAdmin = req.user.role === "admin" || req.user.role === "owner";
-    const isInstructor = course.instructors && course.instructors.length > 0;
-
-    if (!isAdmin && !isInstructor) {
-      return res.status(403).json({
-        success: false,
-        message: "Only instructors and admins can send announcements",
-      });
-    }
-
-    const announcement = await CourseChat.create({
-      courseId,
-      senderId,
-      message,
-      messageType,
-      fileUrl,
-      fileName,
-      isAnnouncement: true,
-    });
-
-    // Populate sender information
-    const populatedAnnouncement = await CourseChat.findByPk(announcement.chatId, {
-      include: [
-        {
-          model: User,
-          as: "sender",
-          attributes: ["userId", "username", "profileImage", "role"],
-        },
-      ],
-    });
-
-    res.status(201).json({
-      success: true,
-      message: "Announcement sent successfully",
-      data: populatedAnnouncement,
-    });
-  } catch (error) {
-    console.error("Error sending announcement:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to send announcement",
-      error: error.message,
-    });
-  }
-};
 
 export const deleteMessage = async (req, res) => {
   try {

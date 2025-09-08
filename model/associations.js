@@ -6,6 +6,7 @@ import "./associations/courseAssociations.js";
 import "./associations/projectAssociations.js";
 import "./associations/systemAssociations.js";
 import "./associations/contentAssociations.js";
+import "./associations/paymentAssociations.js";
 import "./associations/walletAssociations.js";
 
 // Import all models for export
@@ -15,6 +16,7 @@ import Otp from "./otp.js";
 import Course from "./course.js";
 import Category from "./category.js";
 import Banner from "./banner.js";
+import Announcement from "./announcement.js";
 import Goal from "./goal.js";
 import Skill from "./skill.js";
 import CourseGoal from "./courseGoal.js";
@@ -69,6 +71,7 @@ const models = {
   Otp,
   Category,
   Banner,
+  Announcement,
   Goal,
   Skill,
   UserGoals,
@@ -127,7 +130,8 @@ export {
   Order,
   OrderItem,
   ProjectPurchase,
-  Address
+  Address,
+  Announcement
 };
 
 export default models;

@@ -3,6 +3,8 @@ import {
   getWalletBalance,
   addWalletBalance,
   applyRedeemCodeToWallet,
+  adminCreditUserWallet,
+  adminDebitUserWallet,
   getWalletTransactions,
 } from "../controller/walletController.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";

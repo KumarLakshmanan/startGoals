@@ -34,21 +34,6 @@ Skill.belongsTo(Goal, {
   onUpdate: "CASCADE",
 });
 
-// Goal to CourseLevel
-Goal.belongsTo(CourseLevel, {
-  foreignKey: "level_id",
-  as: "level",
-  onDelete: "SET NULL",
-  onUpdate: "CASCADE",
-});
-
-CourseLevel.hasMany(Goal, {
-  foreignKey: "level_id",
-  as: "goals",
-  onDelete: "SET NULL",
-  onUpdate: "CASCADE",
-});
-
 // Skill to Category
 Skill.belongsTo(Category, {
   foreignKey: "category_id",
@@ -64,19 +49,35 @@ Category.hasMany(Skill, {
   onUpdate: "CASCADE",
 });
 
-// Skill to CourseLevel
-Skill.belongsTo(CourseLevel, {
-  foreignKey: "level_id",
-  as: "level",
-  onDelete: "SET NULL",
-  onUpdate: "CASCADE",
+// Rating moderation associations
+CourseRating.belongsTo(User, {
+  foreignKey: "moderatedBy",
+  as: "courseRatingModerator",
 });
 
-CourseLevel.hasMany(Skill, {
-  foreignKey: "level_id",
-  as: "skills",
-  onDelete: "SET NULL",
-  onUpdate: "CASCADE",
+User.hasMany(CourseRating, {
+  foreignKey: "moderatedBy",
+  as: "moderatedCourseRatings",
+});
+
+InstructorRating.belongsTo(User, {
+  foreignKey: "moderatedBy",
+  as: "instructorRatingModerator",
+});
+
+User.hasMany(InstructorRating, {
+  foreignKey: "moderatedBy",
+  as: "moderatedInstructorRatings",
+});
+
+ProjectRating.belongsTo(User, {
+  foreignKey: "moderatedBy",
+  as: "projectRatingModerator",
+});
+
+User.hasMany(ProjectRating, {
+  foreignKey: "moderatedBy",
+  as: "moderatedProjectRatings",
 });
 
 // Exam to CourseLevel
@@ -87,118 +88,141 @@ Exam.belongsTo(CourseLevel, {
   onUpdate: "CASCADE",
 });
 
+// LiveSession associations
+// LiveSession.hasMany(LiveSessionParticipant, {
+//   foreignKey: "liveSessionId",
+//   as: "liveSessionParticipants",
+//   onDelete: "CASCADE",
+// });
+
+// LiveSessionParticipant.belongsTo(LiveSession, {
+//   foreignKey: "sessionId",
+//   as: "liveSession",
+// });
+
+// LiveSession.hasMany(RaisedHand, {
+//   foreignKey: "liveSessionId",
+//   as: "raisedHands",
+//   onDelete: "CASCADE",
+// });
+
+// RaisedHand.belongsTo(LiveSession, {
+//   foreignKey: "liveSessionId",
+//   as: "session",
+// });
+
 // Setup functions
-export const setupGoalSkillAssociations = () => {
-  Goal.hasMany(Skill, {
-    foreignKey: "goal_id",
-    as: "skills",
-    onDelete: "CASCADE",
-    onUpdate: "CASCADE",
-  });
+// export const setupGoalSkillAssociations = () => {
+//   Goal.hasMany(Skill, {
+//     foreignKey: "goal_id",
+//     as: "skills",
+//     onDelete: "CASCADE",
+//     onUpdate: "CASCADE",
+//   });
 
-  Skill.belongsTo(Goal, {
-    foreignKey: "goal_id",
-    as: "goal",
-    onDelete: "CASCADE",
-    onUpdate: "CASCADE",
-  });
-};
+//   Skill.belongsTo(Goal, {
+//     foreignKey: "goal_id",
+//     as: "goal",
+//     onDelete: "CASCADE",
+//     onUpdate: "CASCADE",
+//   });
+// };
 
-export const setupSkillCategoryAssociations = () => {
-  Skill.belongsTo(Category, {
-    foreignKey: "category_id",
-    as: "category",
-    onDelete: "SET NULL",
-    onUpdate: "CASCADE",
-  });
+// export const setupSkillCategoryAssociations = () => {
+//   Skill.belongsTo(Category, {
+//     foreignKey: "category_id",
+//     as: "category",
+//     onDelete: "SET NULL",
+//     onUpdate: "CASCADE",
+//   });
 
-  Category.hasMany(Skill, {
-    foreignKey: "category_id",
-    as: "skills",
-    onDelete: "SET NULL",
-    onUpdate: "CASCADE",
-  });
-};
+//   Category.hasMany(Skill, {
+//     foreignKey: "category_id",
+//     as: "skills",
+//     onDelete: "SET NULL",
+//     onUpdate: "CASCADE",
+//   });
+// };
 
-export const setupRatingModerationAssociations = () => {
-  CourseRating.belongsTo(User, {
-    foreignKey: "moderatedBy",
-    as: "moderator",
-  });
+// export const setupRatingModerationAssociations = () => {
+//   CourseRating.belongsTo(User, {
+//     foreignKey: "moderatedBy",
+//     as: "courseRatingModerator",
+//   });
 
-  User.hasMany(CourseRating, {
-    foreignKey: "moderatedBy",
-    as: "moderatedCourseRatings",
-  });
+//   User.hasMany(CourseRating, {
+//     foreignKey: "moderatedBy",
+//     as: "moderatedCourseRatings",
+//   });
 
-  InstructorRating.belongsTo(User, {
-    foreignKey: "moderatedBy",
-    as: "moderator",
-  });
+//   InstructorRating.belongsTo(User, {
+//     foreignKey: "moderatedBy",
+//     as: "instructorRatingModerator",
+//   });
 
-  User.hasMany(InstructorRating, {
-    foreignKey: "moderatedBy",
-    as: "moderatedInstructorRatings",
-  });
+//   User.hasMany(InstructorRating, {
+//     foreignKey: "moderatedBy",
+//     as: "moderatedInstructorRatings",
+//   });
 
-  ProjectRating.belongsTo(User, {
-    foreignKey: "moderatedBy",
-    as: "moderator",
-  });
+//   ProjectRating.belongsTo(User, {
+//     foreignKey: "moderatedBy",
+//     as: "projectRatingModerator",
+//   });
 
-  User.hasMany(ProjectRating, {
-    foreignKey: "moderatedBy",
-    as: "moderatedProjectRatings",
-  });
-};
+//   User.hasMany(ProjectRating, {
+//     foreignKey: "moderatedBy",
+//     as: "moderatedProjectRatings",
+//   });
+// };
 
-export const setupExamAssociations = () => {
-  Exam.belongsTo(CourseLevel, {
-    foreignKey: "level_id",
-    as: "level",
-    onDelete: "SET NULL",
-    onUpdate: "CASCADE",
-  });
-};
+// export const setupExamAssociations = () => {
+//   Exam.belongsTo(CourseLevel, {
+//     foreignKey: "level_id",
+//     as: "level",
+//     onDelete: "SET NULL",
+//     onUpdate: "CASCADE",
+//   });
+// };
 
-export const setupLiveSessionAssociations = () => {
-  LiveSession.hasMany(LiveSessionParticipant, {
-    foreignKey: "liveSessionId",
-    as: "participants",
-    onDelete: "CASCADE",
-  });
+// export const setupLiveSessionAssociations = () => {
+//   LiveSession.hasMany(LiveSessionParticipant, {
+//     foreignKey: "liveSessionId",
+//     as: "liveSessionParticipants",
+//     onDelete: "CASCADE",
+//   });
 
-  LiveSessionParticipant.belongsTo(LiveSession, {
-    foreignKey: "liveSessionId",
-    as: "liveSession",
-  });
+//   LiveSessionParticipant.belongsTo(LiveSession, {
+//     foreignKey: "sessionId",
+//     as: "liveSession",
+//   });
 
-  LiveSession.hasMany(RaisedHand, {
-    foreignKey: "liveSessionId",
-    as: "raisedHands",
-    onDelete: "CASCADE",
-  });
+//   LiveSession.hasMany(RaisedHand, {
+//     foreignKey: "liveSessionId",
+//     as: "raisedHands",
+//     onDelete: "CASCADE",
+//   });
 
-  RaisedHand.belongsTo(LiveSession, {
-    foreignKey: "liveSessionId",
-    as: "liveSession",
-  });
-};
+//   RaisedHand.belongsTo(LiveSession, {
+//     foreignKey: "liveSessionId",
+//     as: "session",
+//   });
+// };
 
-export const setupNewsAssociations = () => {
-  // News associations would go here if needed
-};
+// export const setupNewsAssociations = () => {
+//   // News associations would go here if needed
+// };
 
-export const setupNotificationAssociations = () => {
-  // Notification associations would go here if needed
-};
+// export const setupNotificationAssociations = () => {
+//   // Notification associations would go here if needed
+// };
 
-export const setupOtpAssociations = () => {
-  // OTP associations would go here if needed
-};
+// export const setupOtpAssociations = () => {
+//   // OTP associations would go here if needed
+// };
 
-export const setupSettingsAssociations = () => {
-  // Settings associations would go here if needed
-};
+// export const setupSettingsAssociations = () => {
+//   // Settings associations would go here if needed
+// };
 
 export { Category, Skill, Goal, CourseLevel, Banner, Settings, SearchAnalytics, Exam, User, CourseRating, InstructorRating, ProjectRating, LiveSession, LiveSessionParticipant, RaisedHand, News, Notification, Otp };

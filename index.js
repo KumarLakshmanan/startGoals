@@ -15,7 +15,10 @@ import { notFoundHandler } from './middleware/globalErrorHandler.js';
 import { sendServerError, sendSuccess } from "./utils/responseHelper.js";
 
 // Import associations to establish model relationships
-import "./model/associations/index.js";
+import "./model/associations.js";
+
+// Setup all database associations
+// setupAllAssociations();
 
 // to use  .env file atributes
 dotenv.config();
@@ -161,7 +164,7 @@ process.on("uncaughtException", (err) => {
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.log(promise)
+  console.log(reason)
   console.error("⚠️ Unhandled Rejection at:" + promise + "reason:" + reason);
 });
 

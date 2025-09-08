@@ -214,7 +214,6 @@ User.belongsToMany(Course, {
   as: "instructedCourses",
 });
 
-
 // Course to DiscountUsage
 Course.hasMany(DiscountUsage, {
   foreignKey: "courseId",
@@ -224,6 +223,17 @@ Course.hasMany(DiscountUsage, {
 DiscountUsage.belongsTo(Course, {
   foreignKey: "courseId",
   as: "course",
+});
+
+// Enrollment to DiscountUsage
+Enrollment.hasOne(DiscountUsage, {
+  foreignKey: "enrollmentId",
+  as: "discountUsage",
+});
+
+DiscountUsage.belongsTo(Enrollment, {
+  foreignKey: "enrollmentId",
+  as: "enrollment",
 });
 
 // Course to CourseTest
@@ -250,55 +260,67 @@ CourseCertificate.belongsTo(Course, {
   as: "course",
 });
 
-// Course to Banner
-Course.belongsTo(Banner, {
-  foreignKey: "bannerId",
-  as: "banner",
-  onDelete: "SET NULL",
-});
-
-Banner.hasMany(Course, {
-  foreignKey: "bannerId",
-  as: "courses",
-});
-
-// Course to CourseTeacher
-Course.hasMany(CourseTeacher, {
-  foreignKey: "courseId",
-  as: "teachers",
-  onDelete: "CASCADE",
-});
-
-CourseTeacher.belongsTo(Course, {
-  foreignKey: "courseId",
-  as: "course",
-});
-
 // Setup functions
-export const setupCourseBannerAssociations = () => {
-  Course.belongsTo(Banner, {
-    foreignKey: "bannerId",
-    as: "banner",
-    onDelete: "SET NULL",
-  });
+// export const setupCourseBannerAssociations = () => {
+//   Course.belongsTo(Banner, {
+//     foreignKey: "bannerId",
+//     as: "banner",
+//     onDelete: "SET NULL",
+//   });
 
-  Banner.hasMany(Course, {
-    foreignKey: "bannerId",
-    as: "courses",
-  });
-};
+//   Banner.hasMany(Course, {
+//     foreignKey: "bannerId",
+//     as: "courses",
+//   });
+// };
 
-export const setupCourseTeacherAssociations = () => {
-  Course.hasMany(CourseTeacher, {
-    foreignKey: "courseId",
-    as: "teachers",
-    onDelete: "CASCADE",
-  });
+// export const setupCourseTeacherAssociations = () => {
+//   Course.hasMany(CourseTeacher, {
+//     foreignKey: "courseId",
+//     as: "teachers",
+//     onDelete: "CASCADE",
+//   });
 
-  CourseTeacher.belongsTo(Course, {
-    foreignKey: "courseId",
-    as: "course",
-  });
-};
+//   CourseTeacher.belongsTo(Course, {
+//     foreignKey: "courseId",
+//     as: "course",
+//   });
+// };
+// // CourseChat associations
+// export const setupCourseChatAssociations = () => {
+//   // CourseChat belongs to Course
+//   Course.hasMany(CourseChat, {
+//     foreignKey: "courseId",
+//     as: "chats",
+//     onDelete: "CASCADE",
+//   });
+
+//   CourseChat.belongsTo(Course, {
+//     foreignKey: "courseId",
+//     as: "chatCourse",
+//   });
+
+//   // CourseChat belongs to User as sender
+//   CourseChat.belongsTo(User, {
+//     foreignKey: "senderId",
+//     as: "sender",
+//   });
+
+//   User.hasMany(CourseChat, {
+//     foreignKey: "senderId",
+//     as: "sentMessages",
+//   });
+
+//   // CourseChat self-referencing for replies
+//   CourseChat.hasMany(CourseChat, {
+//     foreignKey: "replyToId",
+//     as: "chatReplies",
+//   });
+
+//   CourseChat.belongsTo(CourseChat, {
+//     foreignKey: "replyToId",
+//     as: "chatReplyTo",
+//   });
+// };
 
 export { Course, Category, CourseGoal, Goal, CourseLevel, Section, Lesson, Enrollment, LiveSession, CourseRating, InstructorRating, CourseFile, CourseTechStack, Skill, CourseLanguage, Language, CourseInstructor, User, DiscountUsage, CourseTest, CourseCertificate, Banner, CourseTeacher };

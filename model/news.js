@@ -49,6 +49,15 @@ const News = sequelize.define(
         key: "user_id",
       },
     },
+    categoryId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "categories",
+        key: "category_id",
+      },
+      comment: "Category for blog post categorization",
+    },
     status: {
       type: DataTypes.STRING(20),
       defaultValue: "draft",

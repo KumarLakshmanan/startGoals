@@ -76,16 +76,7 @@ ProjectPurchase.belongsTo(Project, {
   as: "project",
 });
 
-// ProjectPurchase to DiscountCode
-ProjectPurchase.belongsTo(DiscountCode, {
-  foreignKey: "discount_id",
-  as: "appliedDiscountCode",
-});
-
-DiscountCode.hasMany(ProjectPurchase, {
-  foreignKey: "discount_id",
-  as: "projectPurchases",
-});
+// ProjectPurchase to DiscountCode associations are handled in paymentAssociations.js
 
 // ProjectPurchase to ProjectRating
 ProjectPurchase.hasOne(ProjectRating, {
@@ -205,17 +196,17 @@ Banner.hasMany(Project, {
 });
 
 // Setup functions
-export const setupProjectBannerAssociations = () => {
-  Project.belongsTo(Banner, {
-    foreignKey: "bannerId",
-    as: "banner",
-    onDelete: "SET NULL",
-  });
+// export const setupProjectBannerAssociations = () => {
+//   Project.belongsTo(Banner, {
+//     foreignKey: "bannerId",
+//     as: "banner",
+//     onDelete: "SET NULL",
+//   });
 
-  Banner.hasMany(Project, {
-    foreignKey: "bannerId",
-    as: "projects",
-  });
-};
+//   Banner.hasMany(Project, {
+//     foreignKey: "bannerId",
+//     as: "projects",
+//   });
+// };
 
 export { Project, Category, ProjectGoal, Goal, ProjectFile, User, ProjectPurchase, DiscountCode, ProjectRating, ProjectTechStack, Skill, ProjectLanguage, Language, ProjectInstructor, DiscountUsage, Banner };
