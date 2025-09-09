@@ -24,7 +24,7 @@ export const getAllExams = async (req, res) => {
       };
     }
 
-    const { count, rows: exams } = await Exam.findAndCountAll({
+    const { count: _count, rows: exams } = await Exam.findAndCountAll({
       where: whereClause,
       attributes: ["examId", "examName", "description", "levelId"],
       include: {

@@ -3,8 +3,6 @@
 // Handles user notifications, admin notifications, and system-wide messaging
 // ===========================================================================================
 
-import { Op } from "sequelize";
-import sequelize from "../config/db.js";
 import {
   sendSuccess,
   sendValidationError,

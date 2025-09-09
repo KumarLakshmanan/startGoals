@@ -1,4 +1,4 @@
-import { Wishlist, Course, Project, User } from '../model/associations.js';
+import { Wishlist, Course, Project } from '../model/associations.js';
 import { sendResponse } from '../utils/responseHelper.js';
 
 /**

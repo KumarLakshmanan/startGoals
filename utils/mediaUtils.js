@@ -1,5 +1,4 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { s3, bucketName } from "../config/awsS3Config.js";
 import { generateToken } from "../config/agoraConfig.js";
 import { getZoomAccessToken } from "../config/zoomconfig.js";

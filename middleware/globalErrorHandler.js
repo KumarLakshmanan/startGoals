@@ -5,7 +5,6 @@ import {
   sendUnauthorized,
   sendNotFound,
   sendConflict,
-  sendError,
 } from "../utils/responseHelper.js";
 
 /**

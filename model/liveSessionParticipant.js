@@ -1,7 +1,6 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
-import LiveSession from "./liveSession.js"; // Assuming LiveSession model exists
 // import User from './user.js'; // Assuming User model exists and you want to link to it
 
 const LiveSessionParticipant = sequelize.define(

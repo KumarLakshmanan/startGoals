@@ -4,8 +4,6 @@ import Course from "../model/course.js";
 import { sendSuccess, sendValidationError, sendNotFound, sendServerError, sendUnauthorized } from "../utils/responseHelper.js";
 import sequelize from "../config/db.js";
 import liveStreamService from "../services/liveStreamService.js";
-import zoomService from "../services/zoomService.js";
-import agoraService from "../services/agoraService.js";
 
 // Get all lessons for a section
 export const getSectionLessons = async (req, res) => {
@@ -172,7 +170,7 @@ export const createLesson = async (req, res) => {
         const streamData = await liveStreamService.generateStreamLinks(lesson, req.user?.userId);
         
         // Update lesson with stream data
-        await lesson.update(streamData, { transaction });
+        await lesson.update(streamData);
         
         console.log(`Generated live stream links for lesson: ${lesson.lessonId}`);
       } catch (streamError) {
@@ -267,8 +265,24 @@ export const updateLesson = async (req, res) => {
 
     await transaction.commit();
 
-    // Fetch updated lesson
-    const updatedLesson = await Lesson.findOne({
+    // Generate live streaming links if lesson type is live and was updated
+    const updatedLesson = await Lesson.findByPk(lessonId);
+    if (type === 'live') {
+      try {
+        const streamData = await liveStreamService.generateStreamLinks(updatedLesson, req.user?.userId);
+        
+        // Update lesson with stream data
+        await updatedLesson.update(streamData);
+        
+        console.log(`Generated live stream links for updated lesson: ${lessonId}`);
+      } catch (streamError) {
+        console.error('Failed to generate stream links for updated lesson:', streamError);
+        // Don't fail the update if stream generation fails
+      }
+    }
+
+    // Fetch updated lesson with section info
+    const finalLesson = await Lesson.findOne({
       where: { lessonId },
       include: [
         {
@@ -286,7 +300,7 @@ export const updateLesson = async (req, res) => {
       ]
     });
 
-    return sendSuccess(res, "Lesson updated successfully", updatedLesson);
+    return sendSuccess(res, "Lesson updated successfully", finalLesson);
   } catch (error) {
     await transaction.rollback();
     console.error("Error updating lesson:", error);
@@ -305,6 +319,17 @@ export const deleteLesson = async (req, res) => {
     if (!lesson) {
       await transaction.rollback();
       return sendNotFound(res, "Lesson not found");
+    }
+
+    // Clean up streaming resources if they exist
+    if (lesson.zoomMeetingId) {
+      try {
+        await liveStreamService.cleanupStreamResources(lessonId);
+        console.log(`Cleaned up streaming resources for lesson: ${lessonId}`);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup streaming resources:', cleanupError);
+        // Don't fail the deletion if cleanup fails
+      }
     }
 
     await Lesson.destroy({
@@ -445,6 +470,21 @@ export const createLessonAdmin = async (req, res) => {
 
     await transaction.commit();
 
+    // Generate live streaming links if lesson type is live
+    if (type === 'live') {
+      try {
+        const streamData = await liveStreamService.generateStreamLinks(lesson, req.user?.userId);
+        
+        // Update lesson with stream data
+        await lesson.update(streamData);
+        
+        console.log(`Generated live stream links for lesson: ${lesson.lessonId}`);
+      } catch (streamError) {
+        console.error('Failed to generate stream links:', streamError);
+        // Don't fail the lesson creation if stream generation fails
+      }
+    }
+
     // Fetch the created lesson with section info
     const createdLesson = await Lesson.findOne({
       where: { lessonId: lesson.lessonId },
@@ -518,6 +558,21 @@ export const updateLessonAdmin = async (req, res) => {
 
     await transaction.commit();
 
+    // Generate live streaming links if lesson type is live and was updated
+    if (type === 'live') {
+      try {
+        const streamData = await liveStreamService.generateStreamLinks(lesson, req.user?.userId);
+        
+        // Update lesson with stream data
+        await lesson.update(streamData);
+        
+        console.log(`Generated live stream links for updated lesson: ${lessonId}`);
+      } catch (streamError) {
+        console.error('Failed to generate stream links for updated lesson:', streamError);
+        // Don't fail the update if stream generation fails
+      }
+    }
+
     // Fetch updated lesson
     const updatedLesson = await Lesson.findOne({
       where: { lessonId },
@@ -556,6 +611,17 @@ export const deleteLessonAdmin = async (req, res) => {
     if (!lesson) {
       await transaction.rollback();
       return sendNotFound(res, "Lesson not found");
+    }
+
+    // Clean up streaming resources if they exist
+    if (lesson.zoomMeetingId) {
+      try {
+        await liveStreamService.cleanupStreamResources(lessonId);
+        console.log(`Cleaned up streaming resources for lesson: ${lessonId}`);
+      } catch (cleanupError) {
+        console.error('Failed to cleanup streaming resources:', cleanupError);
+        // Don't fail the deletion if cleanup fails
+      }
     }
 
     await Lesson.destroy({

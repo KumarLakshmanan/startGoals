@@ -3,14 +3,17 @@
 import News from "../news.js";
 import User from "../user.js";
 import CourseChat from "../courseChat.js";
+import LessonChat from "../lessonChat.js";
+import Lesson from "../lesson.js";
+import Section from "../section.js";
 import Category from "../category.js";
 import Course from "../course.js";
 import LiveSession from "../liveSession.js";
-import LiveSessionParticipant from "../liveSessionParticipant.js";
 import RaisedHand from "../raisedHand.js";
 import Wishlist from "../wishlist.js";
 import Cart from "../cart.js";
 import Project from "../project.js";
+import CourseInstructor from "../courseInstructor.js";
 
 // News associations
 User.hasMany(News, {
@@ -31,7 +34,7 @@ News.belongsTo(Category, {
 
 Category.hasMany(News, {
   foreignKey: "categoryId",
-  as: "newsArticles",
+  as: "categoryNews",
   onDelete: "SET NULL",
 });
 
@@ -59,27 +62,109 @@ CourseChat.hasMany(CourseChat, {
   onDelete: "SET NULL",
 });
 
+// Lesson Chat associations
+Lesson.hasMany(LessonChat, {
+  foreignKey: "lessonId",
+  as: "chatMessages",
+  onDelete: "CASCADE",
+});
+
+LessonChat.belongsTo(Lesson, {
+  foreignKey: "lessonId",
+  as: "lesson",
+});
+
+LessonChat.belongsTo(LessonChat, {
+  foreignKey: "replyToId",
+  as: "replyTo",
+  onDelete: "SET NULL",
+});
+
+LessonChat.hasMany(LessonChat, {
+  foreignKey: "replyToId",
+  as: "replies",
+  onDelete: "SET NULL",
+});
+
+// Lesson associations (Section, Course, User) - Note: Section.hasMany(Lesson) is already defined in courseAssociations.js
+Lesson.belongsTo(Section, {
+  foreignKey: "sectionId",
+  as: "section",
+});
+
+// Through Section to Course
+Lesson.belongsTo(Course, {
+  foreignKey: "courseId",
+  targetKey: "courseId",
+  constraints: false,
+  as: "course",
+});
+
+// Agora associations (stored in lesson model)
+Lesson.belongsTo(User, {
+  foreignKey: "instructorId",
+  targetKey: "userId",
+  constraints: false,
+  as: "instructor",
+});
+
+// Course Instructor associations
+Course.hasMany(CourseInstructor, {
+  foreignKey: "courseId",
+  as: "instructors",
+  onDelete: "CASCADE",
+});
+
+CourseInstructor.belongsTo(Course, {
+  foreignKey: "courseId",
+  as: "course",
+});
+
+User.hasMany(CourseInstructor, {
+  foreignKey: "instructorId",
+  as: "coursesAsInstructor",
+  onDelete: "CASCADE",
+});
+
+CourseInstructor.belongsTo(User, {
+  foreignKey: "instructorId",
+  as: "instructor",
+});
+
+CourseInstructor.belongsTo(User, {
+  foreignKey: "assignedBy",
+  as: "assignedByUser",
+});
+
+// User associations for Lesson Chat
+User.hasMany(LessonChat, {
+  foreignKey: "senderId",
+  as: "lessonChatMessages",
+  onDelete: "CASCADE",
+});
+
+LessonChat.belongsTo(User, {
+  foreignKey: "senderId",
+  as: "sender",
+});
+
 // Live Session associations
-LiveSession.hasMany(LiveSessionParticipant, {
-  foreignKey: "sessionId",
-  as: "participants",
+Course.hasMany(LiveSession, {
+  foreignKey: "courseId",
+  as: "liveSessions",
   onDelete: "CASCADE",
 });
 
-LiveSessionParticipant.belongsTo(LiveSession, {
-  foreignKey: "sessionId",
-  as: "liveSession",
+LiveSession.belongsTo(Course, {
+  foreignKey: "courseId",
+  as: "course",
 });
 
-User.hasMany(LiveSessionParticipant, {
-  foreignKey: "userId",
-  as: "liveSessionParticipations",
-  onDelete: "CASCADE",
-});
-
-LiveSessionParticipant.belongsTo(User, {
-  foreignKey: "userId",
-  as: "user",
+LiveSession.belongsTo(User, {
+  foreignKey: "instructorId",
+  targetKey: "userId",
+  constraints: false,
+  as: "instructor",
 });
 
 // RaisedHand associations
@@ -152,4 +237,4 @@ RaisedHand.belongsTo(LiveSession, {
 // export const setupAddressAssociations = () => {
 //   // Address associations are handled in userAssociations.js
 // };
-export { News, User, CourseChat, Course, LiveSession, LiveSessionParticipant, RaisedHand, Wishlist, Cart, Project };
+export { News, User, CourseChat, LessonChat, Lesson, Section, Course, CourseInstructor, LiveSession, RaisedHand, Wishlist, Cart, Project };

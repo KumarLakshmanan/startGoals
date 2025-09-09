@@ -1,8 +1,6 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
-import LiveSession from "./liveSession.js";
-import LiveSessionParticipant from "./liveSessionParticipant.js";
 
 const RaisedHand = sequelize.define(
   "raisedHand",

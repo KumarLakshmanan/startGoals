@@ -1,4 +1,5 @@
 import Settings from "../model/settings.js";
+import { Op } from "sequelize";
 import {
   sendSuccess,
   sendValidationError,
@@ -554,36 +555,347 @@ export const upsertLanguageSetting = async (req, res) => {
   }
 };
 
-// Get contact information for a specific language
+// Get comprehensive contact information
 export const getContactInfo = async (req, res) => {
   try {
     const { languageCode } = req.params;
 
-    const callUsSetting = await Settings.findOne({
+    // Get all contact-related settings
+    const contactSettings = await Settings.findAll({
       where: {
-        key: "call_us_number",
-        languageCode,
+        key: {
+          [Op.in]: [
+            "phones",
+            "emails",
+            "whatsapps",
+            "socialMedia_facebook",
+            "socialMedia_instagram",
+            "socialMedia_twitter",
+            "socialMedia_linkedin",
+            "socialMedia_youtube",
+            "socialMedia_tiktok",
+            "otherContacts"
+          ]
+        },
+        languageCode: languageCode || "en",
         isActive: true
-      }
+      },
+      attributes: ["key", "value", "description", "dataType"]
     });
 
-    const whatsappSetting = await Settings.findOne({
-      where: {
-        key: "whatsapp_number",
-        languageCode,
-        isActive: true
-      }
-    });
-
+    // Parse and structure the contact information
     const contactInfo = {
-      callUsNumber: callUsSetting ? callUsSetting.value : null,
-      whatsappNumber: whatsappSetting ? whatsappSetting.value : null,
-      languageCode
+      phones: [],
+      emails: [],
+      whatsapps: [],
+      socialMedia: {
+        facebook: "",
+        instagram: "",
+        twitter: "",
+        linkedin: "",
+        youtube: "",
+        tiktok: ""
+      },
+      otherContacts: [],
+      languageCode: languageCode || "en"
     };
+
+    // Process each setting
+    contactSettings.forEach(setting => {
+      try {
+        if (setting.key === "phones" || setting.key === "emails" || setting.key === "whatsapps") {
+          contactInfo[setting.key] = JSON.parse(setting.value || "[]");
+        } else if (setting.key.startsWith("socialMedia_")) {
+          const platform = setting.key.replace("socialMedia_", "");
+          contactInfo.socialMedia[platform] = setting.value || "";
+        } else if (setting.key === "otherContacts") {
+          contactInfo.otherContacts = JSON.parse(setting.value || "[]");
+        }
+      } catch (parseError) {
+        console.warn(`Failed to parse setting ${setting.key}:`, parseError);
+      }
+    });
 
     sendSuccess(res, "Contact information retrieved successfully", contactInfo);
   } catch (error) {
     console.error("Get contact info error:", error);
+    sendServerError(res, error);
+  }
+};
+
+// Update comprehensive contact information
+export const updateContactInfo = async (req, res) => {
+  try {
+    const { languageCode } = req.params;
+    const {
+      phones = [],
+      emails = [],
+      whatsapps = [],
+      socialMedia = {},
+      otherContacts = []
+    } = req.body;
+
+    const _updatedBy = req.user?.userId || "system";
+    const updateResults = [];
+
+    // Update phones
+    if (phones && Array.isArray(phones)) {
+      const phoneSetting = await Settings.findOne({
+        where: { key: "phones", languageCode: languageCode || "en" }
+      });
+
+      if (phoneSetting) {
+        await phoneSetting.update({
+          value: JSON.stringify(phones),
+          description: "Contact phone numbers",
+          dataType: "json"
+        });
+      } else {
+        await Settings.create({
+          key: "phones",
+          value: JSON.stringify(phones),
+          description: "Contact phone numbers",
+          dataType: "json",
+          languageCode: languageCode || "en"
+        });
+      }
+      updateResults.push("phones");
+    }
+
+    // Update emails
+    if (emails && Array.isArray(emails)) {
+      const emailSetting = await Settings.findOne({
+        where: { key: "emails", languageCode: languageCode || "en" }
+      });
+
+      if (emailSetting) {
+        await emailSetting.update({
+          value: JSON.stringify(emails),
+          description: "Contact email addresses",
+          dataType: "json"
+        });
+      } else {
+        await Settings.create({
+          key: "emails",
+          value: JSON.stringify(emails),
+          description: "Contact email addresses",
+          dataType: "json",
+          languageCode: languageCode || "en"
+        });
+      }
+      updateResults.push("emails");
+    }
+
+    // Update whatsapps
+    if (whatsapps && Array.isArray(whatsapps)) {
+      const whatsappSetting = await Settings.findOne({
+        where: { key: "whatsapps", languageCode: languageCode || "en" }
+      });
+
+      if (whatsappSetting) {
+        await whatsappSetting.update({
+          value: JSON.stringify(whatsapps),
+          description: "WhatsApp contact numbers",
+          dataType: "json"
+        });
+      } else {
+        await Settings.create({
+          key: "whatsapps",
+          value: JSON.stringify(whatsapps),
+          description: "WhatsApp contact numbers",
+          dataType: "json",
+          languageCode: languageCode || "en"
+        });
+      }
+      updateResults.push("whatsapps");
+    }
+
+    // Update social media
+    if (socialMedia && typeof socialMedia === "object") {
+      const platforms = ["facebook", "instagram", "twitter", "linkedin", "youtube", "tiktok"];
+
+      for (const platform of platforms) {
+        const value = socialMedia[platform] || "";
+        const settingKey = `socialMedia_${platform}`;
+
+        const socialSetting = await Settings.findOne({
+          where: { key: settingKey, languageCode: languageCode || "en" }
+        });
+
+        if (socialSetting) {
+          await socialSetting.update({
+            value,
+            description: `${platform} social media URL`,
+            dataType: "string"
+          });
+        } else {
+          await Settings.create({
+            key: settingKey,
+            value,
+            description: `${platform} social media URL`,
+            dataType: "string",
+            languageCode: languageCode || "en"
+          });
+        }
+      }
+      updateResults.push("socialMedia");
+    }
+
+    // Update other contacts
+    if (otherContacts && Array.isArray(otherContacts)) {
+      const otherContactsSetting = await Settings.findOne({
+        where: { key: "otherContacts", languageCode: languageCode || "en" }
+      });
+
+      if (otherContactsSetting) {
+        await otherContactsSetting.update({
+          value: JSON.stringify(otherContacts),
+          description: "Other contact information",
+          dataType: "json"
+        });
+      } else {
+        await Settings.create({
+          key: "otherContacts",
+          value: JSON.stringify(otherContacts),
+          description: "Other contact information",
+          dataType: "json",
+          languageCode: languageCode || "en"
+        });
+      }
+      updateResults.push("otherContacts");
+    }
+
+    sendSuccess(res, "Contact information updated successfully", {
+      updatedFields: updateResults,
+      languageCode: languageCode || "en"
+    });
+  } catch (error) {
+    console.error("Update contact info error:", error);
+    sendServerError(res, error);
+  }
+};
+
+// Get general settings (site info, system config, etc.)
+export const getGeneralSettings = async (req, res) => {
+  try {
+    const generalSettings = await Settings.findAll({
+      where: {
+        key: {
+          [Op.in]: [
+            "siteName",
+            "siteDescription",
+            "siteUrl",
+            "adminEmail",
+            "supportEmail",
+            "maintenanceMode",
+            "registrationEnabled",
+            "emailVerificationRequired",
+            "defaultLanguage",
+            "timezone",
+            "maxFileUploadSize",
+            "sessionTimeout"
+          ]
+        },
+        isActive: true
+      },
+      attributes: ["key", "value", "description", "dataType"]
+    });
+
+    // Structure the settings
+    const settings = {};
+    generalSettings.forEach(setting => {
+      try {
+        if (setting.dataType === "boolean") {
+          settings[setting.key] = setting.value === "true";
+        } else if (setting.dataType === "number") {
+          settings[setting.key] = parseFloat(setting.value);
+        } else {
+          settings[setting.key] = setting.value;
+        }
+      } catch (parseError) {
+        console.warn(`Failed to parse setting ${setting.key}:`, parseError);
+        settings[setting.key] = setting.value;
+      }
+    });
+
+    // Set defaults for missing settings
+    const defaults = {
+      siteName: "StartGoals",
+      siteDescription: "Learning Management System",
+      siteUrl: "https://startgoals.com",
+      adminEmail: "",
+      supportEmail: "",
+      maintenanceMode: false,
+      registrationEnabled: true,
+      emailVerificationRequired: true,
+      defaultLanguage: "en",
+      timezone: "UTC",
+      maxFileUploadSize: 10,
+      sessionTimeout: 30
+    };
+
+    const finalSettings = { ...defaults, ...settings };
+
+    sendSuccess(res, "General settings retrieved successfully", finalSettings);
+  } catch (error) {
+    console.error("Get general settings error:", error);
+    sendServerError(res, error);
+  }
+};
+
+// Update general settings
+export const updateGeneralSettings = async (req, res) => {
+  try {
+    const settingsData = req.body;
+    const _updatedBy = req.user?.userId || "system";
+    const updateResults = [];
+
+    // Define the allowed settings keys and their data types
+    const allowedSettings = {
+      siteName: "string",
+      siteDescription: "string",
+      siteUrl: "string",
+      adminEmail: "string",
+      supportEmail: "string",
+      maintenanceMode: "boolean",
+      registrationEnabled: "boolean",
+      emailVerificationRequired: "boolean",
+      defaultLanguage: "string",
+      timezone: "string",
+      maxFileUploadSize: "number",
+      sessionTimeout: "number"
+    };
+
+    // Update each setting
+    for (const [key, dataType] of Object.entries(allowedSettings)) {
+      if (Object.prototype.hasOwnProperty.call(settingsData, key)) {
+        const value = dataType === "boolean" ? String(settingsData[key]) : String(settingsData[key]);
+
+        const setting = await Settings.findOne({ where: { key } });
+
+        if (setting) {
+          await setting.update({
+            value,
+            description: `${key} setting`,
+            dataType
+          });
+        } else {
+          await Settings.create({
+            key,
+            value,
+            description: `${key} setting`,
+            dataType
+          });
+        }
+        updateResults.push(key);
+      }
+    }
+
+    sendSuccess(res, "General settings updated successfully", {
+      updatedFields: updateResults
+    });
+  } catch (error) {
+    console.error("Update general settings error:", error);
     sendServerError(res, error);
   }
 };

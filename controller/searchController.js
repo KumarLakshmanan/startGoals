@@ -258,10 +258,10 @@ export const searchCourses = async (req, res) => {
       courseType,
       priceMin,
       priceMax,
-      duration,
+      _duration,
       level,
       language,
-      rating,
+      _rating,
       accessType,
       availability,
       instructor,
@@ -1073,10 +1073,10 @@ export const searchProjects = async (req, res) => {
       limit = 12,
       category,
       difficulty,
-      technology,
-      duration,
-      sortBy = "relevance",
-      sortOrder = "DESC",
+      _technology,
+      _duration,
+      _sortBy = "relevance",
+      _sortOrder = "DESC",
     } = req.query;
 
     // TODO: Implement actual project search when Project model is available
@@ -1242,37 +1242,37 @@ export const clearSearchHistory = async (req, res) => {
 };
 
 // Helper functions (stub implementations to prevent undefined errors)
-async function getRecentSearches(userId) {
+async function getRecentSearches(_userId) {
   // TODO: Implement recent searches functionality
   return [];
 }
 
-function calculateBasicRelevance(searchTerm, item) {
+function calculateBasicRelevance(_searchTerm, _item) {
   // TODO: Implement relevance calculation
   return 1.0;
 }
 
-async function searchCoursesComprehensive(query, filters) {
+async function searchCoursesComprehensive(_query, _filters) {
   // TODO: Implement comprehensive course search
   return { courses: [], total: 0 };
 }
 
-async function searchProjectsComprehensive(query, filters) {
+async function searchProjectsComprehensive(_query, _filters) {
   // TODO: Implement comprehensive project search
   return { projects: [], total: 0 };
 }
 
-async function searchInstructorsComprehensive(query, filters) {
+async function searchInstructorsComprehensive(_query, _filters) {
   // TODO: Implement comprehensive instructor search
   return { instructors: [], total: 0 };
 }
 
-function combineAndSortResults(courses, projects, instructors) {
+function combineAndSortResults(_courses, _projects, _instructors) {
   // TODO: Implement result combination and sorting
   return [];
 }
 
-async function saveSearchAnalytics(userId, query, results) {
+async function saveSearchAnalytics(_userId, _query, _results) {
   // TODO: Implement search analytics
   return true;
 }

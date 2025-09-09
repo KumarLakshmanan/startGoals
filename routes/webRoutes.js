@@ -86,8 +86,9 @@ router.get('/proxy/hls', async (req, res) => {
 });
 
 // Proxy route for S3 videos to handle CORS (general video files)
-// router.get("/proxy/video/*", async (req, res) => {
-//   // Temporarily disabled due to route syntax issue
+// TODO: Fix route pattern for video proxy
+// router.get("/proxy/video/:path(*)", async (req, res) => {
+//   // Implementation for video proxy
 // });
 
 // API endpoint to get session configuration

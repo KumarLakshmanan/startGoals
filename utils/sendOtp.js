@@ -207,7 +207,7 @@ export async function verifyOtp(identifier, inputOtp) {
     await otpEntry.update({ status: "used" });
 
     return true;
-  } catch (err) {
+  } catch {
     throw new Error("Server error during OTP verification");
   }
 }

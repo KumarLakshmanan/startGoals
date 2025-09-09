@@ -159,7 +159,7 @@ export const generateMeetingData = {
 
       // Ensure it's within Agora's 64 character limit
       return channelName.substring(0, 64);
-    } catch (error) {
+    } catch {
       // Fallback to timestamp-based name
       return `session_${Date.now()}`;
     }
@@ -171,7 +171,7 @@ export const generateMeetingData = {
       const date = moment(sessionDate).format("MMM DD, YYYY");
       const time = moment(`1970-01-01T${startTime}Z`).format("HH:mm");
       return `${title} - ${date} at ${time}`;
-    } catch (error) {
+    } catch {
       return title;
     }
   },

@@ -29,7 +29,7 @@ const Lesson = sequelize.define(
       validate: {
         isIn: [['video', 'live', 'quiz', 'assignment', 'document']]
       },
-},
+    },
     content: {
       type: DataTypes.TEXT,
       allowNull: true,

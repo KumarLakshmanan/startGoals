@@ -63,9 +63,9 @@ Course.belongsTo(CourseLevel, {
 Course.hasMany(Section, { as: "sections", foreignKey: "courseId" });
 Section.belongsTo(Course, { as: "course", foreignKey: "courseId" });
 
-// Section to Lesson
-Section.hasMany(Lesson, { as: "lessons", foreignKey: "sectionId" });
-Lesson.belongsTo(Section, { as: "section", foreignKey: "sectionId" });
+// Section to Lesson associations are defined in contentAssociations.js
+// Section.hasMany(Lesson, { as: "lessons", foreignKey: "sectionId" });
+// Lesson.belongsTo(Section, { as: "section", foreignKey: "sectionId" });
 
 // Course to Enrollment
 Course.hasMany(Enrollment, {
@@ -228,12 +228,12 @@ DiscountUsage.belongsTo(Course, {
 // Enrollment to DiscountUsage
 Enrollment.hasOne(DiscountUsage, {
   foreignKey: "enrollmentId",
-  as: "discountUsage",
+  as: "enrollmentDiscountUsage",
 });
 
 DiscountUsage.belongsTo(Enrollment, {
   foreignKey: "enrollmentId",
-  as: "enrollment",
+  as: "enrollmentDiscount",
 });
 
 // Course to CourseTest

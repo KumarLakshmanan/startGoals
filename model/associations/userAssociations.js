@@ -28,6 +28,7 @@ import DiscountCode from "../discountCode.js";
 import DiscountUsage from "../discountUsage.js";
 import RedeemCode from "../redeemCode.js";
 import Enrollment from "../enrollment.js";
+import News from "../news.js";
 
 // User to Language many-to-many
 User.belongsToMany(Language, {
@@ -263,36 +264,11 @@ CourseInstructor.belongsTo(User, {
   as: "assigner",
 });
 
-// User to DiscountCode
-User.hasMany(DiscountCode, {
-  foreignKey: "createdBy",
-  as: "createdDiscountCodes",
-});
+// User to DiscountCode associations are handled in paymentAssociations.js
 
-DiscountCode.belongsTo(User, {
-  foreignKey: "createdBy",
-  as: "creator",
-});
+// User to DiscountUsage associations are handled in paymentAssociations.js
 
-// User to DiscountUsage
-User.hasMany(DiscountUsage, {
-  foreignKey: "userId",
-  as: "discountUsages",
-  onDelete: "CASCADE",
-});
-
-DiscountUsage.belongsTo(User, {
-  foreignKey: "userId",
-  as: "user",
-});
-
-// User to Enrollment
-User.hasMany(Enrollment, {
-  foreignKey: "user_id",
-  as: "enrollments",
-});
-
-Enrollment.belongsTo(User, { foreignKey: "user_id" });
+// User to Enrollment associations are handled in paymentAssociations.js
 
 // Direct associations for UserGoals and UserSkills
 UserGoals.belongsTo(User, { foreignKey: "userId", as: "user" });
@@ -301,9 +277,11 @@ UserGoals.belongsTo(Goal, { foreignKey: "goalId", as: "goal" });
 UserSkills.belongsTo(User, { foreignKey: "userId", as: "user" });
 UserSkills.belongsTo(Skill, { foreignKey: "skillId", as: "skill" });
 
+// User to News associations are handled in contentAssociations.js
+
 // Setup functions for new associations
 export const setupUserWalletTransactionAssociations = () => {
   // Wallet associations are handled in walletAssociations.js
 };
 
-export { User, Language, UserLanguages, UserGoals, UserSkills, Goal, Skill, Exam, UserExams, Wishlist, Cart, Order, Address, CourseRating, InstructorRating, ProjectRating, RatingHelpful, SearchAnalytics, CourseChat, ProjectFile, ProjectPurchase, ProjectInstructor, CourseInstructor, DiscountCode, DiscountUsage, RedeemCode, Enrollment };
+export { User, Language, UserLanguages, UserGoals, UserSkills, Goal, Skill, Exam, UserExams, Wishlist, Cart, Order, Address, CourseRating, InstructorRating, ProjectRating, RatingHelpful, SearchAnalytics, CourseChat, ProjectFile, ProjectPurchase, ProjectInstructor, CourseInstructor, DiscountCode, DiscountUsage, RedeemCode, Enrollment, News };

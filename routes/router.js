@@ -36,6 +36,7 @@ import userAddressRoutes from "./userAddressRoutes.js";
 import newsRoutes from "./newsRoutes.js";
 import walletRoutes from "./walletRoutes.js";
 import courseChatRoutes from "./courseChatRoutes.js";
+import lessonChatRoutes from "./lessonChatRoutes.js";
 
 const router = express.Router();
 
@@ -88,5 +89,6 @@ router.use("/user-addresses", userAddressRoutes);
 router.use("/news", newsRoutes);
 router.use("/wallet", walletRoutes);
 router.use("/course-chat", courseChatRoutes);
+router.use("/lesson-chat", lessonChatRoutes);
 
 export default router;

@@ -38,11 +38,11 @@ class LiveStreamService {
 
       // Generate Zoom meeting
       try {
-        const zoomMeeting = await zoomService.createMeeting({
+        const zoomMeeting = await zoomService.createLiveMeeting({
           topic: `Live Lesson: ${lesson.title}`,
           type: 2, // Scheduled meeting
-          start_time: lesson.streamStartDateTime,
-          duration: Math.ceil(lesson.duration / 60) || 60, // Convert minutes to hours
+          start_time: lesson.streamStartDateTime ? lesson.streamStartDateTime.toISOString() : new Date().toISOString(),
+          duration: Math.ceil((lesson.duration || 60) / 60), // Convert minutes to hours, default 1 hour
           timezone: 'UTC',
           settings: {
             host_video: true,

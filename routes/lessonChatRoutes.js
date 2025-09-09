@@ -1,17 +1,17 @@
 import express from "express";
 import {
   sendMessage,
-  getCourseMessages,
+  getLessonMessages,
   deleteMessage,
   getUnreadMessageCount,
-} from "../controller/courseChatController.js";
+} from "../controller/lessonChatController.js";
 import { authenticateToken } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // All chat routes require authentication
-router.post("/:courseId/messages", authenticateToken, sendMessage);
-router.get("/:courseId/messages", authenticateToken, getCourseMessages);
+router.post("/:lessonId/messages", authenticateToken, sendMessage);
+router.get("/:lessonId/messages", authenticateToken, getLessonMessages);
 router.delete("/messages/:messageId", authenticateToken, deleteMessage);
 router.get("/unread-count", authenticateToken, getUnreadMessageCount);
 

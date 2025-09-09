@@ -1,6 +1,5 @@
 import { Op } from "sequelize";
 import Language from "../model/language.js";
-import { validateLanguageInput } from "../utils/commonUtils.js";
 import sequelize from "../config/db.js";
 import {
   sendSuccess,
@@ -54,7 +53,7 @@ export const getAllLanguages = async (req, res) => {
       order: [[safeSortBy, safeSortOrder]],
     }
 
-    const { count, rows } = await Language.findAndCountAll(queryOptions);
+    const { count: _count, rows } = await Language.findAndCountAll(queryOptions);
 
     return sendSuccess(res,  "Languages fetched successfully", rows);
   } catch (error) {

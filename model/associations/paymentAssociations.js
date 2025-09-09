@@ -1,74 +1,79 @@
 import DiscountCode from "../discountCode.js";
+import DiscountUsage from "../discountUsage.js";
+import User from "../user.js";
+import Course from "../course.js";
+import Project from "../project.js";
+import Enrollment from "../enrollment.js";
 import ProjectPurchase from "../projectPurchase.js";
 import Order from "../order.js";
 import OrderItem from "../orderItem.js";
 import Address from "../address.js";
 
 // Discount Code associations
-// User.hasMany(DiscountCode, {
-//   foreignKey: "createdBy",
-//   as: "createdDiscountCodes",
-// });
+User.hasMany(DiscountCode, {
+  foreignKey: "createdBy",
+  as: "createdDiscountCodes",
+});
 
-// DiscountCode.belongsTo(User, {
-//   foreignKey: "createdBy",
-//   as: "creator",
-// });
+DiscountCode.belongsTo(User, {
+  foreignKey: "createdBy",
+  as: "creator",
+});
 
-// DiscountCode.hasMany(DiscountUsage, {
-//   foreignKey: "discountId",
-//   as: "usages",
-//   onDelete: "CASCADE",
-// });
+DiscountCode.hasMany(DiscountUsage, {
+  foreignKey: "discountId",
+  as: "usages",
+  onDelete: "CASCADE",
+});
 
-// DiscountUsage.belongsTo(DiscountCode, {
-//   foreignKey: "discountId",
-//   as: "discountCode",
-// });
+DiscountUsage.belongsTo(DiscountCode, {
+  foreignKey: "discountId",
+  as: "discountCode",
+});
 
-// User.hasMany(DiscountUsage, {
-//   foreignKey: "userId",
-//   as: "discountUsages",
-//   onDelete: "CASCADE",
-// });
+User.hasMany(DiscountUsage, {
+  foreignKey: "userId",
+  as: "discountUsages",
+  onDelete: "CASCADE",
+});
 
-// DiscountUsage.belongsTo(User, {
-//   foreignKey: "userId",
-//   as: "user",
-// });
+DiscountUsage.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
 
 // DiscountUsage can reference Course (for course discounts)
-// DiscountUsage.belongsTo(Course, {
-//   foreignKey: "courseId",
-//   as: "discountCourse",
-// });
+DiscountUsage.belongsTo(Course, {
+  foreignKey: "courseId",
+  as: "discountCourse",
+});
 
-// Course.hasMany(DiscountUsage, {
-//   foreignKey: "courseId",
-//   as: "courseDiscountUsages",
-// });
+Course.hasMany(DiscountUsage, {
+  foreignKey: "courseId",
+  as: "courseDiscountUsages",
+});
 
 // DiscountUsage can reference Project (for project discounts)
-// DiscountUsage.belongsTo(Project, {
-//   foreignKey: "projectId",
-//   as: "discountProject",
-// });
+DiscountUsage.belongsTo(Project, {
+  foreignKey: "projectId",
+  as: "discountProject",
+});
 
-// Project.hasMany(DiscountUsage, {
-//   foreignKey: "projectId",
-//   as: "projectDiscountUsages",
-// });
+Project.hasMany(DiscountUsage, {
+  foreignKey: "projectId",
+  as: "projectDiscountUsages",
+});
 
 // DiscountUsage can reference Enrollment (for course enrollment discounts)
-// DiscountUsage.belongsTo(Enrollment, {
-//   foreignKey: "enrollmentId",
-//   as: "enrollment",
-// });
+DiscountUsage.belongsTo(Enrollment, {
+  foreignKey: "enrollmentId",
+  as: "enrollment",
+});
 
-// Enrollment.hasOne(DiscountUsage, {
-//   foreignKey: "enrollmentId",
-//   as: "discountUsage",
-// });
+Enrollment.hasOne(DiscountUsage, {
+  foreignKey: "enrollmentId",
+  as: "discountUsage",
+});
 
 // ProjectPurchase belongs to DiscountCode (optional)
 ProjectPurchase.belongsTo(DiscountCode, {

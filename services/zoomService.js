@@ -124,7 +124,7 @@ class ZoomService {
       // Note: Zoom meetings are typically started by host via start_url
       // This is more for tracking purposes on our end
 
-      const response = await axios.patch(
+      const _response = await axios.patch(
         `${this.zoomApiBaseUrl}/meetings/${meetingId}`,
         {
           settings: {
@@ -167,7 +167,7 @@ class ZoomService {
       const accessToken = await this.getAccessToken();
 
       // End the meeting
-      const response = await axios.patch(
+      const _response = await axios.patch(
         `${this.zoomApiBaseUrl}/meetings/${meetingId}/status`,
         {
           action: "end",

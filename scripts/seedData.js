@@ -9,7 +9,6 @@ import CourseLevel from '../model/courseLevel.js';
 import Project from '../model/project.js';
 import ProjectTechStack from '../model/projectTechStack.js';
 import Language from '../model/language.js';
-import LiveSession from '../model/liveSession.js';
 import Banner from '../model/banner.js';
 import Goal from '../model/goal.js';
 import Skill from '../model/skill.js';
@@ -399,7 +398,7 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
       let totalLessons = 0;
       let totalDuration = 0;
 
-      const numSections = faker.number.int({ min: 2, max: 5 });
+      const numSections = faker.number.int({ min: 3, max: 8 });
       totalSections = numSections;
 
       for (let j = 0; j < numSections; j++) {
@@ -412,7 +411,7 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
             order: j,
           });
 
-          const numLessons = faker.number.int({ min: 2, max: 4 });
+          const numLessons = faker.number.int({ min: 3, max: 7 });
           totalLessons += numLessons;
 
           for (let k = 0; k < numLessons; k++) {
@@ -420,7 +419,7 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
               const lessonDuration = faker.number.int({ min: 30, max: 90 });
               totalDuration += lessonDuration;
 
-              const lessonType = faker.helpers.arrayElement(['live', 'video', 'document']);
+              const lessonType = faker.helpers.arrayElement(['live', 'video', 'document', 'assignment']);
 
               const lessonData = {
                 lessonId: uuidv4(),
@@ -445,9 +444,10 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
               } else if (lessonType === 'video') {
                 lessonData.videoUrl = getRandomVideoUrl();
 
-              } else if (lessonType === 'document') {
+              } else if (lessonType === 'document' || lessonType === 'assignment') {
+                // For document/assignment lessons
                 lessonData.fileUrl = `https://storage.example.com/files/course_${i}_section_${j}_lesson_${k}.pdf`;
-                lessonData.fileName = `lesson_${k + 1}.pdf`;
+                lessonData.fileName = `${lessonType}_${k + 1}.pdf`;
               }
 
               await Lesson.create(lessonData);

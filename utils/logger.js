@@ -66,7 +66,7 @@ export const readAdminLogs = (filters = {}) => {
     let logs = lines.map(line => {
       try {
         return JSON.parse(line);
-      } catch (e) {
+      } catch {
         return null;
       }
     }).filter(log => log !== null);

@@ -149,7 +149,7 @@ export const createAnnouncement = async (req, res) => {
     const targetAudience = req.body.targetAudience || "all";
     const startDate = req.body.startDate;
     const endDate = req.body.endDate;
-    const isSticky = req.body.isSticky !== undefined ? req.body.isSticky : false;
+    let isSticky = req.body.isSticky !== undefined ? req.body.isSticky : false;
     const navigationUrl = req.body.navigationUrl;
     const navigationType = req.body.navigationType || "none";
 
@@ -296,7 +296,7 @@ export const updateAnnouncement = async (req, res) => {
     const targetAudience = req.body.targetAudience;
     const startDate = req.body.startDate;
     const endDate = req.body.endDate;
-    const isSticky = req.body.isSticky;
+    let isSticky = req.body.isSticky;
     const navigationUrl = req.body.navigationUrl;
     const navigationType = req.body.navigationType;
 
