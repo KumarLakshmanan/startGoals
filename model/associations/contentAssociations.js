@@ -47,7 +47,7 @@ Course.hasMany(CourseChat, {
 
 CourseChat.belongsTo(Course, {
   foreignKey: "courseId",
-  as: "course",
+  as: "chatCourse",
 });
 
 CourseChat.belongsTo(CourseChat, {
@@ -97,7 +97,7 @@ Lesson.belongsTo(Course, {
   foreignKey: "courseId",
   targetKey: "courseId",
   constraints: false,
-  as: "course",
+  as: "lessonCourse",
 });
 
 // Agora associations (stored in lesson model)
@@ -111,13 +111,13 @@ Lesson.belongsTo(User, {
 // Course Instructor associations
 Course.hasMany(CourseInstructor, {
   foreignKey: "courseId",
-  as: "instructors",
+  as: "courseInstructorList",
   onDelete: "CASCADE",
 });
 
 CourseInstructor.belongsTo(Course, {
   foreignKey: "courseId",
-  as: "course",
+  as: "instructorCourse",
 });
 
 User.hasMany(CourseInstructor, {
@@ -128,7 +128,7 @@ User.hasMany(CourseInstructor, {
 
 CourseInstructor.belongsTo(User, {
   foreignKey: "instructorId",
-  as: "instructor",
+  as: "courseInstructor",
 });
 
 CourseInstructor.belongsTo(User, {
@@ -157,14 +157,14 @@ Course.hasMany(LiveSession, {
 
 LiveSession.belongsTo(Course, {
   foreignKey: "courseId",
-  as: "course",
+  as: "sessionCourse",
 });
 
 LiveSession.belongsTo(User, {
   foreignKey: "instructorId",
   targetKey: "userId",
   constraints: false,
-  as: "instructor",
+  as: "liveInstructor",
 });
 
 // RaisedHand associations
@@ -179,62 +179,4 @@ RaisedHand.belongsTo(LiveSession, {
   as: "session",
 });
 
-// Setup functions
-// export const setupWishlistAssociations = () => {
-//   User.hasMany(Wishlist, {
-//     foreignKey: "userId",
-//     as: "wishlists",
-//     onDelete: "CASCADE",
-//   });
-
-//   Wishlist.belongsTo(User, {
-//     foreignKey: "userId",
-//     as: "user",
-//   });
-
-//   Wishlist.belongsTo(Course, {
-//     foreignKey: "itemId",
-//     targetKey: "courseId",
-//     constraints: false,
-//     as: "course",
-//   });
-
-//   Wishlist.belongsTo(Project, {
-//     foreignKey: "itemId",
-//     targetKey: "projectId",
-//     constraints: false,
-//     as: "project",
-//   });
-// };
-
-// export const setupCartAssociations = () => {
-//   User.hasMany(Cart, {
-//     foreignKey: "userId",
-//     as: "cartItems",
-//     onDelete: "CASCADE",
-//   });
-
-//   Cart.belongsTo(User, {
-//     foreignKey: "userId",
-//     as: "user",
-//   });
-
-//   Cart.belongsTo(Course, {
-//     foreignKey: "itemId",
-//     targetKey: "courseId",
-//     constraints: false,
-//     as: "course",
-//   });
-
-//   Cart.belongsTo(Project, {
-//     foreignKey: "itemId",
-//     targetKey: "projectId",
-//     constraints: false,
-//     as: "project",
-//   });
-// };
-
-// export const setupAddressAssociations = () => {
-//   // Address associations are handled in userAssociations.js
-// };
 export { News, User, CourseChat, LessonChat, Lesson, Section, Course, CourseInstructor, LiveSession, RaisedHand, Wishlist, Cart, Project };

@@ -433,7 +433,13 @@ async function createLiveCourses(teachers, categories, goals, languages, levels,
               };
 
               if (lessonType === 'live') {
-                const startDateTime = faker.date.future();
+                // For the first live lesson in the first course, set date to 2026
+                let startDateTime;
+                if (i === 0 && j === 0 && k === 0) {
+                  startDateTime = new Date('2026-06-15T10:00:00Z'); // Specific 2026 date
+                } else {
+                  startDateTime = faker.date.future();
+                }
                 lessonData.streamStartDateTime = startDateTime;
                 lessonData.streamEndDateTime = new Date(startDateTime.getTime() + lessonDuration * 60000);
 
@@ -620,11 +626,17 @@ async function createRecordedCourses(teachers, categories, goals, languages, lev
 
               // Add type-specific fields with real media URLs
               if (lessonType === 'live') {
-                const startDateTime = faker.date.future();
+                // For the first live lesson in the first course, set date to 2026
+                let startDateTime;
+                if (i === 0 && j === 0 && k === 0) {
+                  startDateTime = new Date('2026-06-15T10:00:00Z'); // Specific 2026 date
+                } else {
+                  startDateTime = faker.date.future();
+                }
                 lessonData.streamStartDateTime = startDateTime;
                 lessonData.streamEndDateTime = new Date(startDateTime.getTime() + lessonDuration * 60000);
 
-                // Add live streaming integration with real tokens/meetings
+                // Generate real Agora and Zoom integrations
                 const streamingUrls = await generateLiveStreamingUrls(lessonData.title);
                 Object.assign(lessonData, streamingUrls);
 

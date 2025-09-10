@@ -79,7 +79,7 @@ Enrollment.belongsTo(User, { foreignKey: "user_id" });
 // Course to LiveSession
 Course.hasMany(LiveSession, {
   foreignKey: "courseId",
-  as: "liveSessions",
+  as: "courseLiveSessions",
 });
 
 LiveSession.belongsTo(Course, {
