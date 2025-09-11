@@ -6,6 +6,7 @@ import {
   sendNotFound,
   sendConflict,
 } from "../utils/responseHelper.js";
+import { logError } from "../utils/logger.js";
 
 /**
  * Handle validation errors
@@ -27,7 +28,7 @@ const handleValidationError = (res, err) => {
  * Global error handler middleware
  */
 export const globalErrorHandler = (err, req, res, next) => {
-  console.error("Global error handler caught:", {
+  logError("Global error handler caught", {
     error: err.message,
     stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
     url: req.url,

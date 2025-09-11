@@ -242,6 +242,11 @@ const User = sequelize.define(
       defaultValue: false,
       comment: "Whether user has pro status after purchasing courses",
     },
+    lastLoginAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      comment: "Timestamp of user's last login",
+    },
     ...commonFields, // ✅ createdAt, updatedAt, deletedAt
   },
   {

@@ -20,6 +20,8 @@ import {
   updateContactInfo,
   getGeneralSettings,
   updateGeneralSettings,
+  getContactDetails,
+  updateContactDetails,
 } from "../controller/settingsController.js";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
 
@@ -98,5 +100,9 @@ router.put("/contact", authenticateToken, updateContactInfo);
 // General settings routes
 router.get("/general", authenticateToken, getGeneralSettings);
 router.put("/general", authenticateToken, updateGeneralSettings);
+
+// Contact details routes (dedicated for contact settings page)
+router.get("/admin/contact-details", authenticateToken, isAdmin, getContactDetails);
+router.put("/admin/contact-details", authenticateToken, isAdmin, updateContactDetails);
 
 export default router;

@@ -62,6 +62,18 @@ CourseChat.hasMany(CourseChat, {
   onDelete: "SET NULL",
 });
 
+// CourseChat to User (sender)
+CourseChat.belongsTo(User, {
+  foreignKey: "senderId",
+  as: "sender",
+});
+
+User.hasMany(CourseChat, {
+  foreignKey: "senderId",
+  as: "courseChatMessages",
+  onDelete: "CASCADE",
+});
+
 // Lesson Chat associations
 Lesson.hasMany(LessonChat, {
   foreignKey: "lessonId",
@@ -86,7 +98,13 @@ LessonChat.hasMany(LessonChat, {
   onDelete: "SET NULL",
 });
 
-// Lesson associations (Section, Course, User) - Note: Section.hasMany(Lesson) is already defined in courseAssociations.js
+// Lesson associations (Section, Course, User)
+Section.hasMany(Lesson, {
+  foreignKey: "sectionId",
+  as: "lessons",
+  onDelete: "CASCADE",
+});
+
 Lesson.belongsTo(Section, {
   foreignKey: "sectionId",
   as: "section",
@@ -169,14 +187,14 @@ LiveSession.belongsTo(User, {
 
 // RaisedHand associations
 LiveSession.hasMany(RaisedHand, {
-  foreignKey: "liveSessionId",
-  as: "raisedHands",
+  foreignKey: "sessionId",
+  as: "contentRaisedHands",
   onDelete: "CASCADE",
 });
 
 RaisedHand.belongsTo(LiveSession, {
-  foreignKey: "liveSessionId",
-  as: "session",
+  foreignKey: "sessionId",
+  as: "contentSession",
 });
 
 export { News, User, CourseChat, LessonChat, Lesson, Section, Course, CourseInstructor, LiveSession, RaisedHand, Wishlist, Cart, Project };

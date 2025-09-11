@@ -45,6 +45,23 @@ export const sendMessage = async (req, res) => {
       ],
     });
 
+    // Emit WebSocket event for real-time updates
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`course-chat-${courseId}`).emit("newCourseMessage", {
+        chatId: populatedMessage.chatId,
+        courseId,
+        senderId: populatedMessage.senderId,
+        message: populatedMessage.message,
+        messageType: populatedMessage.messageType,
+        fileUrl: populatedMessage.fileUrl,
+        fileName: populatedMessage.fileName,
+        replyToId: populatedMessage.replyToId,
+        sender: populatedMessage.sender,
+        createdAt: populatedMessage.createdAt,
+      });
+    }
+
     res.status(201).json({
       success: true,
       message: "Message sent successfully",
@@ -158,6 +175,16 @@ export const deleteMessage = async (req, res) => {
     }
 
     await message.destroy();
+
+    // Emit WebSocket event for real-time updates
+    const io = req.app.get("io");
+    if (io) {
+      io.to(`course-chat-${message.courseId}`).emit("courseMessageDeleted", {
+        messageId: messageId,
+        deletedBy: userId,
+        courseId: message.courseId,
+      });
+    }
 
     res.json({
       success: true,

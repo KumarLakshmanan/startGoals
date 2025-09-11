@@ -11,14 +11,16 @@ import initializeSocketIO from "./services/socketHandler.js";
 import http from "http";
 import requestLogger from "./middleware/requestLogger.js";
 // Global error handler (must be after all routes)
-import { notFoundHandler } from './middleware/globalErrorHandler.js';
+import { notFoundHandler, globalErrorHandler } from './middleware/globalErrorHandler.js';
 import { sendServerError, sendSuccess } from "./utils/responseHelper.js";
+import { logInfo, logError } from "./utils/logger.js";
 
 // Import associations to establish model relationships
 import "./model/associations.js";
+import { setupAllAssociations } from "./model/associations/index.js";
 
 // Setup all database associations
-// setupAllAssociations();
+setupAllAssociations();
 
 // to use  .env file atributes
 dotenv.config();
@@ -84,7 +86,7 @@ app.get('/db-models', syncDbMiddleware, async (req, res) => {
     const models = await getModels();
     return sendSuccess(res,  "Fetched database models successfully", models);
   } catch (error) {
-    console.error("Failed to fetch database models:", error);
+    logError("Failed to fetch database models", { error: error.message });
     return sendServerError(res, error);
   }
 });
@@ -94,8 +96,7 @@ app.post('/sync-db', syncDbMiddleware, async (req, res) => {
   try {
     const { models, options } = req.body;
 
-    console.log('Received sync request with models:', JSON.stringify(models, null, 2));
-    console.log('Received sync request with options:', JSON.stringify(options, null, 2));
+    logInfo('Received sync request', { models, options });
 
     if (!models || !Array.isArray(models) || models.length === 0) {
       return res.status(200).json({
@@ -107,7 +108,7 @@ app.post('/sync-db', syncDbMiddleware, async (req, res) => {
       });
     }
 
-    console.log(`Starting manual database sync with options:`, options);
+    logInfo(`Starting manual database sync`, { options });
     const result = await syncModels(models, options);
 
     // Always return a consistent response
@@ -119,7 +120,7 @@ app.post('/sync-db', syncDbMiddleware, async (req, res) => {
       error: result.error || null
     });
   } catch (error) {
-    console.error("💥 Failed to sync database:", error);
+    logError("Failed to sync database", { error: error.message });
     return res.status(200).json({
       status: false,
       success: false,
@@ -139,7 +140,7 @@ app.use("/", webRoutes);
 app.use(notFoundHandler);
 
 // Global error handler (must be last)
-// app.use(globalErrorHandler);
+app.use(globalErrorHandler);
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -160,22 +161,21 @@ initializeSocketIO(io);
 app.set("io", io);
 
 process.on("uncaughtException", (err) => {
-  console.error("❌ Uncaught Exception:", err);
+  logError("Uncaught Exception", { error: err.message, stack: err.stack });
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-  console.log(reason)
-  console.error("⚠️ Unhandled Rejection at:" + promise + "reason:" + reason);
+  logError("Unhandled Rejection", { reason, promise: promise.toString() });
 });
 
 // Start the server using the HTTP server instance (for socket.io)
 const startServer = async () => {
   try {
     server.listen(process.env.SERVER_PORT, () => {
-      console.log("🚀 Server running on PORT " + process.env.SERVER_PORT);
+      logInfo("Server started successfully", { port: process.env.SERVER_PORT });
     });
   } catch (error) {
-    console.error('💥 Server startup error:', error);
+    logError('Server startup failed', { error: error.message });
     process.exit(1);
   }
 };

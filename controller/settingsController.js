@@ -900,4 +900,351 @@ export const updateGeneralSettings = async (req, res) => {
   }
 };
 
+// ===================== CONTACT DETAILS MANAGEMENT =====================
+
+/**
+ * Get comprehensive contact details for contact settings page
+ * GET /api/settings/admin/contact-details
+ */
+export const getContactDetails = async (req, res) => {
+  try {
+    // Get all contact-related settings
+    const contactSettings = await Settings.findAll({
+      where: {
+        key: {
+          [Op.in]: [
+            "phones",
+            "emails",
+            "whatsapps",
+            "socialMedia_facebook",
+            "socialMedia_instagram",
+            "socialMedia_twitter",
+            "socialMedia_linkedin",
+            "socialMedia_youtube",
+            "socialMedia_tiktok",
+            "otherContacts",
+            "address_street",
+            "address_city",
+            "address_state",
+            "address_country",
+            "address_zipCode",
+            "businessHours_monday_open",
+            "businessHours_monday_close",
+            "businessHours_monday_isOpen",
+            "businessHours_tuesday_open",
+            "businessHours_tuesday_close",
+            "businessHours_tuesday_isOpen",
+            "businessHours_wednesday_open",
+            "businessHours_wednesday_close",
+            "businessHours_wednesday_isOpen",
+            "businessHours_thursday_open",
+            "businessHours_thursday_close",
+            "businessHours_thursday_isOpen",
+            "businessHours_friday_open",
+            "businessHours_friday_close",
+            "businessHours_friday_isOpen",
+            "businessHours_saturday_open",
+            "businessHours_saturday_close",
+            "businessHours_saturday_isOpen",
+            "businessHours_sunday_open",
+            "businessHours_sunday_close",
+            "businessHours_sunday_isOpen"
+          ]
+        },
+        isActive: true
+      },
+      attributes: ["key", "value", "description", "dataType"]
+    });
+
+    // Structure the contact details
+    const contactDetails = {
+      phones: [],
+      emails: [],
+      whatsapps: [],
+      socialMedia: {
+        facebook: "",
+        instagram: "",
+        twitter: "",
+        linkedin: "",
+        youtube: "",
+        tiktok: ""
+      },
+      otherContacts: [],
+      address: {
+        street: "",
+        city: "",
+        state: "",
+        country: "",
+        zipCode: ""
+      },
+      businessHours: {
+        monday: { open: "09:00", close: "17:00", isOpen: true },
+        tuesday: { open: "09:00", close: "17:00", isOpen: true },
+        wednesday: { open: "09:00", close: "17:00", isOpen: true },
+        thursday: { open: "09:00", close: "17:00", isOpen: true },
+        friday: { open: "09:00", close: "17:00", isOpen: true },
+        saturday: { open: "09:00", close: "17:00", isOpen: false },
+        sunday: { open: "09:00", close: "17:00", isOpen: false }
+      }
+    };
+
+    // Process each setting
+    contactSettings.forEach(setting => {
+      try {
+        if (setting.key === "phones" || setting.key === "emails" || setting.key === "whatsapps") {
+          contactDetails[setting.key] = JSON.parse(setting.value || "[]");
+        } else if (setting.key.startsWith("socialMedia_")) {
+          const platform = setting.key.replace("socialMedia_", "");
+          contactDetails.socialMedia[platform] = setting.value || "";
+        } else if (setting.key === "otherContacts") {
+          contactDetails.otherContacts = JSON.parse(setting.value || "[]");
+        } else if (setting.key.startsWith("address_")) {
+          const field = setting.key.replace("address_", "");
+          contactDetails.address[field] = setting.value || "";
+        } else if (setting.key.startsWith("businessHours_")) {
+          const parts = setting.key.replace("businessHours_", "").split("_");
+          const day = parts[0];
+          const field = parts[1];
+
+          if (!contactDetails.businessHours[day]) {
+            contactDetails.businessHours[day] = { open: "09:00", close: "17:00", isOpen: true };
+          }
+
+          if (field === "isOpen") {
+            contactDetails.businessHours[day][field] = setting.value === "true";
+          } else {
+            contactDetails.businessHours[day][field] = setting.value || "";
+          }
+        }
+      } catch (parseError) {
+        console.warn(`Failed to parse setting ${setting.key}:`, parseError);
+      }
+    });
+
+    sendSuccess(res, "Contact details retrieved successfully", contactDetails);
+  } catch (error) {
+    console.error("Get contact details error:", error);
+    sendServerError(res, error);
+  }
+};
+
+/**
+ * Update comprehensive contact details for contact settings page
+ * PUT /api/settings/admin/contact-details
+ */
+export const updateContactDetails = async (req, res) => {
+  try {
+    const {
+      phones = [],
+      emails = [],
+      whatsapps = [],
+      socialMedia = {},
+      otherContacts = [],
+      address = {},
+      businessHours = {}
+    } = req.body;
+
+    const updatedBy = req.user?.userId || "system";
+    const updateResults = [];
+
+    // Update phones
+    if (phones && Array.isArray(phones)) {
+      const phoneSetting = await Settings.findOne({
+        where: { key: "phones" }
+      });
+
+      if (phoneSetting) {
+        await phoneSetting.update({
+          value: JSON.stringify(phones),
+          description: "Contact phone numbers",
+          dataType: "json"
+        });
+      } else {
+        await Settings.create({
+          key: "phones",
+          value: JSON.stringify(phones),
+          description: "Contact phone numbers",
+          dataType: "json"
+        });
+      }
+      updateResults.push("phones");
+    }
+
+    // Update emails
+    if (emails && Array.isArray(emails)) {
+      const emailSetting = await Settings.findOne({
+        where: { key: "emails" }
+      });
+
+      if (emailSetting) {
+        await emailSetting.update({
+          value: JSON.stringify(emails),
+          description: "Contact email addresses",
+          dataType: "json"
+        });
+      } else {
+        await Settings.create({
+          key: "emails",
+          value: JSON.stringify(emails),
+          description: "Contact email addresses",
+          dataType: "json"
+        });
+      }
+      updateResults.push("emails");
+    }
+
+    // Update whatsapps
+    if (whatsapps && Array.isArray(whatsapps)) {
+      const whatsappSetting = await Settings.findOne({
+        where: { key: "whatsapps" }
+      });
+
+      if (whatsappSetting) {
+        await whatsappSetting.update({
+          value: JSON.stringify(whatsapps),
+          description: "WhatsApp contact numbers",
+          dataType: "json"
+        });
+      } else {
+        await Settings.create({
+          key: "whatsapps",
+          value: JSON.stringify(whatsapps),
+          description: "WhatsApp contact numbers",
+          dataType: "json"
+        });
+      }
+      updateResults.push("whatsapps");
+    }
+
+    // Update social media
+    if (socialMedia && typeof socialMedia === "object") {
+      const platforms = ["facebook", "instagram", "twitter", "linkedin", "youtube", "tiktok"];
+
+      for (const platform of platforms) {
+        const value = socialMedia[platform] || "";
+        const settingKey = `socialMedia_${platform}`;
+
+        const socialSetting = await Settings.findOne({
+          where: { key: settingKey }
+        });
+
+        if (socialSetting) {
+          await socialSetting.update({
+            value,
+            description: `${platform} social media URL`,
+            dataType: "string"
+          });
+        } else {
+          await Settings.create({
+            key: settingKey,
+            value,
+            description: `${platform} social media URL`,
+            dataType: "string"
+          });
+        }
+      }
+      updateResults.push("socialMedia");
+    }
+
+    // Update other contacts
+    if (otherContacts && Array.isArray(otherContacts)) {
+      const otherContactsSetting = await Settings.findOne({
+        where: { key: "otherContacts" }
+      });
+
+      if (otherContactsSetting) {
+        await otherContactsSetting.update({
+          value: JSON.stringify(otherContacts),
+          description: "Other contact information",
+          dataType: "json"
+        });
+      } else {
+        await Settings.create({
+          key: "otherContacts",
+          value: JSON.stringify(otherContacts),
+          description: "Other contact information",
+          dataType: "json"
+        });
+      }
+      updateResults.push("otherContacts");
+    }
+
+    // Update address
+    if (address && typeof address === "object") {
+      const addressFields = ["street", "city", "state", "country", "zipCode"];
+
+      for (const field of addressFields) {
+        const value = address[field] || "";
+        const settingKey = `address_${field}`;
+
+        const addressSetting = await Settings.findOne({
+          where: { key: settingKey }
+        });
+
+        if (addressSetting) {
+          await addressSetting.update({
+            value,
+            description: `Address ${field}`,
+            dataType: "string"
+          });
+        } else {
+          await Settings.create({
+            key: settingKey,
+            value,
+            description: `Address ${field}`,
+            dataType: "string"
+          });
+        }
+      }
+      updateResults.push("address");
+    }
+
+    // Update business hours
+    if (businessHours && typeof businessHours === "object") {
+      const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
+      for (const day of days) {
+        if (businessHours[day]) {
+          const dayData = businessHours[day];
+          const fields = ["open", "close", "isOpen"];
+
+          for (const field of fields) {
+            const value = field === "isOpen" ? String(dayData[field] || false) : (dayData[field] || "");
+            const settingKey = `businessHours_${day}_${field}`;
+
+            const businessHoursSetting = await Settings.findOne({
+              where: { key: settingKey }
+            });
+
+            if (businessHoursSetting) {
+              await businessHoursSetting.update({
+                value,
+                description: `${day} ${field}`,
+                dataType: field === "isOpen" ? "boolean" : "string"
+              });
+            } else {
+              await Settings.create({
+                key: settingKey,
+                value,
+                description: `${day} ${field}`,
+                dataType: field === "isOpen" ? "boolean" : "string"
+              });
+            }
+          }
+        }
+      }
+      updateResults.push("businessHours");
+    }
+
+    sendSuccess(res, "Contact details updated successfully", {
+      updatedFields: updateResults,
+      updatedAt: new Date(),
+      updatedBy
+    });
+  } catch (error) {
+    console.error("Update contact details error:", error);
+    sendServerError(res, error);
+  }
+};
+
 // All functions are exported individually above using 'export const'

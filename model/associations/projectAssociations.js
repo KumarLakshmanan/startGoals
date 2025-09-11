@@ -16,6 +16,7 @@ import Language from "../language.js";
 import ProjectInstructor from "../projectInstructor.js";
 import DiscountUsage from "../discountUsage.js";
 import Banner from "../banner.js";
+import CourseLevel from "../courseLevel.js";
 
 // Project to Category
 Project.belongsTo(Category, {
@@ -26,6 +27,18 @@ Project.belongsTo(Category, {
 Category.hasMany(Project, {
   foreignKey: "categoryId",
   as: "projects",
+});
+
+// Project to CourseLevel
+CourseLevel.hasMany(Project, {
+  foreignKey: "levelId",
+  as: "projects",
+  onDelete: "SET NULL",
+});
+
+Project.belongsTo(CourseLevel, {
+  foreignKey: "levelId",
+  as: "level",
 });
 
 // Project to ProjectGoal
@@ -209,4 +222,4 @@ Banner.hasMany(Project, {
 //   });
 // };
 
-export { Project, Category, ProjectGoal, Goal, ProjectFile, User, ProjectPurchase, DiscountCode, ProjectRating, ProjectTechStack, Skill, ProjectLanguage, Language, ProjectInstructor, DiscountUsage, Banner };
+export { Project, Category, ProjectGoal, Goal, ProjectFile, User, ProjectPurchase, DiscountCode, ProjectRating, ProjectTechStack, Skill, ProjectLanguage, Language, ProjectInstructor, DiscountUsage, Banner, CourseLevel };

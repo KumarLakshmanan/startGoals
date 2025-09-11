@@ -107,3 +107,16 @@ OrderItem.belongsTo(Order, {
   foreignKey: "orderId",
   as: "order",
 });
+
+// OrderItem polymorphic associations (itemType determines the model)
+OrderItem.belongsTo(Course, {
+  foreignKey: "itemId",
+  constraints: false,
+  as: "course",
+});
+
+OrderItem.belongsTo(Project, {
+  foreignKey: "itemId",
+  constraints: false,
+  as: "project",
+});

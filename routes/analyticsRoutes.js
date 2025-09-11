@@ -13,7 +13,8 @@ import {
   generateCustomReport,
   getStudentAnalytics,
   getTeacherAnalytics,
-  getEngagementAnalytics
+  getEngagementAnalytics,
+  getDashboardStats
 } from "../controller/analyticsController.js";
 
 const router = express.Router();
@@ -23,6 +24,9 @@ router.use(authenticateToken, isAdmin);
 
 // Platform overview statistics
 router.get("/overview", getPlatformOverview);
+
+// Dashboard stats for overview cards
+router.get("/dashboard/stats", getDashboardStats);
 
 // User analytics
 router.get("/users", getUserAnalytics);

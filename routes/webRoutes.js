@@ -86,10 +86,36 @@ router.get('/proxy/hls', async (req, res) => {
 });
 
 // Proxy route for S3 videos to handle CORS (general video files)
-// TODO: Fix route pattern for video proxy
-// router.get("/proxy/video/:path(*)", async (req, res) => {
-//   // Implementation for video proxy
-// });
+router.get("/proxy/video", async (req, res) => {
+  try {
+    const fileUrl = req.query.url;
+
+    if (!fileUrl) {
+      return res.status(400).send('Missing url parameter');
+    }
+
+    const response = await fetch(fileUrl);
+    if (!response.ok) {
+      return res.status(response.status).send('Failed to fetch video file');
+    }
+
+    // Set appropriate headers for video streaming
+    const contentType = response.headers.get('content-type') || 'video/mp4';
+    res.set({
+      'Content-Type': contentType,
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Headers': 'Range, Content-Type',
+      'Cache-Control': 'public, max-age=31536000',
+      'Accept-Ranges': 'bytes'
+    });
+
+    response.body.pipe(res);
+  } catch (err) {
+    console.error('Video proxy error:', err);
+    res.status(500).send('Proxy error');
+  }
+});
 
 // API endpoint to get session configuration
 router.get("/api/session-config/:sessionId", async (req, res) => {

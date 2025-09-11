@@ -37,6 +37,10 @@ import newsRoutes from "./newsRoutes.js";
 import walletRoutes from "./walletRoutes.js";
 import courseChatRoutes from "./courseChatRoutes.js";
 import lessonChatRoutes from "./lessonChatRoutes.js";
+import adminRoleRoutes from "./adminRoleRoutes.js";
+import auditLogRoutes from "./auditLogRoutes.js";
+import adminSessionRoutes from "./adminSessionRoutes.js";
+import securityRoutes from "./securityRoutes.js";
 
 const router = express.Router();
 
@@ -90,5 +94,9 @@ router.use("/news", newsRoutes);
 router.use("/wallet", walletRoutes);
 router.use("/course-chat", courseChatRoutes);
 router.use("/lesson-chat", lessonChatRoutes);
+router.use("/roles", adminRoleRoutes);
+router.use("/admin-sessions", adminSessionRoutes);
+router.use("/security", securityRoutes);
+router.use("/audit-logs", auditLogRoutes);
 
 export default router;

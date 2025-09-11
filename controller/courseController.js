@@ -342,25 +342,30 @@ export const getCourseById = async (req, res) => {
     delete courseWithExtras.courseLanguages;
 
     // Add purchase status
-    // TODO: Implement when order_items table is available
     if (userId) {
-      const userPurchase = await Order.findOne({
-        where: {
-          userId,
-          status: 'paid'
-        },
-        include: [
-          {
-            model: OrderItem,
-            as: 'items',
-            where: {
-              itemType: 'course',
-              itemId: courseId
+      try {
+        const userPurchase = await Order.findOne({
+          where: {
+            userId,
+            status: 'paid'
+          },
+          include: [
+            {
+              model: OrderItem,
+              as: 'items',
+              where: {
+                itemType: 'course',
+                itemId: courseId
+              },
+              required: true
             }
-          }
-        ]
-      });
-      courseWithExtras.purchaseStatus = !!userPurchase;
+          ]
+        });
+        courseWithExtras.purchaseStatus = !!userPurchase;
+      } catch (error) {
+        console.error("Error checking purchase status:", error);
+        courseWithExtras.purchaseStatus = false;
+      }
     } else {
       courseWithExtras.purchaseStatus = false;
     }
@@ -414,22 +419,29 @@ export const createCourse = async (req, res) => {
       levelId,
       categoryId,
       type,
+      isPaid = false,
+      price,
+      discountEnabled = true,
+      isMonthlyPayment = false,
+      durationMinutes,
       liveStartDate,
       liveEndDate,
+      registrationOpen = true,
+      maxEnrollments,
+      registrationDeadline,
       thumbnailUrl,
       coverImage,
+      hasIntroVideo = false,
+      introVideoUrl,
       demoUrl,
       screenshots = [],
       hasCertificate = false,
-      certificateTemplateUrl,
-      techStack = [],
       features,
       prerequisites,
       whatYouGet,
       status = 'draft',
-      supportIncluded = false,
-      supportDuration,
-      supportEmail,
+      isPublished = false,
+      version = "1.0",
       featured = false
     } = req.body;
 
@@ -470,33 +482,46 @@ export const createCourse = async (req, res) => {
       shortDescription,
       levelId,
       categoryId,
-      createdBy: userId,
       type,
+      isPaid,
+      price: price ? parseFloat(price) : null,
+      discountEnabled,
+      isMonthlyPayment,
+      durationMinutes,
       liveStartDate: liveStartDate ? new Date(liveStartDate) : null,
       liveEndDate: liveEndDate ? new Date(liveEndDate) : null,
+      registrationOpen,
+      maxEnrollments,
+      registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null,
       thumbnailUrl,
       coverImage,
+      hasIntroVideo,
+      introVideoUrl,
       demoUrl,
       screenshots: Array.isArray(screenshots) ? screenshots : [],
       hasCertificate,
-      certificateTemplateUrl,
       features,
       prerequisites,
       whatYouGet,
       status,
-      supportIncluded,
-      supportDuration,
-      supportEmail,
+      isPublished,
+      publishedAt: status === 'active' && isPublished ? new Date() : null,
+      lastUpdated: new Date(),
+      version,
+      totalSections: 0,
+      totalLessons: 0,
+      totalEnrollments: 0,
+      totalRevenue: 0,
+      averageRating: 0,
+      totalRatings: 0,
       featured,
-      publishedAt: status === 'active' ? new Date() : null,
-      lastUpdated: new Date()
     };
 
     const course = await Course.create(courseData, { transaction });
 
     // Add tech stack if provided
-    if (techStack && techStack.length > 0) {
-      const techStackPromises = techStack.map(async (skillId) => {
+    if (req.body.techStack && req.body.techStack.length > 0) {
+      const techStackPromises = req.body.techStack.map(async (skillId) => {
         try {
           const skill = await Skill.findByPk(skillId);
           if (skill) {
@@ -512,9 +537,6 @@ export const createCourse = async (req, res) => {
       await Promise.all(techStackPromises);
     }
 
-    // Update course stats (will be updated when sections/lessons are added separately)
-    // await updateCourseStats(course.courseId, transaction);
-
     await transaction.commit();
 
     // Fetch the complete course
@@ -523,13 +545,6 @@ export const createCourse = async (req, res) => {
       include: [
         { model: Category, as: "category" },
         { model: CourseLevel, as: "level" },
-        { model: User, as: "instructors" },
-        {
-          model: Section,
-          as: "sections",
-          include: [{ model: Lesson, as: "lessons", order: [['order', 'ASC']] }],
-          order: [['order', 'ASC']]
-        },
         {
           model: CourseTechStack,
           as: "techStack",
@@ -570,54 +585,70 @@ export const updateCourse = async (req, res) => {
       shortDescription,
       levelId,
       categoryId,
+      type,
+      isPaid,
+      price,
+      discountEnabled,
+      isMonthlyPayment,
+      durationMinutes,
       liveStartDate,
       liveEndDate,
+      registrationOpen,
+      maxEnrollments,
+      registrationDeadline,
       thumbnailUrl,
       coverImage,
+      hasIntroVideo,
+      introVideoUrl,
       demoUrl,
       screenshots,
       hasCertificate,
-      certificateTemplateUrl,
-      techStack,
       features,
       prerequisites,
       whatYouGet,
       status,
-      supportIncluded,
-      supportDuration,
-      supportEmail,
+      isPublished,
+      version,
       featured
     } = req.body;
 
     // Update course data
     const updateData = {
-      ...(title && { title }),
-      ...(description && { description }),
+      ...(title !== undefined && { title }),
+      ...(description !== undefined && { description }),
       ...(shortDescription !== undefined && { shortDescription }),
-      ...(levelId && { levelId }),
-      ...(categoryId && { categoryId }),
+      ...(levelId !== undefined && { levelId }),
+      ...(categoryId !== undefined && { categoryId }),
+      ...(type !== undefined && { type }),
+      ...(isPaid !== undefined && { isPaid }),
+      ...(price !== undefined && { price: price ? parseFloat(price) : null }),
+      ...(discountEnabled !== undefined && { discountEnabled }),
+      ...(isMonthlyPayment !== undefined && { isMonthlyPayment }),
+      ...(durationMinutes !== undefined && { durationMinutes }),
       ...(liveStartDate !== undefined && { liveStartDate: liveStartDate ? new Date(liveStartDate) : null }),
       ...(liveEndDate !== undefined && { liveEndDate: liveEndDate ? new Date(liveEndDate) : null }),
+      ...(registrationOpen !== undefined && { registrationOpen }),
+      ...(maxEnrollments !== undefined && { maxEnrollments }),
+      ...(registrationDeadline !== undefined && { registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : null }),
       ...(thumbnailUrl !== undefined && { thumbnailUrl }),
       ...(coverImage !== undefined && { coverImage }),
+      ...(hasIntroVideo !== undefined && { hasIntroVideo }),
+      ...(introVideoUrl !== undefined && { introVideoUrl }),
       ...(demoUrl !== undefined && { demoUrl }),
       ...(screenshots !== undefined && { screenshots: Array.isArray(screenshots) ? screenshots : [] }),
       ...(hasCertificate !== undefined && { hasCertificate }),
-      ...(certificateTemplateUrl !== undefined && { certificateTemplateUrl }),
-      ...(techStack !== undefined && { techStack: Array.isArray(techStack) ? techStack : [] }),
       ...(features !== undefined && { features }),
       ...(prerequisites !== undefined && { prerequisites }),
       ...(whatYouGet !== undefined && { whatYouGet }),
-      ...(status && { status }),
-      ...(supportIncluded !== undefined && { supportIncluded }),
-      ...(supportDuration !== undefined && { supportDuration }),
-      ...(supportEmail !== undefined && { supportEmail }),
+      ...(status !== undefined && { status }),
+      ...(isPublished !== undefined && { isPublished }),
+      ...(version !== undefined && { version }),
       ...(featured !== undefined && { featured }),
       lastUpdated: new Date()
     };
 
-    // Set publishedAt if status changes to active
-    if (status === 'active' && course.status !== 'active') {
+    // Set publishedAt if status changes to active and isPublished is true
+    if (status === 'active' && isPublished === true && course.status !== 'active') {
       updateData.publishedAt = new Date();
     }
 
@@ -627,7 +658,6 @@ export const updateCourse = async (req, res) => {
     });
 
     // Update course stats (will be updated when sections/lessons are managed separately)
-    // await updateCourseStats(courseId, transaction);
     await updateCourseStats(courseId, transaction);
 
     await transaction.commit();
@@ -638,13 +668,17 @@ export const updateCourse = async (req, res) => {
       include: [
         { model: Category, as: "category" },
         { model: CourseLevel, as: "level" },
-        { model: User, as: "instructors" },
         {
-          model: Section,
-          as: "sections",
-          include: [{ model: Lesson, as: "lessons", order: [['order', 'ASC']] }],
-          order: [['order', 'ASC']]
-        }
+          model: CourseTechStack,
+          as: "techStack",
+          include: [
+            {
+              model: Skill,
+              as: "skill",
+              attributes: ["skillId", "skillName"],
+            },
+          ],
+        },
       ]
     });
 
@@ -782,25 +816,30 @@ export const getAllCourses = async (req, res) => {
 
     // Get purchase status for each course if user is authenticated
     let userPurchases = [];
-    // TODO: Implement when order_items table is available
     if (userId) {
-      const userOrders = await Order.findAll({
-        where: {
-          userId,
-          status: 'paid'
-        },
-        include: [
-          {
-            model: OrderItem,
-            as: 'items',
-            where: {
-              itemType: 'course',
-              itemId: { [Op.in]: courses.map(course => course.courseId) }
-            },
-          }
-        ]
-      });
-      userPurchases = userOrders.flatMap(order => order.items.map(item => item.itemId));
+      try {
+        const userOrders = await Order.findAll({
+          where: {
+            userId,
+            status: 'paid'
+          },
+          include: [
+            {
+              model: OrderItem,
+              as: 'items',
+              where: {
+                itemType: 'course',
+                itemId: { [Op.in]: courses.map(course => course.courseId) }
+              },
+              required: true
+            }
+          ]
+        });
+        userPurchases = userOrders.flatMap(order => order.items.map(item => item.itemId));
+      } catch (error) {
+        console.error("Error fetching user purchases:", error);
+        userPurchases = [];
+      }
     }
     // Add purchase status to each course
     const coursesWithPurchaseStatus = courses.map(course => {
@@ -2536,29 +2575,30 @@ export const createCourseReview = async (req, res) => {
     }
 
     // Check if user has purchased the course
-    // TODO: Implement when order_items table is available
-    const userPurchase = await Order.findOne({
-      where: {
-        userId,
-        status: 'paid'
-      },
-      include: [{
-        model: OrderItem,
-        as: 'items',
+    try {
+      const userPurchase = await Order.findOne({
         where: {
-          itemType: 'course',
-          itemId: courseId
+          userId,
+          status: 'paid'
         },
-        required: true
-      }]
-    });
+        include: [{
+          model: OrderItem,
+          as: 'items',
+          where: {
+            itemType: 'course',
+            itemId: courseId
+          },
+          required: true
+        }]
+      });
 
-    if (!userPurchase) {
-      return sendForbidden(res, "You can only review courses you have purchased");
+      if (!userPurchase) {
+        return sendForbidden(res, "You can only review courses you have purchased");
+      }
+    } catch (error) {
+      console.error("Error checking purchase status:", error);
+      return sendForbidden(res, "Unable to verify purchase status. Please try again later.");
     }
-
-    // For now, allow all authenticated users to review courses
-    console.log("Note: Purchase verification temporarily disabled - allowing all authenticated users to review");
 
     // Check if user already reviewed this course
     const existingReview = await CourseRating.findOne({

@@ -89,27 +89,38 @@ Exam.belongsTo(CourseLevel, {
 });
 
 // LiveSession associations
-// LiveSession.hasMany(LiveSessionParticipant, {
-//   foreignKey: "liveSessionId",
-//   as: "liveSessionParticipants",
-//   onDelete: "CASCADE",
-// });
+LiveSession.hasMany(LiveSessionParticipant, {
+  foreignKey: "sessionId",
+  as: "participants",
+  onDelete: "CASCADE",
+});
 
-// LiveSessionParticipant.belongsTo(LiveSession, {
-//   foreignKey: "sessionId",
-//   as: "liveSession",
-// });
+LiveSessionParticipant.belongsTo(LiveSession, {
+  foreignKey: "sessionId",
+  as: "session",
+});
 
-// LiveSession.hasMany(RaisedHand, {
-//   foreignKey: "liveSessionId",
-//   as: "raisedHands",
-//   onDelete: "CASCADE",
-// });
+// LiveSessionParticipant to User
+LiveSessionParticipant.belongsTo(User, {
+  foreignKey: "userId",
+  as: "user",
+});
 
-// RaisedHand.belongsTo(LiveSession, {
-//   foreignKey: "liveSessionId",
-//   as: "session",
-// });
+User.hasMany(LiveSessionParticipant, {
+  foreignKey: "userId",
+  as: "liveSessionParticipations",
+});
+
+LiveSession.hasMany(RaisedHand, {
+  foreignKey: "sessionId",
+  as: "sessionRaisedHands",
+  onDelete: "CASCADE",
+});
+
+RaisedHand.belongsTo(LiveSession, {
+  foreignKey: "sessionId",
+  as: "raisedHandSession",
+});
 
 // Setup functions
 // export const setupGoalSkillAssociations = () => {
@@ -209,9 +220,11 @@ Exam.belongsTo(CourseLevel, {
 //   });
 // };
 
-// export const setupNewsAssociations = () => {
-//   // News associations would go here if needed
-// };
+// News associations are handled in contentAssociations.js
+
+export const setupNewsAssociations = () => {
+  // News associations are set up above
+};
 
 // export const setupNotificationAssociations = () => {
 //   // Notification associations would go here if needed

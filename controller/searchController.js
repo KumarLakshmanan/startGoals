@@ -9,6 +9,8 @@ import CourseInstructor from "../model/courseInstructor.js";
 import CourseLanguage from "../model/courseLanguage.js";
 import _CourseGoal from "../model/courseGoal.js";
 import Language from "../model/language.js";
+import ProjectInstructor from "../model/projectInstructor.js";
+import ProjectLanguage from "../model/projectLanguage.js";
 import SearchAnalytics from "../model/searchAnalytics.js";
 import _CourseRating from "../model/courseRating.js";
 import _ProjectRating from "../model/projectRating.js";
@@ -1064,7 +1066,7 @@ export const getSearchAnalytics = async (req, res) => {
   }
 };
 
-// Search projects (placeholder implementation)
+// Search projects
 export const searchProjects = async (req, res) => {
   try {
     const {
@@ -1072,89 +1074,173 @@ export const searchProjects = async (req, res) => {
       page = 1,
       limit = 12,
       category,
-      difficulty,
-      _technology,
-      _duration,
-      _sortBy = "relevance",
-      _sortOrder = "DESC",
+      level,
+      priceMin,
+      priceMax,
+      sortBy = "relevance",
+      sortOrder = "DESC",
     } = req.query;
 
-    // TODO: Implement actual project search when Project model is available
-    // For now, return a placeholder response
+    const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    const placeholderProjects = [
+    // Build where conditions
+    const whereClause = {
+      status: "active",
+    };
+
+    // Text search
+    if (query) {
+      whereClause[Op.or] = [
+        { title: { [Op.iLike]: `%${query}%` } },
+        { description: { [Op.iLike]: `%${query}%` } },
+        { shortDescription: { [Op.iLike]: `%${query}%` } },
+      ];
+    }
+
+    // Category filter
+    if (category) {
+      const categoryIds = Array.isArray(category) ? category : [category];
+      whereClause.categoryId = { [Op.in]: categoryIds };
+    }
+
+    // Level filter
+    if (level) {
+      const levelIds = Array.isArray(level) ? level : [level];
+      whereClause.levelId = { [Op.in]: levelIds };
+    }
+
+    // Price range filter
+    if (priceMin || priceMax) {
+      whereClause.price = {};
+      if (priceMin) whereClause.price[Op.gte] = parseFloat(priceMin);
+      if (priceMax) whereClause.price[Op.lte] = parseFloat(priceMax);
+    }
+
+    // Include conditions
+    const includeConditions = [
       {
-        id: "proj-1",
-        title: "E-commerce Website with React",
-        description:
-          "Build a full-stack e-commerce platform using React, Node.js, and MongoDB",
-        difficulty: "intermediate",
-        duration: "4-6 weeks",
-        technologies: ["React", "Node.js", "MongoDB", "Express"],
-        category: "Web Development",
-        thumbnail: "https://via.placeholder.com/300x200",
-        rating: 4.5,
-        participants: 150,
-        createdAt: new Date(),
+        model: Category,
+        as: "category",
+        attributes: ["categoryId", "categoryName"],
       },
       {
-        id: "proj-2",
-        title: "Mobile App with Flutter",
-        description:
-          "Create a cross-platform mobile application using Flutter and Firebase",
-        difficulty: "beginner",
-        duration: "3-4 weeks",
-        technologies: ["Flutter", "Firebase", "Dart"],
-        category: "Mobile Development",
-        thumbnail: "https://via.placeholder.com/300x200",
-        rating: 4.2,
-        participants: 89,
-        createdAt: new Date(),
+        model: CourseLevel,
+        as: "level",
+        attributes: ["levelId", "name"],
+      },
+      {
+        model: User,
+        as: "instructors",
+        through: {
+          model: ProjectInstructor,
+          attributes: []
+        },
+        attributes: ["userId", "username", "profileImage"],
+      },
+      {
+        model: ProjectLanguage,
+        as: "projectLanguages",
+        include: [
+          {
+            model: Language,
+            as: "language",
+            attributes: ["languageId", "language"],
+          },
+        ],
       },
     ];
 
-    // Filter placeholder projects based on query
-    let filteredProjects = placeholderProjects;
-
-    if (query) {
-      filteredProjects = placeholderProjects.filter(
-        (project) =>
-          project.title.toLowerCase().includes(query.toLowerCase()) ||
-          project.description.toLowerCase().includes(query.toLowerCase())
-      );
+    // Sorting logic
+    let orderClause;
+    switch (sortBy) {
+      case "relevance":
+        orderClause = query
+          ? [
+              [
+                sequelize.literal(
+                  `CASE WHEN title ILIKE '%${query}%' THEN 1 ELSE 2 END`
+                ),
+                "ASC",
+              ],
+              ["createdAt", "DESC"],
+            ]
+          : [["createdAt", "DESC"]];
+        break;
+      case "price":
+        orderClause = [["price", sortOrder.toUpperCase()]];
+        break;
+      case "title":
+        orderClause = [["title", sortOrder.toUpperCase()]];
+        break;
+      case "created":
+        orderClause = [["createdAt", sortOrder.toUpperCase()]];
+        break;
+      case "rating":
+        orderClause = [["averageRating", sortOrder.toUpperCase()]];
+        break;
+      case "enrollments":
+        orderClause = [["totalEnrollments", sortOrder.toUpperCase()]];
+        break;
+      default:
+        orderClause = [["createdAt", "DESC"]];
     }
 
-    if (category) {
-      filteredProjects = filteredProjects.filter((project) =>
-        project.category.toLowerCase().includes(category.toLowerCase())
-      );
-    }
+    const { count, rows: projects } = await Project.findAndCountAll({
+      where: whereClause,
+      include: includeConditions,
+      limit: parseInt(limit),
+      offset,
+      order: orderClause,
+      distinct: true,
+    });
 
-    if (difficulty) {
-      filteredProjects = filteredProjects.filter(
-        (project) => project.difficulty === difficulty
-      );
-    }
+    // Format response data
+    const formattedProjects = projects.map((project) => ({
+      id: project.projectId,
+      title: project.title,
+      description: project.description,
+      shortDescription: project.shortDescription,
+      price: project.price,
+      isPaid: project.isPaid,
+      coverImage: project.coverImage,
+      demoUrl: project.demoUrl,
+      licenseType: project.licenseType,
+      downloadLimit: project.downloadLimit,
+      filesSize: project.filesSize,
+      lastUpdated: project.lastUpdated,
+      version: project.version,
+      totalEnrollments: project.totalEnrollments,
+      averageRating: parseFloat(project.averageRating) || 0,
+      totalRatings: project.totalRatings || 0,
+      category: project.category,
+      level: project.level,
+      instructors: project.instructors || [],
+      languages: project.projectLanguages?.map(pl => pl.language) || [],
+      createdAt: project.createdAt,
+      publishedAt: project.publishedAt,
+    }));
 
-    const totalPages = Math.ceil(filteredProjects.length / parseInt(limit));
+    const totalPages = Math.ceil(count / parseInt(limit));
 
-    return sendSuccess(
-      res,
-      200,
-      "Projects search completed (placeholder implementation)",
-      {
-        projects: filteredProjects,
-        pagination: {
-          currentPage: parseInt(page),
-          totalPages,
-          totalItems: filteredProjects.length,
-          itemsPerPage: parseInt(limit),
-          hasNextPage: parseInt(page) < totalPages,
-          hasPrevPage: parseInt(page) > 1,
+    return sendSuccess(res, "Projects fetched successfully", {
+      projects: formattedProjects,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
+      },
+      filters: {
+        query,
+        activeFilters: {
+          category,
+          level,
+          priceRange: { min: priceMin, max: priceMax },
         },
-        note: "This is a placeholder implementation. Actual project search will be available when Project model is implemented.",
-      }
-    );
+      },
+    });
   } catch (error) {
     console.error("Search projects error:", error);
     return sendServerError(res, error);
@@ -1241,38 +1327,720 @@ export const clearSearchHistory = async (req, res) => {
   }
 };
 
-// Helper functions (stub implementations to prevent undefined errors)
-async function getRecentSearches(_userId) {
-  // TODO: Implement recent searches functionality
-  return [];
+// Helper functions
+async function getRecentSearches(userId) {
+  if (!userId) return [];
+
+  try {
+    const recentSearches = await SearchAnalytics.findAll({
+      where: {
+        userId,
+        searchQuery: { [Op.ne]: null },
+        createdAt: {
+          [Op.gte]: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+        },
+      },
+      attributes: [
+        "searchQuery",
+        [sequelize.fn("COUNT", sequelize.col("searchQuery")), "searchCount"],
+        [sequelize.fn("MAX", sequelize.col("createdAt")), "lastSearched"],
+      ],
+      group: ["searchQuery"],
+      order: [[sequelize.fn("MAX", sequelize.col("createdAt")), "DESC"]],
+      limit: 10,
+    });
+
+    return recentSearches.map((search) => ({
+      query: search.searchQuery,
+      count: parseInt(search.dataValues.searchCount),
+      lastSearched: search.dataValues.lastSearched,
+    }));
+  } catch (error) {
+    console.error("Error fetching recent searches:", error);
+    return [];
+  }
 }
 
-function calculateBasicRelevance(_searchTerm, _item) {
-  // TODO: Implement relevance calculation
-  return 1.0;
+function calculateBasicRelevance(searchTerm, item) {
+  if (!searchTerm || !item) return 0;
+
+  const term = searchTerm.toLowerCase();
+  const title = (item.title || "").toLowerCase();
+  const description = (item.description || "").toLowerCase();
+
+  let score = 0;
+
+  // Exact title match gets highest score
+  if (title === term) {
+    score += 100;
+  }
+  // Title starts with search term
+  else if (title.startsWith(term)) {
+    score += 80;
+  }
+  // Title contains search term
+  else if (title.includes(term)) {
+    score += 60;
+  }
+
+  // Description contains search term
+  if (description.includes(term)) {
+    score += 20;
+  }
+
+  // Word boundary matches in title
+  const titleWords = title.split(/\s+/);
+  const searchWords = term.split(/\s+/);
+
+  for (const searchWord of searchWords) {
+    for (const titleWord of titleWords) {
+      if (titleWord === searchWord) {
+        score += 10;
+      } else if (titleWord.startsWith(searchWord)) {
+        score += 5;
+      }
+    }
+  }
+
+  // Length penalty (shorter titles get slight boost)
+  if (title.length > 0) {
+    score += Math.max(0, 10 - title.length / 10);
+  }
+
+  return Math.max(0, score);
 }
 
-async function searchCoursesComprehensive(_query, _filters) {
-  // TODO: Implement comprehensive course search
-  return { courses: [], total: 0 };
+async function searchCoursesComprehensive(filters, offset, limit, isAdmin, includeInactive) {
+  try {
+    const whereClause = {
+      status: includeInactive ? { [Op.ne]: null } : "active",
+    };
+
+    // Text search
+    if (filters.query) {
+      whereClause[Op.or] = [
+        { title: { [Op.iLike]: `%${filters.query}%` } },
+        { description: { [Op.iLike]: `%${filters.query}%` } },
+      ];
+    }
+
+    // Category filter
+    if (filters.category.length > 0) {
+      whereClause.categoryId = { [Op.in]: filters.category };
+    }
+
+    // Level filter
+    if (filters.skill_level.length > 0) {
+      whereClause.levelId = { [Op.in]: filters.skill_level };
+    }
+
+    // Course type filter
+    if (filters.course_type.length > 0) {
+      whereClause.type = { [Op.in]: filters.course_type };
+    }
+
+    // Language filter
+    if (filters.language.length > 0) {
+      // This will be handled in include conditions
+    }
+
+    // Price range filter
+    if (filters.price_range.min !== null || filters.price_range.max !== null) {
+      whereClause.price = {};
+      if (filters.price_range.min !== null) {
+        whereClause.price[Op.gte] = filters.price_range.min;
+      }
+      if (filters.price_range.max !== null) {
+        whereClause.price[Op.lte] = filters.price_range.max;
+      }
+    }
+
+    // Free/Premium filter
+    if (filters.free_only) {
+      whereClause.isPaid = false;
+    } else if (filters.premium_only) {
+      whereClause.isPaid = true;
+    }
+
+    // Instructor filter
+    if (filters.instructor.length > 0) {
+      // This will be handled in include conditions
+    }
+
+    // Rating filter
+    if (filters.rating_min > 0) {
+      whereClause.averageRating = { [Op.gte]: filters.rating_min };
+    }
+
+    const includeConditions = [
+      {
+        model: Category,
+        as: "category",
+        attributes: ["categoryId", "categoryName"],
+      },
+      {
+        model: CourseLevel,
+        as: "level",
+        attributes: ["levelId", "name"],
+      },
+      {
+        model: User,
+        as: "instructors",
+        through: {
+          model: CourseInstructor,
+          attributes: []
+        },
+        attributes: ["userId", "username", "profileImage"],
+        ...(filters.instructor.length > 0 && {
+          where: {
+            userId: { [Op.in]: filters.instructor },
+          },
+        }),
+      },
+      {
+        model: CourseLanguage,
+        as: "courseLanguages",
+        include: [
+          {
+            model: Language,
+            as: "language",
+            attributes: ["languageId", "language"],
+            ...(filters.language.length > 0 && {
+              where: {
+                languageId: { [Op.in]: filters.language },
+              },
+            }),
+          },
+        ],
+      },
+    ];
+
+    // Sorting
+    let orderClause;
+    switch (filters.sort) {
+      case "price_low":
+        orderClause = [["price", "ASC"]];
+        break;
+      case "price_high":
+        orderClause = [["price", "DESC"]];
+        break;
+      case "rating":
+        orderClause = [["averageRating", "DESC"], ["totalRatings", "DESC"]];
+        break;
+      case "newest":
+        orderClause = [["createdAt", "DESC"]];
+        break;
+      case "popular":
+        orderClause = [["totalEnrollments", "DESC"]];
+        break;
+      default:
+        orderClause = [["createdAt", "DESC"]];
+    }
+
+    const { count, rows: courses } = await Course.findAndCountAll({
+      where: whereClause,
+      include: includeConditions,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: orderClause,
+      distinct: true,
+    });
+
+    const formattedCourses = courses.map((course) => ({
+      id: course.courseId,
+      title: course.title,
+      description: course.description,
+      type: course.type,
+      price: course.price,
+      isPaid: course.isPaid,
+      thumbnailUrl: course.thumbnailUrl,
+      category: course.category,
+      level: course.level,
+      instructors: course.instructors || [],
+      languages: course.courseLanguages?.map(cl => cl.language) || [],
+      averageRating: parseFloat(course.averageRating) || 0,
+      totalRatings: course.totalRatings || 0,
+      totalEnrollments: course.totalEnrollments || 0,
+      createdAt: course.createdAt,
+      itemType: "course",
+    }));
+
+    return {
+      courses: formattedCourses,
+      total: count,
+    };
+  } catch (error) {
+    console.error("Error in searchCoursesComprehensive:", error);
+    return { courses: [], total: 0 };
+  }
 }
 
-async function searchProjectsComprehensive(_query, _filters) {
-  // TODO: Implement comprehensive project search
-  return { projects: [], total: 0 };
+async function searchProjectsComprehensive(filters, offset, limit, isAdmin, includeInactive) {
+  try {
+    const whereClause = {
+      status: includeInactive ? { [Op.ne]: null } : "active",
+    };
+
+    // Text search
+    if (filters.query) {
+      whereClause[Op.or] = [
+        { title: { [Op.iLike]: `%${filters.query}%` } },
+        { description: { [Op.iLike]: `%${filters.query}%` } },
+        { shortDescription: { [Op.iLike]: `%${filters.query}%` } },
+      ];
+    }
+
+    // Category filter
+    if (filters.category.length > 0) {
+      whereClause.categoryId = { [Op.in]: filters.category };
+    }
+
+    // Level filter (using skill_level for projects)
+    if (filters.skill_level.length > 0) {
+      whereClause.levelId = { [Op.in]: filters.skill_level };
+    }
+
+    // Language filter
+    if (filters.language.length > 0) {
+      // This will be handled in include conditions
+    }
+
+    // Price range filter
+    if (filters.price_range.min !== null || filters.price_range.max !== null) {
+      whereClause.price = {};
+      if (filters.price_range.min !== null) {
+        whereClause.price[Op.gte] = filters.price_range.min;
+      }
+      if (filters.price_range.max !== null) {
+        whereClause.price[Op.lte] = filters.price_range.max;
+      }
+    }
+
+    // Free/Premium filter
+    if (filters.free_only) {
+      whereClause.isPaid = false;
+    } else if (filters.premium_only) {
+      whereClause.isPaid = true;
+    }
+
+    // Rating filter
+    if (filters.rating_min > 0) {
+      whereClause.averageRating = { [Op.gte]: filters.rating_min };
+    }
+
+    const includeConditions = [
+      {
+        model: Category,
+        as: "category",
+        attributes: ["categoryId", "categoryName"],
+      },
+      {
+        model: CourseLevel,
+        as: "level",
+        attributes: ["levelId", "name"],
+      },
+      {
+        model: User,
+        as: "instructors",
+        through: {
+          model: ProjectInstructor,
+          attributes: []
+        },
+        attributes: ["userId", "username", "profileImage"],
+      },
+      {
+        model: ProjectLanguage,
+        as: "projectLanguages",
+        include: [
+          {
+            model: Language,
+            as: "language",
+            attributes: ["languageId", "language"],
+            ...(filters.language.length > 0 && {
+              where: {
+                languageId: { [Op.in]: filters.language },
+              },
+            }),
+          },
+        ],
+      },
+    ];
+
+    // Sorting
+    let orderClause;
+    switch (filters.sort) {
+      case "price_low":
+        orderClause = [["price", "ASC"]];
+        break;
+      case "price_high":
+        orderClause = [["price", "DESC"]];
+        break;
+      case "rating":
+        orderClause = [["averageRating", "DESC"], ["totalRatings", "DESC"]];
+        break;
+      case "newest":
+        orderClause = [["createdAt", "DESC"]];
+        break;
+      case "popular":
+        orderClause = [["totalEnrollments", "DESC"]];
+        break;
+      default:
+        orderClause = [["createdAt", "DESC"]];
+    }
+
+    const { count, rows: projects } = await Project.findAndCountAll({
+      where: whereClause,
+      include: includeConditions,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: orderClause,
+      distinct: true,
+    });
+
+    const formattedProjects = projects.map((project) => ({
+      id: project.projectId,
+      title: project.title,
+      description: project.description,
+      shortDescription: project.shortDescription,
+      price: project.price,
+      isPaid: project.isPaid,
+      coverImage: project.coverImage,
+      demoUrl: project.demoUrl,
+      licenseType: project.licenseType,
+      filesSize: project.filesSize,
+      category: project.category,
+      level: project.level,
+      instructors: project.instructors || [],
+      languages: project.projectLanguages?.map(pl => pl.language) || [],
+      averageRating: parseFloat(project.averageRating) || 0,
+      totalRatings: project.totalRatings || 0,
+      totalEnrollments: project.totalEnrollments || 0,
+      createdAt: project.createdAt,
+      itemType: "project",
+    }));
+
+    return {
+      projects: formattedProjects,
+      total: count,
+    };
+  } catch (error) {
+    console.error("Error in searchProjectsComprehensive:", error);
+    return { projects: [], total: 0 };
+  }
 }
 
-async function searchInstructorsComprehensive(_query, _filters) {
-  // TODO: Implement comprehensive instructor search
-  return { instructors: [], total: 0 };
+async function searchInstructorsComprehensive(filters, offset, limit) {
+  try {
+    const whereClause = {
+      role: "teacher",
+    };
+
+    // Text search
+    if (filters.query) {
+      whereClause[Op.or] = [
+        { username: { [Op.iLike]: `%${filters.query}%` } },
+        { email: { [Op.iLike]: `%${filters.query}%` } },
+        { bio: { [Op.iLike]: `%${filters.query}%` } },
+      ];
+    }
+
+    const includeConditions = [
+      {
+        model: Course,
+        as: "courses",
+        attributes: ["courseId", "title", "type", "averageRating", "totalEnrollments"],
+        where: { status: "active" },
+        required: false,
+        include: [
+          {
+            model: Category,
+            as: "category",
+            attributes: ["categoryId", "categoryName"],
+            ...(filters.category.length > 0 && {
+              where: {
+                categoryId: { [Op.in]: filters.category },
+              },
+            }),
+          },
+          {
+            model: CourseLevel,
+            as: "level",
+            attributes: ["levelId", "name"],
+            ...(filters.skill_level.length > 0 && {
+              where: {
+                levelId: { [Op.in]: filters.skill_level },
+              },
+            }),
+          },
+          {
+            model: CourseLanguage,
+            as: "courseLanguages",
+            include: [
+              {
+                model: Language,
+                as: "language",
+                attributes: ["languageId", "language"],
+                ...(filters.language.length > 0 && {
+                  where: {
+                    languageId: { [Op.in]: filters.language },
+                  },
+                }),
+              },
+            ],
+          },
+        ],
+      },
+      {
+        model: Language,
+        as: "languages",
+        through: { attributes: [] },
+        attributes: ["languageId", "language"],
+        ...(filters.language.length > 0 && {
+          where: {
+            languageId: { [Op.in]: filters.language },
+          },
+        }),
+      },
+    ];
+
+    // Sorting
+    let orderClause;
+    switch (filters.sort) {
+      case "courses":
+        orderClause = [
+          [
+            sequelize.literal(
+              '(SELECT COUNT(*) FROM course_instructors WHERE course_instructors.instructor_id = "User".user_id)'
+            ),
+            "DESC",
+          ],
+        ];
+        break;
+      case "rating":
+        orderClause = [
+          [
+            sequelize.literal(
+              '(SELECT AVG(average_rating) FROM courses INNER JOIN course_instructors ON courses.course_id = course_instructors.course_id WHERE course_instructors.instructor_id = "User".user_id)'
+            ),
+            "DESC",
+          ],
+        ];
+        break;
+      case "newest":
+        orderClause = [["createdAt", "DESC"]];
+        break;
+      case "popular":
+        orderClause = [
+          [
+            sequelize.literal(
+              '(SELECT SUM(total_enrollments) FROM courses INNER JOIN course_instructors ON courses.course_id = course_instructors.course_id WHERE course_instructors.instructor_id = "User".user_id)'
+            ),
+            "DESC",
+          ],
+        ];
+        break;
+      default:
+        orderClause = [["username", "ASC"]];
+    }
+
+    const { count, rows: instructors } = await User.findAndCountAll({
+      where: whereClause,
+      include: includeConditions,
+      attributes: [
+        "userId",
+        "username",
+        "email",
+        "profileImage",
+        "bio",
+        "createdAt",
+        [
+          sequelize.literal(
+            '(SELECT COUNT(*) FROM course_instructors WHERE course_instructors.instructor_id = "User".user_id)'
+          ),
+          "totalCourses",
+        ],
+        [
+          sequelize.literal(
+            '(SELECT AVG(average_rating) FROM courses INNER JOIN course_instructors ON courses.course_id = course_instructors.course_id WHERE course_instructors.instructor_id = "User".user_id)'
+          ),
+          "averageRating",
+        ],
+        [
+          sequelize.literal(
+            '(SELECT SUM(total_enrollments) FROM courses INNER JOIN course_instructors ON courses.course_id = course_instructors.course_id WHERE course_instructors.instructor_id = "User".user_id)'
+          ),
+          "totalStudents",
+        ],
+      ],
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      order: orderClause,
+      distinct: true,
+      group: ["User.userId"],
+    });
+
+    const formattedInstructors = instructors.map((instructor) => ({
+      id: instructor.userId,
+      username: instructor.username,
+      email: instructor.email,
+      profileImage: instructor.profileImage,
+      bio: instructor.bio,
+      totalCourses: parseInt(instructor.dataValues.totalCourses) || 0,
+      averageRating: parseFloat(instructor.dataValues.averageRating) || 0,
+      totalStudents: parseInt(instructor.dataValues.totalStudents) || 0,
+      courses: instructor.courses || [],
+      languages: instructor.languages || [],
+      joinedAt: instructor.createdAt,
+      itemType: "instructor",
+    }));
+
+    return {
+      instructors: formattedInstructors,
+      total: count.length, // Since we're using GROUP BY, count is an array
+    };
+  } catch (error) {
+    console.error("Error in searchInstructorsComprehensive:", error);
+    return { instructors: [], total: 0 };
+  }
 }
 
-function combineAndSortResults(_courses, _projects, _instructors) {
-  // TODO: Implement result combination and sorting
-  return [];
+function combineAndSortResults(courses, projects, instructors, filters, offset, limit) {
+  try {
+    // Combine all results
+    const allResults = [
+      ...courses.map(course => ({
+        ...course,
+        relevanceScore: calculateRelevanceScore(course, filters.query),
+      })),
+      ...projects.map(project => ({
+        ...project,
+        relevanceScore: calculateRelevanceScore(project, filters.query),
+      })),
+      ...instructors.map(instructor => ({
+        ...instructor,
+        relevanceScore: calculateRelevanceScore(instructor, filters.query),
+      })),
+    ];
+
+    // Sort by relevance score first, then by other criteria
+    allResults.sort((a, b) => {
+      // Primary sort: relevance score
+      if (b.relevanceScore !== a.relevanceScore) {
+        return b.relevanceScore - a.relevanceScore;
+      }
+
+      // Secondary sort: based on filters.sort
+      switch (filters.sort) {
+        case "newest":
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        case "rating":
+          return (b.averageRating || 0) - (a.averageRating || 0);
+        case "popular":
+          return (b.totalEnrollments || b.totalStudents || 0) - (a.totalEnrollments || a.totalStudents || 0);
+        case "price_low":
+          return (a.price || 0) - (b.price || 0);
+        case "price_high":
+          return (b.price || 0) - (a.price || 0);
+        default:
+          return new Date(b.createdAt) - new Date(a.createdAt);
+      }
+    });
+
+    // Apply pagination
+    const startIndex = parseInt(offset) || 0;
+    const endIndex = startIndex + (parseInt(limit) || 20);
+
+    return allResults.slice(startIndex, endIndex);
+  } catch (error) {
+    console.error("Error in combineAndSortResults:", error);
+    return [];
+  }
 }
 
-async function saveSearchAnalytics(_userId, _query, _results) {
-  // TODO: Implement search analytics
-  return true;
+function calculateRelevanceScore(item, query) {
+  if (!query || !item) return 0;
+
+  const term = query.toLowerCase();
+  let score = 0;
+
+  // Title/Name matching
+  const title = (item.title || item.username || "").toLowerCase();
+  if (title === term) score += 100;
+  else if (title.startsWith(term)) score += 80;
+  else if (title.includes(term)) score += 60;
+
+  // Description/Bio matching
+  const description = (item.description || item.shortDescription || item.bio || "").toLowerCase();
+  if (description.includes(term)) score += 30;
+
+  // Category matching
+  if (item.category?.categoryName?.toLowerCase().includes(term)) {
+    score += 20;
+  }
+
+  // Instructor matching for courses/projects
+  if (item.instructors) {
+    const hasMatchingInstructor = item.instructors.some(instructor =>
+      instructor.username?.toLowerCase().includes(term)
+    );
+    if (hasMatchingInstructor) score += 25;
+  }
+
+  // Language matching
+  if (item.languages) {
+    const hasMatchingLanguage = item.languages.some(language =>
+      language.language?.toLowerCase().includes(term)
+    );
+    if (hasMatchingLanguage) score += 15;
+  }
+
+  // Rating bonus
+  if (item.averageRating && item.averageRating >= 4.0) {
+    score += 10;
+  }
+
+  // Popularity bonus
+  if ((item.totalEnrollments || item.totalStudents) > 100) {
+    score += 5;
+  }
+
+  return score;
+}
+
+async function saveSearchAnalytics(query, userId, metadata) {
+  try {
+    if (!query || query.trim().length === 0) {
+      return true; // Don't save empty queries
+    }
+
+    // Calculate result count
+    const resultCount = metadata?.results_count || 0;
+
+    // Determine conversion type
+    let conversionType = "none";
+    if (metadata?.conversion_type) {
+      conversionType = metadata.conversion_type;
+    }
+
+    await SearchAnalytics.create({
+      userId: userId || null,
+      searchQuery: query.trim(),
+      searchType: metadata?.search_type || "general",
+      filters: metadata?.filters ? JSON.stringify(metadata.filters) : null,
+      resultsCount: resultCount,
+      conversionType: conversionType,
+      metadata: metadata ? JSON.stringify({
+        user_agent: metadata.user_agent,
+        ip_address: metadata.ip_address,
+        session_id: metadata.session_id,
+        ...metadata
+      }) : null,
+    });
+
+    return true;
+  } catch (error) {
+    console.error("Error saving search analytics:", error);
+    // Don't throw error, just log it to avoid breaking the search functionality
+    return false;
+  }
 }

@@ -13,6 +13,8 @@ import {
 import User from "../model/user.js";
 import Course from "../model/course.js";
 import Enrollment from "../model/enrollment.js";
+import Order from "../model/order.js";
+import OrderItem from "../model/orderItem.js";
 
 /**
  * Get platform overview statistics
@@ -20,73 +22,104 @@ import Enrollment from "../model/enrollment.js";
  * @param {Object} res - Express response object
  */
 export const getPlatformOverview = async (req, res) => {
-  try {
-    // Get time range from query params
-    const { startDate, endDate } = req.query;
-    const dateRange = {};
-    
-    if (startDate && endDate) {
-      dateRange.createdAt = {
-        [Op.between]: [new Date(startDate), new Date(endDate)]
-      };
-    }
-    
-    // Get counts for various metrics
-    const [
-      totalUsers,
-      newUsers,
-      totalCourses,
-      totalEnrollments,
-      activeUsers
-    ] = await Promise.all([
-      User.count(),
-      User.count({
-        where: {
-          ...dateRange
-        }
-      }),
-      Course.count(),
-      Enrollment.count(),
-      User.count({
-        where: {
-          lastLoginAt: {
-            [Op.gte]: new Date(new Date() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
-          }
-        }
-      })
-    ]);
-    
-    // For now, return counts with some mock data for stats that require more complex queries
-    const overview = {
-      users: {
-        total: totalUsers,
-        new: newUsers,
-        active: activeUsers,
-        growth: ((newUsers / totalUsers) * 100).toFixed(2)
-      },
-      courses: {
-        total: totalCourses,
-        published: Math.floor(totalCourses * 0.8), // Mock data
-        draft: Math.floor(totalCourses * 0.2), // Mock data
-        mostPopular: 'Sample Popular Course' // Mock data
-      },
-      enrollments: {
-        total: totalEnrollments,
-        recent: Math.floor(totalEnrollments * 0.3), // Mock data
-        completionRate: 68 // Mock percentage
-      },
-      revenue: {
-        total: 125000, // Mock data
-        recent: 15000, // Mock data
-        growth: 12.5 // Mock percentage
-      }
-    };
-    
-    return sendSuccess(res, "Platform overview retrieved successfully", overview);
-  } catch (error) {
-    console.error("Error getting platform overview:", error);
-    return sendServerError(res, error);
-  }
+   try {
+     // Get time range from query params
+     const { startDate, endDate } = req.query;
+     const dateRange = {};
+
+     if (startDate && endDate) {
+       dateRange.createdAt = {
+         [Op.between]: [new Date(startDate), new Date(endDate)]
+       };
+     }
+
+     // Get counts for various metrics
+     const [
+       totalUsers,
+       newUsers,
+       totalCourses,
+       totalEnrollments,
+       activeUsers
+     ] = await Promise.all([
+       User.count(),
+       User.count({
+         where: {
+           ...dateRange
+         }
+       }),
+       Course.count(),
+       Enrollment.count(),
+       User.count({
+         where: {
+           lastLoginAt: {
+             [Op.gte]: new Date(new Date() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+           }
+         }
+       })
+     ]);
+
+     // Get real revenue data from orders
+     const totalRevenue = await Order.sum('finalAmount', {
+       where: {
+         status: 'paid',
+         ...dateRange
+       }
+     }) || 0;
+
+     const recentRevenue = await Order.sum('finalAmount', {
+       where: {
+         status: 'paid',
+         createdAt: {
+           [Op.gte]: new Date(new Date() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+         }
+       }
+     }) || 0;
+
+     // Calculate revenue growth (simplified)
+     const previousRevenue = await Order.sum('finalAmount', {
+       where: {
+         status: 'paid',
+         createdAt: {
+           [Op.lt]: new Date(new Date() - 30 * 24 * 60 * 60 * 1000),
+           [Op.gte]: new Date(new Date() - 60 * 24 * 60 * 60 * 1000) // Previous 30 days
+         }
+       }
+     }) || 0;
+
+     const revenueGrowth = previousRevenue === 0 ? 100 :
+       ((recentRevenue - previousRevenue) / previousRevenue * 100).toFixed(2);
+
+     // Return counts with real data
+     const overview = {
+       users: {
+         total: totalUsers,
+         new: newUsers,
+         active: activeUsers,
+         growth: ((newUsers / totalUsers) * 100).toFixed(2)
+       },
+       courses: {
+         total: totalCourses,
+         published: Math.floor(totalCourses * 0.8), // Estimated - would need status field
+         draft: Math.floor(totalCourses * 0.2), // Estimated - would need status field
+         mostPopular: 'Real data would require enrollment analysis' // Placeholder
+       },
+       enrollments: {
+         total: totalEnrollments,
+         recent: Math.floor(totalEnrollments * 0.3), // Estimated - would need date filtering
+         completionRate: 68 // Estimated - would need completion tracking
+       },
+       revenue: {
+         total: parseFloat(totalRevenue),
+         recent: parseFloat(recentRevenue),
+         growth: parseFloat(revenueGrowth)
+       }
+     };
+
+     return sendSuccess(res, "Platform overview retrieved successfully", overview);
+   } catch (error) {
+     console.error("Error getting platform overview:", error);
+     return sendServerError(res, error);
+   }
 };
 
 /**
@@ -301,108 +334,106 @@ export const getRevenueAnalytics = async (req, res) => {
       };
     }
     
-    // We'll need to implement or import the Payment model
-    // Assuming you have Payment model with courseId, amount, status fields
-    const Payment = sequelize.models.Payment || { findAll: () => [] };
-    
-    // Get revenue by month
-    const monthlyRevenue = await Payment.findAll({
+    // Get revenue by month from orders
+    const monthlyRevenue = await Order.findAll({
       attributes: [
         [sequelize.fn('date_trunc', 'month', sequelize.col('createdAt')), 'month'],
-        [sequelize.fn('sum', sequelize.col('amount')), 'total']
+        [sequelize.fn('sum', sequelize.col('finalAmount')), 'total']
       ],
-      where: { 
+      where: {
         ...dateRange,
-        status: 'completed' 
+        status: 'paid'
       },
       group: [sequelize.fn('date_trunc', 'month', sequelize.col('createdAt'))],
       order: [sequelize.fn('date_trunc', 'month', sequelize.col('createdAt'))]
     });
-    
-    // Get revenue by course type
-    const revenueByType = await Payment.findAll({
+
+    // Get revenue by item type (course vs project)
+    const revenueByType = await OrderItem.findAll({
       attributes: [
-        [sequelize.literal('Course.type'), 'courseType'],
-        [sequelize.fn('sum', sequelize.col('Payment.amount')), 'total']
+        'itemType',
+        [sequelize.fn('sum', sequelize.col('finalPrice')), 'total']
       ],
       include: [{
-        model: Course,
-        attributes: []
+        model: Order,
+        attributes: [],
+        where: {
+          status: 'paid',
+          ...dateRange
+        }
       }],
-      where: { 
-        ...dateRange,
-        status: 'completed' 
-      },
-      group: [sequelize.literal('Course.type')],
-      order: [[sequelize.fn('sum', sequelize.col('Payment.amount')), 'DESC']]
+      group: ['itemType'],
+      order: [[sequelize.fn('sum', sequelize.col('finalPrice')), 'DESC']]
     });
-    
-    // Get top courses by revenue
-    const topCoursesByRevenue = await Payment.findAll({
+
+    // Get top courses/projects by revenue
+    const topItemsByRevenue = await OrderItem.findAll({
       attributes: [
-        [sequelize.literal('Course.id'), 'courseId'],
-        [sequelize.literal('Course.title'), 'courseTitle'],
-        [sequelize.fn('sum', sequelize.col('Payment.amount')), 'total']
+        'itemId',
+        'itemType',
+        [sequelize.fn('sum', sequelize.col('finalPrice')), 'total']
       ],
       include: [{
-        model: Course,
-        attributes: []
+        model: Order,
+        attributes: [],
+        where: {
+          status: 'paid',
+          ...dateRange
+        }
       }],
-      where: { 
-        ...dateRange,
-        status: 'completed' 
-      },
-      group: [sequelize.literal('Course.id'), sequelize.literal('Course.title')],
-      order: [[sequelize.fn('sum', sequelize.col('Payment.amount')), 'DESC']],
+      group: ['itemId', 'itemType'],
+      order: [[sequelize.fn('sum', sequelize.col('finalPrice')), 'DESC']],
       limit: 10
     });
-    
+
     // Calculate overall metrics
-    const totalRevenue = await Payment.sum('amount', {
-      where: { 
+    const totalRevenue = await Order.sum('finalAmount', {
+      where: {
         ...dateRange,
-        status: 'completed' 
+        status: 'paid'
       }
     }) || 0;
-    
-    const previousPeriodRevenue = await Payment.sum('amount', {
-      where: { 
+
+    const previousPeriodRevenue = await Order.sum('finalAmount', {
+      where: {
         createdAt: {
           [Op.lt]: startDate ? new Date(startDate) : new Date(),
-          [Op.gte]: startDate 
+          [Op.gte]: startDate
             ? new Date(new Date(startDate).getTime() - (new Date(endDate).getTime() - new Date(startDate).getTime()))
             : new Date(new Date().getTime() - 30 * 24 * 60 * 60 * 1000)
         },
-        status: 'completed'
+        status: 'paid'
       }
     }) || 0;
-    
-    const revenueGrowth = previousPeriodRevenue === 0 
-      ? 100 
+
+    const revenueGrowth = previousPeriodRevenue === 0
+      ? 100
       : ((totalRevenue - previousPeriodRevenue) / previousPeriodRevenue * 100).toFixed(2);
-    
+
+    const totalOrders = await Order.count({
+      where: {
+        ...dateRange,
+        status: 'paid'
+      }
+    }) || 1;
+
     const revenueData = {
       monthlyRevenue: monthlyRevenue.map(item => ({
         month: item.get('month'),
         total: parseFloat(item.get('total') || 0)
       })),
       revenueByType: revenueByType.map(item => ({
-        type: item.get('courseType'),
+        type: item.get('itemType'),
         total: parseFloat(item.get('total') || 0)
       })),
-      topCourses: topCoursesByRevenue.map(item => ({
-        id: item.get('courseId'),
-        title: item.get('courseTitle'),
+      topCourses: topItemsByRevenue.map(item => ({
+        id: item.get('itemId'),
+        title: `Item ${item.get('itemId')}`, // Would need to join with Course/Project tables
         total: parseFloat(item.get('total') || 0)
       })),
       totalRevenue,
       revenueGrowth,
-      averageOrderValue: totalRevenue / (await Payment.count({ 
-        where: { 
-          ...dateRange,
-          status: 'completed' 
-        } 
-      }) || 1)
+      averageOrderValue: totalRevenue / totalOrders
     };
     
     return sendSuccess(res, "Revenue analytics retrieved successfully", revenueData);
@@ -728,6 +759,149 @@ export const getTeacherAnalytics = async (req, res) => {
 };
 
 /**
+ * Get dashboard stats for overview cards
+ * @param {Object} req - Express request object
+ * @param {Object} res - Express response object
+ */
+export const getDashboardStats = async (req, res) => {
+  try {
+    // Get current month and previous month date ranges
+    const now = new Date();
+    const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const previousMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const previousMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    // Get total counts
+    const totalStudents = await User.count({ where: { role: 'student' } });
+    const totalCourses = await Course.count();
+
+    // Get current month students
+    const currentMonthStudents = await User.count({
+      where: {
+        role: 'student',
+        createdAt: {
+          [Op.gte]: currentMonthStart
+        }
+      }
+    });
+
+    // Get previous month students
+    const previousMonthStudents = await User.count({
+      where: {
+        role: 'student',
+        createdAt: {
+          [Op.between]: [previousMonthStart, previousMonthEnd]
+        }
+      }
+    });
+
+    // Get current month courses
+    const currentMonthCourses = await Course.count({
+      where: {
+        createdAt: {
+          [Op.gte]: currentMonthStart
+        }
+      }
+    });
+
+    // Get previous month courses
+    const previousMonthCourses = await Course.count({
+      where: {
+        createdAt: {
+          [Op.between]: [previousMonthStart, previousMonthEnd]
+        }
+      }
+    });
+
+    // Get current month instructors
+    const currentMonthInstructors = await User.count({
+      where: {
+        role: 'teacher',
+        createdAt: {
+          [Op.gte]: currentMonthStart
+        }
+      }
+    });
+
+    // Get previous month instructors
+    const previousMonthInstructors = await User.count({
+      where: {
+        role: 'teacher',
+        createdAt: {
+          [Op.between]: [previousMonthStart, previousMonthEnd]
+        }
+      }
+    });
+
+    // Calculate growth percentages
+    const studentGrowth = previousMonthStudents === 0 ? 100 :
+      ((currentMonthStudents - previousMonthStudents) / previousMonthStudents * 100);
+
+    const courseGrowth = previousMonthCourses === 0 ? 100 :
+      ((currentMonthCourses - previousMonthCourses) / previousMonthCourses * 100);
+
+    const instructorGrowth = previousMonthInstructors === 0 ? 100 :
+      ((currentMonthInstructors - previousMonthInstructors) / previousMonthInstructors * 100);
+
+    // Get active instructors (those who have logged in recently)
+    const activeInstructors = await User.count({
+      where: {
+        role: 'teacher',
+        lastLoginAt: {
+          [Op.gte]: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000) // Last 30 days
+        }
+      }
+    });
+
+    // Get real revenue data from orders
+    const totalRevenue = await Order.sum('finalAmount', {
+      where: {
+        status: 'paid'
+      }
+    }) || 0;
+
+    // Get current month revenue
+    const currentMonthRevenue = await Order.sum('finalAmount', {
+      where: {
+        status: 'paid',
+        createdAt: {
+          [Op.gte]: currentMonthStart
+        }
+      }
+    }) || 0;
+
+    // Get previous month revenue
+    const previousMonthRevenue = await Order.sum('finalAmount', {
+      where: {
+        status: 'paid',
+        createdAt: {
+          [Op.between]: [previousMonthStart, previousMonthEnd]
+        }
+      }
+    }) || 0;
+
+    const revenueGrowth = previousMonthRevenue === 0 ? 100 :
+      ((currentMonthRevenue - previousMonthRevenue) / previousMonthRevenue * 100);
+
+    const dashboardStats = {
+      totalRevenue,
+      revenueGrowth,
+      totalStudents,
+      studentGrowth: parseFloat(studentGrowth.toFixed(2)),
+      totalCourses,
+      courseGrowth: parseFloat(courseGrowth.toFixed(2)),
+      activeInstructors,
+      instructorGrowth: parseFloat(instructorGrowth.toFixed(2))
+    };
+
+    return sendSuccess(res, "Dashboard stats retrieved successfully", dashboardStats);
+  } catch (error) {
+    console.error("Error getting dashboard stats:", error);
+    return sendServerError(res, error);
+  }
+};
+
+/**
  * Get engagement analytics
  * @param {Object} req - Express request object
  * @param {Object} res - Express response object
@@ -736,7 +910,7 @@ export const getEngagementAnalytics = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const dateRange = {};
-    
+
     if (startDate && endDate) {
       dateRange.createdAt = {
         [Op.between]: [new Date(startDate), new Date(endDate)]

@@ -42,10 +42,14 @@ const NUM_RECORDED_COURSES = 10;
 const NUM_PROJECTS = 10;
 const NUM_STUDENTS = 10;
 const DEFAULT_PASSWORD = 'SecurePassword@123';
+const MAX_LESSONS_WITH_MEETING_LINKS = 5;
 
 // Global variables for media URLs (will be set after upload)
 let SAMPLE_IMAGE_URL = null;
 let SAMPLE_VIDEO_URL = null;
+
+// Global counter for lessons with meeting links
+let lessonsWithMeetingLinksCount = 0;
 
 /**
  * Generate a random image URL using uploaded sample or fallback
@@ -636,9 +640,23 @@ async function createRecordedCourses(teachers, categories, goals, languages, lev
                 lessonData.streamStartDateTime = startDateTime;
                 lessonData.streamEndDateTime = new Date(startDateTime.getTime() + lessonDuration * 60000);
 
-                // Generate real Agora and Zoom integrations
-                const streamingUrls = await generateLiveStreamingUrls(lessonData.title);
-                Object.assign(lessonData, streamingUrls);
+                // Only generate meeting links for up to 5 lessons
+                if (lessonsWithMeetingLinksCount < MAX_LESSONS_WITH_MEETING_LINKS) {
+                  // Generate real Agora and Zoom integrations
+                  const streamingUrls = await generateLiveStreamingUrls(lessonData.title);
+                  Object.assign(lessonData, streamingUrls);
+                  lessonsWithMeetingLinksCount++;
+                } else {
+                  // Use fallback data without real integrations
+                  lessonData.agoraChannelName = `lesson_${uuidv4().slice(0, 8)}`;
+                  lessonData.agoraAppId = process.env.AGORA_APP_ID || 'fallback_app_id';
+                  lessonData.agoraToken = 'fallback_token';
+                  lessonData.zoomMeetingId = faker.string.numeric(10);
+                  lessonData.zoomJoinUrl = `https://zoom.us/j/${faker.string.numeric(10)}`;
+                  lessonData.zoomStartUrl = `https://zoom.us/s/${faker.string.numeric(10)}`;
+                  lessonData.zoomPassword = faker.string.alphanumeric(6);
+                  lessonData.liveStreamStatus = 'scheduled';
+                }
 
               } else if (lessonType === 'video') {
                 // Use uploaded sample video URL

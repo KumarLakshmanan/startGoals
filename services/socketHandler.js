@@ -126,8 +126,90 @@ const initializeSocketIO = (io) => {
       }
     });
 
+    // --- Course Chat Events ---
+
+    // Event: User joins a course chat room
+    socket.on("joinCourseChat", ({ courseId, userId }) => {
+      socket.join(`course-chat-${courseId}`);
+      console.log(`User ${userId} (Socket ${socket.id}) joined course chat ${courseId}`);
+
+      // Notify others in the course chat that a user has joined
+      socket.to(`course-chat-${courseId}`).emit("userJoinedChat", { userId, socketId: socket.id });
+    });
+
+    // Event: User leaves a course chat room
+    socket.on("leaveCourseChat", ({ courseId, userId }) => {
+      socket.leave(`course-chat-${courseId}`);
+      console.log(`User ${userId} (Socket ${socket.id}) left course chat ${courseId}`);
+
+      // Notify others in the course chat that a user has left
+      socket.to(`course-chat-${courseId}`).emit("userLeftChat", { userId, socketId: socket.id });
+    });
+
+    // Event: New course chat message
+    socket.on("sendCourseMessage", ({ courseId, messageData }) => {
+      console.log(`New message in course chat ${courseId}:`, messageData);
+
+      // Broadcast the message to all users in the course chat room
+      io.to(`course-chat-${courseId}`).emit("newCourseMessage", messageData);
+    });
+
+    // Event: Course message deleted
+    socket.on("deleteCourseMessage", ({ courseId, messageId, deletedBy }) => {
+      console.log(`Message ${messageId} deleted in course chat ${courseId} by ${deletedBy}`);
+
+      // Broadcast the deletion to all users in the course chat room
+      io.to(`course-chat-${courseId}`).emit("courseMessageDeleted", { messageId, deletedBy });
+    });
+
+    // Event: Typing indicator
+    socket.on("userTyping", ({ courseId, userId, isTyping }) => {
+      socket.to(`course-chat-${courseId}`).emit("userTypingStatus", { userId, isTyping });
+    });
+
+    // --- Lesson Chat Events ---
+
+    // Event: User joins a lesson chat room
+    socket.on("joinLessonChat", ({ lessonId, userId }) => {
+      socket.join(`lesson-chat-${lessonId}`);
+      console.log(`User ${userId} (Socket ${socket.id}) joined lesson chat ${lessonId}`);
+
+      // Notify others in the lesson chat that a user has joined
+      socket.to(`lesson-chat-${lessonId}`).emit("userJoinedLessonChat", { userId, socketId: socket.id });
+    });
+
+    // Event: User leaves a lesson chat room
+    socket.on("leaveLessonChat", ({ lessonId, userId }) => {
+      socket.leave(`lesson-chat-${lessonId}`);
+      console.log(`User ${userId} (Socket ${socket.id}) left lesson chat ${lessonId}`);
+
+      // Notify others in the lesson chat that a user has left
+      socket.to(`lesson-chat-${lessonId}`).emit("userLeftLessonChat", { userId, socketId: socket.id });
+    });
+
+    // Event: New lesson chat message
+    socket.on("sendLessonMessage", ({ lessonId, messageData }) => {
+      console.log(`New message in lesson chat ${lessonId}:`, messageData);
+
+      // Broadcast the message to all users in the lesson chat room
+      io.to(`lesson-chat-${lessonId}`).emit("newLessonMessage", messageData);
+    });
+
+    // Event: Lesson message deleted
+    socket.on("deleteLessonMessage", ({ lessonId, messageId, deletedBy }) => {
+      console.log(`Message ${messageId} deleted in lesson chat ${lessonId} by ${deletedBy}`);
+
+      // Broadcast the deletion to all users in the lesson chat room
+      io.to(`lesson-chat-${lessonId}`).emit("lessonMessageDeleted", { messageId, deletedBy });
+    });
+
+    // Event: Typing indicator for lesson chat
+    socket.on("userTypingLesson", ({ lessonId, userId, isTyping }) => {
+      socket.to(`lesson-chat-${lessonId}`).emit("userTypingLessonStatus", { userId, isTyping });
+    });
+
     // You can add more custom events here as needed
-    // e.g., chat messages, polls, screen sharing notifications, etc.
+    // e.g., polls, screen sharing notifications, etc.
   });
 
   console.log("Socket.IO initialized and listening for connections.");

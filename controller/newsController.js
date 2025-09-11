@@ -1,10 +1,11 @@
 import News from "../model/news.js";
 import User from "../model/user.js";
+import Category from "../model/category.js";
 import { Op } from "sequelize";
 
 export const createNews = async (req, res) => {
   try {
-    const { title, content, shortDescription, thumbnailUrl, coverImage, tags, featured } = req.body;
+    const { title, content, shortDescription, thumbnailUrl, coverImage, tags, featured, categoryId } = req.body;
     const authorId = req.user.userId;
 
     const news = await News.create({
@@ -14,6 +15,7 @@ export const createNews = async (req, res) => {
       thumbnailUrl,
       coverImage,
       authorId,
+      categoryId,
       tags: tags ? JSON.parse(tags) : null,
       featured: featured || false,
     });
@@ -84,6 +86,11 @@ export const getAllNews = async (req, res) => {
           as: "author",
           attributes: ["userId", "username", "profileImage"],
         },
+        {
+          model: Category,
+          as: "category",
+          attributes: ["categoryId", "categoryName"],
+        },
       ],
       limit: parseInt(limit),
       offset: parseInt(offset),
@@ -121,6 +128,11 @@ export const getNewsById = async (req, res) => {
           as: "author",
           attributes: ["userId", "username", "profileImage"],
         },
+        {
+          model: Category,
+          as: "category",
+          attributes: ["categoryId", "categoryName"],
+        },
       ],
     });
 
@@ -151,7 +163,7 @@ export const getNewsById = async (req, res) => {
 export const updateNews = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content, shortDescription, thumbnailUrl, coverImage, tags, featured, status } = req.body;
+    const { title, content, shortDescription, thumbnailUrl, coverImage, tags, featured, status, categoryId } = req.body;
     const adminId = req.user.userId;
 
     const news = await News.findByPk(id);
@@ -168,6 +180,7 @@ export const updateNews = async (req, res) => {
       shortDescription,
       thumbnailUrl,
       coverImage,
+      categoryId,
       tags: tags ? JSON.parse(tags) : news.tags,
       featured: featured !== undefined ? featured : news.featured,
       status: status || news.status,
@@ -299,6 +312,11 @@ export const getFeaturedNews = async (req, res) => {
           model: User,
           as: "author",
           attributes: ["userId", "username", "profileImage"],
+        },
+        {
+          model: Category,
+          as: "category",
+          attributes: ["categoryId", "categoryName"],
         },
       ],
       limit: parseInt(limit),

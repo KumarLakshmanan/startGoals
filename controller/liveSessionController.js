@@ -4,6 +4,7 @@ import LiveSession from "../model/liveSession.js";
 import Course from "../model/course.js";
 import LiveSessionParticipant from "../model/liveSessionParticipant.js";
 import RaisedHand from "../model/raisedHand.js";
+import User from "../model/user.js";
 import AgoraAccessToken from "agora-access-token";
 import agoraService from "../services/agoraService.js";
 import zoomService from "../services/zoomService.js";
@@ -469,7 +470,12 @@ export const listSessions = async (req, res) => {
       status,
       sortBy = "sessionDate",
       sortOrder = "ASC",
+      page = 1,
+      limit = 10,
     } = req.query;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+
     const whereClause = {};
 
     if (platform) {
@@ -504,13 +510,33 @@ export const listSessions = async (req, res) => {
       orderClause.push(["sessionDate", "ASC"], ["startTime", "ASC"]);
     }
 
-    const sessions = await LiveSession.findAll({
+    const { count, rows: sessions } = await LiveSession.findAndCountAll({
       where: whereClause,
       order: orderClause,
-      // TODO: Add pagination (limit, offset) based on req.query.page and req.query.limit
+      limit: parseInt(limit),
+      offset,
+      include: [
+        {
+          model: Course,
+          as: "course",
+          attributes: ["courseId", "title", "thumbnailUrl"],
+        },
+      ],
     });
 
-    return sendSuccess(res, "Sessions retrieved successfully", sessions);
+    const totalPages = Math.ceil(count / parseInt(limit));
+
+    return sendSuccess(res, "Sessions retrieved successfully", {
+      sessions,
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages,
+        totalItems: count,
+        itemsPerPage: parseInt(limit),
+        hasNextPage: parseInt(page) < totalPages,
+        hasPrevPage: parseInt(page) > 1,
+      },
+    });
   } catch (error) {
     console.error("Error listing sessions:", error);
     return sendServerError(res, "Internal server error", error.message);
@@ -835,8 +861,14 @@ export const listRaisedHands = async (req, res) => {
       include: [
         {
           model: LiveSessionParticipant,
-          attributes: ["userId", "role"], // Include any other participant details needed
-          // TODO: include User model here to get user name if LiveSessionParticipant has userId linked to a User table
+          attributes: ["userId", "role", "participantId"], // Include any other participant details needed
+          include: [
+            {
+              model: User,
+              as: "user",
+              attributes: ["userId", "username", "profileImage", "email"],
+            },
+          ],
         },
       ],
       order: [["raisedAt", "ASC"]],

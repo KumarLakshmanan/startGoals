@@ -23,19 +23,16 @@ import {
 } from "../controller/userController.js";
 import passport from "passport";
 import { authenticateToken, isAdmin } from "../middleware/authMiddleware.js";
-import {
-  validateSchema,
-  userValidation,
-} from "../middleware/fieldValidation.js";
+import { validationMiddleware } from "../middleware/validationMiddleware.js";
 
 const userRoutes = express.Router();
 
 userRoutes.post(
   "/userRegistration",
-  validateSchema(userValidation.register),
+  validationMiddleware.user.register,
   userRegistration,
 );
-userRoutes.post("/userLogin", validateSchema(userValidation.login), userLogin);
+userRoutes.post("/userLogin", validationMiddleware.user.login, userLogin);
 userRoutes.get(
   "/googleLogin",
   passport.authenticate("google", { scope: ["profile", "email"] }),
@@ -54,7 +51,7 @@ userRoutes.get("/getUserData", authenticateToken, getUserDetails);
 userRoutes.put(
   "/updateProfile",
   authenticateToken,
-  validateSchema(userValidation.updateProfile),
+  validationMiddleware.user.updateProfile,
   updateUserProfile,
 );
 userRoutes.get("/homepage", authenticateToken, getHomePage);

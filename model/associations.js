@@ -62,6 +62,9 @@ import Wallet from "./wallet.js";
 import WalletTransaction from "./walletTransaction.js";
 import RedeemCode from "./redeemCode.js";
 import CourseChat from "./courseChat.js";
+import AuditLog from "./auditLog.js";
+import AdminSession from "./adminSession.js";
+import SecurityAlert from "./securityAlert.js";
 
 // All models must be defined before we associate them
 const models = {
@@ -116,6 +119,9 @@ const models = {
   WalletTransaction,
   RedeemCode,
   CourseChat,
+  AuditLog,
+  AdminSession,
+  SecurityAlert,
 };
 
 // Export all models + sequelize
